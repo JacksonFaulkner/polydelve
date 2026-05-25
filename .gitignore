@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# DuckDB — local file, not committed (use MotherDuck for shared state)
+*.duckdb
+*.duckdb.wal
+
+# Node
+node_modules/
+.next/
+
+# Env
+.env
+.env.local
+
+# OS
+.DS_Store
