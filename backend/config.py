@@ -1,0 +1,4 @@
+import os
+
+MOTHERDUCK_ACCESS_TOKEN = os.getenv("MOTHERDUCK_ACCESS_TOKEN")
+

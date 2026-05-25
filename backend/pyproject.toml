@@ -1,0 +1,15 @@
+[project]
+name = "action-odds-backend"
+version = "0.1.0"
+description = "Backend for Action Odds — a prediction market platform for software security events"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "duckdb>=1.5.3",
+    "pydantic>=2.13.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
