@@ -1,10 +1,15 @@
+# Backend
+backend/secrets/
+backend/outputs/
+
+
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
 
-# DuckDB — local file, not committed (use MotherDuck for shared state)
+# DuckDB
 *.duckdb
 *.duckdb.wal
 
