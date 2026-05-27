@@ -9,8 +9,8 @@ function timeAgo(iso: string): string {
 
 export function RecentNews({ items }: { items: NewsItem[] }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-      <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#C00000]">Recent news</h3>
+    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-4">
+      <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#FDE832]">Recent news</h3>
       <div className="space-y-4">
         {items.map((item) => (
           <div key={item.id} className="group">

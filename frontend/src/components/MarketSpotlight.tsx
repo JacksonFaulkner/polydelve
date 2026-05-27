@@ -24,7 +24,7 @@ function EventTooltip({ active, payload, label, events }: {
       <p style={{ color: "white", fontWeight: 600 }}>{Math.round(prob * 100)}% probability</p>
       {event && (
         <div style={{ marginTop: 8, borderTop: "1px solid #3f3f46", paddingTop: 8 }}>
-          <p style={{ color: "#C00000", fontWeight: 600, marginBottom: 4 }}>{event.label}</p>
+          <p style={{ color: "#FDE832", fontWeight: 600, marginBottom: 4 }}>{event.label}</p>
           <p style={{ color: "#71717a", lineHeight: 1.4 }}>{event.note}</p>
         </div>
       )}
@@ -40,9 +40,9 @@ export function MarketSpotlight({ market, onBet }: Props) {
   const multiplier = (market.payout / market.price).toFixed(1)
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-5">
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#C00000]">Spotlight</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-[#FDE832]">Spotlight</span>
       </div>
 
       <div className="mb-4 flex items-start gap-3">
@@ -89,12 +89,12 @@ export function MarketSpotlight({ market, onBet }: Props) {
           <Line
             type="monotone"
             dataKey="prob"
-            stroke="#C00000"
+            stroke="#FDE832"
             strokeWidth={2}
             dot={(props: any) => {
               const { cx, cy, payload } = props
               if (!market.events.some((e) => e.date === payload.date)) return <g key={payload.date} />
-              return <circle key={payload.date} cx={cx} cy={cy} r={5} fill="#C00000" stroke="#111111" strokeWidth={2} />
+              return <circle key={payload.date} cx={cx} cy={cy} r={5} fill="#FDE832" stroke="#111111" strokeWidth={2} />
             }}
           />
         </LineChart>
@@ -104,7 +104,7 @@ export function MarketSpotlight({ market, onBet }: Props) {
         <span className="text-xs text-zinc-500">{market.bet_count.toLocaleString()} bets</span>
         <button
           onClick={() => onBet(market)}
-          className="rounded-lg bg-[#C00000] px-5 py-2 text-sm font-semibold text-white hover:bg-[#a00000] transition-colors"
+          className="rounded-lg bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
         >
           Bet {market.price} <SchmeckleIcon />
         </button>

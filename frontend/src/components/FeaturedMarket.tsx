@@ -15,7 +15,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
   const multiplier = (market.payout / market.price).toFixed(1)
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-5">
       <div className="mb-4 flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
           <img src={market.company.logo} alt={market.company.title} className="h-8 w-8 object-contain invert" />
@@ -55,7 +55,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
             contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 6, fontSize: 12 }}
             formatter={(v: number) => [`${Math.round(v * 100)}%`, "probability"]}
           />
-          <Line type="monotone" dataKey="prob" stroke="#C00000" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="prob" stroke="#FDE832" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
 
@@ -63,7 +63,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
         <span className="text-xs text-zinc-500">{market.bet_count.toLocaleString()} bets</span>
         <button
           onClick={() => onBet(market)}
-          className="rounded-lg bg-[#C00000] px-5 py-2 text-sm font-semibold text-white hover:bg-[#a00000] transition-colors"
+          className="rounded-lg bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
         >
           Bet {market.price} <SchmeckleIcon />
         </button>

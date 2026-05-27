@@ -14,7 +14,7 @@ export function MarketCard({ market, onBet }: Props) {
   const multiplier = (market.payout / market.price).toFixed(1)
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-700 transition-colors">
+    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-4 hover:border-zinc-700 transition-colors">
       <div className="mb-3 flex items-center gap-2">
         <img src={market.company.logo} alt={market.company.title} className="h-5 w-5 object-contain invert opacity-70" />
         <span className="text-xs text-zinc-500">{market.company.title}</span>
