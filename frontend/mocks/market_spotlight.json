@@ -1,168 +1,77 @@
 {
-  "id": "mkt-microsoft-spotlight",
-  "title": "Will Microsoft suffer a supply chain attack via NuGet or GitHub Actions by Jun 30?",
-  "description": "A confirmed supply chain compromise affecting Microsoft-owned packages on NuGet or GitHub Actions runners, with downstream impact on Azure or enterprise customers.",
-  "grade": "A",
-  "price": 100,
-  "payout": 2000,
-  "end_date": "2026-06-30T00:00:00Z",
+  "id": "mkt-systeminformation-spotlight",
+  "title": "systeminformation CVSS ≥ 9.0 within 30 days",
+  "description": "systeminformation (npm) is used by monitoring tools and CI runners to expose hardware/OS metrics. It's in CISA KEV with EPSS 0.94 — one of the highest-risk npm packages by exploitation probability. Pays out if a new CVSS ≥ 9.0 CVE is published within 30 days.",
+  "grade": "F",
+  "max_payout": 212,
+  "opening_probability": 0.9396,
   "status": "open",
-  "bet_count": 892,
-  "company": {
-    "id": "microsoft",
-    "title": "Microsoft",
-    "logo": "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
+  "bet_count": 1847,
+  "package": {
+    "name": "systeminformation",
+    "ecosystem": "npm",
+    "weekly_downloads": 6422838,
+    "epss_score": 0.9396,
+    "in_cisa_kev": true,
+    "logo_url": null
+  },
+  "contract": {
+    "cvss_threshold": 9.0,
+    "epss_threshold": null,
+    "duration_days": 30,
+    "purchase_price": 200
   },
   "probability_history": [
-    {
-      "date": "2026-04-25",
-      "prob": 0.049
-    },
-    {
-      "date": "2026-04-26",
-      "prob": 0.048
-    },
-    {
-      "date": "2026-04-27",
-      "prob": 0.047
-    },
-    {
-      "date": "2026-04-28",
-      "prob": 0.052
-    },
-    {
-      "date": "2026-04-29",
-      "prob": 0.101
-    },
-    {
-      "date": "2026-04-30",
-      "prob": 0.091
-    },
-    {
-      "date": "2026-05-01",
-      "prob": 0.093
-    },
-    {
-      "date": "2026-05-02",
-      "prob": 0.091
-    },
-    {
-      "date": "2026-05-03",
-      "prob": 0.089
-    },
-    {
-      "date": "2026-05-04",
-      "prob": 0.09
-    },
-    {
-      "date": "2026-05-05",
-      "prob": 0.092
-    },
-    {
-      "date": "2026-05-06",
-      "prob": 0.2
-    },
-    {
-      "date": "2026-05-07",
-      "prob": 0.205
-    },
-    {
-      "date": "2026-05-08",
-      "prob": 0.206
-    },
-    {
-      "date": "2026-05-09",
-      "prob": 0.201
-    },
-    {
-      "date": "2026-05-10",
-      "prob": 0.194
-    },
-    {
-      "date": "2026-05-11",
-      "prob": 0.196
-    },
-    {
-      "date": "2026-05-12",
-      "prob": 0.205
-    },
-    {
-      "date": "2026-05-13",
-      "prob": 0.275
-    },
-    {
-      "date": "2026-05-14",
-      "prob": 0.274
-    },
-    {
-      "date": "2026-05-15",
-      "prob": 0.278
-    },
-    {
-      "date": "2026-05-16",
-      "prob": 0.268
-    },
-    {
-      "date": "2026-05-17",
-      "prob": 0.266
-    },
-    {
-      "date": "2026-05-18",
-      "prob": 0.269
-    },
-    {
-      "date": "2026-05-19",
-      "prob": 0.275
-    },
-    {
-      "date": "2026-05-20",
-      "prob": 0.213
-    },
-    {
-      "date": "2026-05-21",
-      "prob": 0.216
-    },
-    {
-      "date": "2026-05-22",
-      "prob": 0.218
-    },
-    {
-      "date": "2026-05-23",
-      "prob": 0.223
-    },
-    {
-      "date": "2026-05-24",
-      "prob": 0.215
-    },
-    {
-      "date": "2026-05-25",
-      "prob": 0.219
-    }
+    { "date": "2026-04-25", "prob": 0.87 },
+    { "date": "2026-04-26", "prob": 0.88 },
+    { "date": "2026-04-27", "prob": 0.88 },
+    { "date": "2026-04-28", "prob": 0.89 },
+    { "date": "2026-04-29", "prob": 0.91 },
+    { "date": "2026-04-30", "prob": 0.90 },
+    { "date": "2026-05-01", "prob": 0.91 },
+    { "date": "2026-05-02", "prob": 0.90 },
+    { "date": "2026-05-03", "prob": 0.91 },
+    { "date": "2026-05-04", "prob": 0.92 },
+    { "date": "2026-05-05", "prob": 0.91 },
+    { "date": "2026-05-06", "prob": 0.93 },
+    { "date": "2026-05-07", "prob": 0.93 },
+    { "date": "2026-05-08", "prob": 0.92 },
+    { "date": "2026-05-09", "prob": 0.93 },
+    { "date": "2026-05-10", "prob": 0.94 },
+    { "date": "2026-05-11", "prob": 0.93 },
+    { "date": "2026-05-12", "prob": 0.94 },
+    { "date": "2026-05-13", "prob": 0.95 },
+    { "date": "2026-05-14", "prob": 0.94 },
+    { "date": "2026-05-15", "prob": 0.94 },
+    { "date": "2026-05-16", "prob": 0.95 },
+    { "date": "2026-05-17", "prob": 0.94 },
+    { "date": "2026-05-18", "prob": 0.94 },
+    { "date": "2026-05-19", "prob": 0.94 },
+    { "date": "2026-05-20", "prob": 0.95 },
+    { "date": "2026-05-21", "prob": 0.94 },
+    { "date": "2026-05-22", "prob": 0.94 },
+    { "date": "2026-05-23", "prob": 0.94 },
+    { "date": "2026-05-24", "prob": 0.94 },
+    { "date": "2026-05-25", "prob": 0.94 }
   ],
   "events": [
     {
       "date": "2026-04-29",
-      "label": "MSRC: critical NuGet RCE patched",
-      "note": "Microsoft patches a SYSTEM-level RCE in the NuGet client used by Visual Studio and the dotnet CLI, drawing scrutiny to the package ecosystem.",
-      "delta": 0.05
+      "label": "CVE-2026-19821 published",
+      "note": "New command injection CVE in systeminformation's network stats parser. CVSS 9.8. Affects all versions < 5.23.7.",
+      "delta": 0.02
     },
     {
       "date": "2026-05-06",
-      "label": "BitLocker bypass PoC published",
-      "note": "Researcher publishes working proof-of-concept for bypassing BitLocker via TPM bus sniffing on unpatched Surface and Azure Stack hardware.",
-      "delta": 0.1
+      "label": "PoC exploit released",
+      "note": "Working RCE proof-of-concept released targeting CI/CD environments running vulnerable systeminformation versions.",
+      "delta": 0.02
     },
     {
       "date": "2026-05-13",
-      "label": "Suspicious MSAL.js dependency flagged",
-      "note": "A GitHub issue surfaces suspicious transitive deps in MSAL.js, used in millions of Azure-integrated apps. Microsoft opens internal audit.",
-      "delta": 0.07
-    },
-    {
-      "date": "2026-05-20",
-      "label": "Microsoft announces NuGet audit",
-      "note": "Microsoft confirms a proactive security audit of all first-party NuGet packages and announces mandatory code-signing for official feeds.",
-      "delta": -0.06
+      "label": "CISA adds to KEV",
+      "note": "CISA adds CVE-2026-19821 to Known Exploited Vulnerabilities catalog. Federal agencies have 3 weeks to patch.",
+      "delta": 0.01
     }
   ]
 }
