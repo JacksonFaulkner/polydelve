@@ -34,33 +34,79 @@ class CreateUserRequest(BaseModel):
 
 @router.get("/news")
 def list_news(
-    limit: int = 20,
+    page: int = 1,
+    page_size: int = 20,
+    severity: str | None = None,
+    exploit_status: str | None = None,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
-) -> list[dict]:
+) -> dict:
+    filters = ["published_date IS NOT NULL"]
+    params: list = []
+    if severity:
+        filters.append("severity = ?")
+        params.append(severity)
+    if exploit_status:
+        filters.append("exploit_status = ?")
+        params.append(exploit_status)
+
+    where = " AND ".join(filters)
+    offset = (page - 1) * page_size
+
+    total = conn.execute(f"SELECT COUNT(*) FROM news WHERE {where}", params).fetchone()[0]
+
     rows = conn.execute(
-        """
-        SELECT id, title, summary, source_url, source_name,
-               published_date, sector_labels, primary_company_id
-        FROM news
-        WHERE published_date IS NOT NULL
-        ORDER BY published_date DESC
-        LIMIT ?
+        f"""
+        SELECT
+            n.id, n.title, n.summary, n.source_url, n.source_name,
+            n.published_date, n.sector_labels, n.company_labels,
+            n.threat_actor, n.exploit_status, n.severity,
+            array_agg(DISTINCT np.name || '::' || np.ecosystem)
+                FILTER (WHERE np.name IS NOT NULL) AS packages
+        FROM news n
+        LEFT JOIN news_packages np ON np.news_id = n.id
+        WHERE {where}
+        GROUP BY
+            n.id, n.title, n.summary, n.source_url, n.source_name,
+            n.published_date, n.sector_labels, n.company_labels,
+            n.threat_actor, n.exploit_status, n.severity
+        ORDER BY n.published_date DESC
+        LIMIT ? OFFSET ?
         """,
-        [limit],
+        params + [page_size, offset],
     ).fetchall()
-    return [
-        {
-            "id": r[0],
-            "title": r[1],
-            "summary": r[2],
-            "url": r[3],
-            "source": r[4],
-            "published_at": r[5].isoformat() if r[5] else None,
-            "tags": r[6] or [],
-            "company_id": r[7],
-        }
-        for r in rows
-    ]
+
+    def parse_packages(raw: list[str] | None) -> list[dict]:
+        if not raw:
+            return []
+        out = []
+        for entry in raw:
+            parts = entry.split("::")
+            if len(parts) == 2:
+                out.append({"name": parts[0], "ecosystem": parts[1]})
+        return out
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": [
+            {
+                "id": r[0],
+                "title": r[1],
+                "summary": r[2],
+                "url": r[3],
+                "source_name": r[4],
+                "published_at": r[5].isoformat() if r[5] else None,
+                "sector_labels": r[6] or [],
+                "company_labels": r[7] or [],
+                "threat_actor": r[8],
+                "exploit_status": r[9],
+                "severity": r[10],
+                "affected_packages": parse_packages(r[11]),
+            }
+            for r in rows
+        ],
+    }
 
 
 # --- Companies ---

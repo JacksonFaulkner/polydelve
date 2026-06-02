@@ -1,12 +1,19 @@
+import os
+
 import duckdb
 from fastapi import Request
 
 # Switch to "md:action_odds" for MotherDuck
-DB_PATH = "action_odds.duckdb"
+DB_PATH = os.getenv("DB_PATH", "action_odds.dev.duckdb")
 
 
 def get_db(request: Request) -> duckdb.DuckDBPyConnection:
-    return request.app.state.db
+    return duckdb.connect(DB_PATH)
+
+
+def get_db_conn() -> duckdb.DuckDBPyConnection:
+    """Direct connection for scripts (no FastAPI Request context)."""
+    return duckdb.connect(DB_PATH)
 
 
 def init_db(conn: duckdb.DuckDBPyConnection) -> None:
@@ -83,6 +90,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             cve_ids          VARCHAR[],
             epss_score       FLOAT,
             in_cisa_kev      BOOLEAN NOT NULL DEFAULT false,
+            has_mal_advisory BOOLEAN NOT NULL DEFAULT false,
             risk_score       FLOAT,
             last_enriched_at TIMESTAMPTZ,
             sectors          VARCHAR[],
@@ -95,6 +103,26 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             conn.execute(f"ALTER TABLE packages ADD COLUMN {col}")
         except Exception:
             pass
+    try:
+        conn.execute("ALTER TABLE packages ADD COLUMN has_mal_advisory BOOLEAN DEFAULT false")
+        conn.execute("UPDATE packages SET has_mal_advisory = false WHERE has_mal_advisory IS NULL")
+    except Exception:
+        pass
+    # Migrate contracts: add opening_epss for drift-based sell value
+    try:
+        conn.execute("ALTER TABLE contracts ADD COLUMN opening_epss FLOAT")
+    except Exception:
+        pass
+    # epss_history: daily snapshot per package for drift tracking
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS epss_history (
+            name        VARCHAR NOT NULL,
+            ecosystem   VARCHAR NOT NULL,
+            epss_score  FLOAT NOT NULL,
+            recorded_at DATE NOT NULL DEFAULT current_date,
+            PRIMARY KEY (name, ecosystem, recorded_at)
+        )
+    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS news_packages (
             news_id   VARCHAR NOT NULL REFERENCES news(id),
@@ -114,6 +142,31 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             severity       VARCHAR,
             cvss_vector    VARCHAR,
             PRIMARY KEY (osv_id, name, ecosystem)
+        )
+    """)
+    # Migrate cve_history to add cvss_score
+    try:
+        conn.execute("ALTER TABLE cve_history ADD COLUMN cvss_score FLOAT")
+    except Exception:
+        pass
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS contracts (
+            id                   VARCHAR PRIMARY KEY,
+            user_id              VARCHAR NOT NULL REFERENCES users(id),
+            package_name         VARCHAR NOT NULL,
+            package_ecosystem    VARCHAR NOT NULL,
+            market_type          VARCHAR NOT NULL,  -- new_cve | kev_listing | epss_threshold
+            cvss_threshold       FLOAT,             -- for new_cve type
+            epss_threshold       FLOAT,             -- for epss_threshold type
+            purchase_price       INTEGER NOT NULL,
+            max_payout           INTEGER NOT NULL,
+            opening_probability  FLOAT NOT NULL,
+            package_grade        FLOAT NOT NULL,
+            expires_at           DATE NOT NULL,
+            status               VARCHAR NOT NULL DEFAULT 'open',  -- open | won | lost | sold
+            resolved_at          TIMESTAMPTZ,
+            sell_price           INTEGER,
+            created_at           TIMESTAMPTZ DEFAULT now()
         )
     """)
     conn.execute("""

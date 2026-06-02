@@ -6,6 +6,8 @@ from fastapi import FastAPI
 
 from api.middleware.cors import add_cors
 from api.routes.health import router as health_router
+from api.routes.contracts import router as contracts_router
+from api.routes.packages import router as packages_router
 from api.routes.prediction_market import router as pm_router
 from features.db import DB_PATH, init_db, seed_companies
 
@@ -25,6 +27,8 @@ app = FastAPI(title="Action Odds", lifespan=lifespan)
 add_cors(app)
 app.include_router(health_router)
 app.include_router(pm_router)
+app.include_router(packages_router)
+app.include_router(contracts_router)
 
 
 def dev() -> None:

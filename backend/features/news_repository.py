@@ -1,6 +1,6 @@
 import duckdb
 
-from features.package_enrichment import PackageEnrichment
+from features.package_enrichment import PackageEnrichment, validate_packages
 from models.models import PackageRisk, RecentNews
 
 _SIMILARITY_THRESHOLD = 0.92
@@ -93,12 +93,18 @@ def _insert_news(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> None:
     )
 
 
-def _insert_packages(
+async def _insert_packages(
     conn: duckdb.DuckDBPyConnection,
     news_id: str,
     packages: list[PackageRisk],
 ) -> None:
     if not packages:
+        return
+    # only insert packages that actually exist on their registry
+    candidates = [(p.name, p.ecosystem) for p in packages if p.ecosystem in ("npm", "PyPI")]
+    valid = await validate_packages(candidates) if candidates else set()
+    verified = [p for p in packages if (p.name, p.ecosystem) in valid]
+    if not verified:
         return
     # upsert canonical package record
     conn.executemany(
@@ -108,7 +114,7 @@ def _insert_packages(
         ON CONFLICT (name, ecosystem) DO NOTHING
         """,
         [(p.name, p.ecosystem, p.weekly_downloads, p.cve_ids, p.epss_score, p.in_cisa_kev)
-         for p in packages],
+         for p in verified],
     )
     # insert join rows
     conn.executemany(
@@ -117,11 +123,11 @@ def _insert_packages(
         VALUES (?, ?, ?)
         ON CONFLICT (news_id, name) DO NOTHING
         """,
-        [(news_id, p.name, p.ecosystem) for p in packages],
+        [(news_id, p.name, p.ecosystem) for p in verified],
     )
 
 
-def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
+async def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
     """Insert article if not already stored. Returns 'inserted', 'url_duplicate', or 'semantic_duplicate'."""
     if _exists(conn, article.id):
         return "url_duplicate"
@@ -133,13 +139,13 @@ def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
         return "semantic_duplicate"
 
     _insert_news(conn, article)
-    _insert_packages(conn, article.id, article.analysis.affected_packages)
+    await _insert_packages(conn, article.id, article.analysis.affected_packages)
     return "inserted"
 
 
-def ingest_many(conn: duckdb.DuckDBPyConnection, articles: list[RecentNews]) -> dict[str, int]:
+async def ingest_many(conn: duckdb.DuckDBPyConnection, articles: list[RecentNews]) -> dict[str, int]:
     counts: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0}
     for article in articles:
-        result = ingest(conn, article)
+        result = await ingest(conn, article)
         counts[result] += 1
     return counts
