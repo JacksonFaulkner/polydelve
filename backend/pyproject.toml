@@ -36,3 +36,9 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.25.0",
 ]
+
+[tool.ruff]
+exclude = ["scripts/export_schema_excel.py"]
+
+[tool.ruff.lint]
+ignore = ["E501"]

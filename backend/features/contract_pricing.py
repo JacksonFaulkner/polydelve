@@ -250,7 +250,6 @@ def price_contract(
         """,
         [package_name, ecosystem],
     ).fetchone()
-    recent_news = news_row[0] if news_row else 0
     exploit_in_news = bool(news_row[1]) if news_row else False
 
     grade = compute_grade(num_cves, epss_score, bool(in_cisa_kev), max_cvss)

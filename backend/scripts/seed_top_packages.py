@@ -71,7 +71,8 @@ async def main() -> None:
     all_candidates = pypi_candidates + npm_candidates_list
 
     print(f"  querying BigQuery for {len(pypi_candidates)} PyPI packages...")
-    import time as _time; _t = _time.time()
+    import time as _time
+    _t = _time.time()
     downloads = await fetch_downloads_bulk(all_candidates, npm_concurrency=40)
     print(f"  done in {_time.time()-_t:.1f}s  pypi={sum(1 for (n,e),v in downloads.items() if e=='PyPI' and v>0)}  npm={sum(1 for (n,e),v in downloads.items() if e=='npm' and v>0)}")
 
@@ -178,7 +179,7 @@ async def main() -> None:
     conn.close()
 
     print(f"\ndone. inserted={inserted} updated={updated}")
-    print(f"top risk packages:")
+    print("top risk packages:")
     top_risk = sorted(
         packages,
         key=lambda p: downloads.get(p, 0) * (

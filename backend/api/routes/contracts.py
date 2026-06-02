@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, timedelta, timezone, datetime
+from datetime import date, timedelta
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
@@ -230,7 +230,6 @@ def list_user_contracts(
         [user_id],
     ).fetchall()
 
-    today = date.today()
     result = []
     for r in rows:
         (cid, pkg, eco, mtype, cvss_t, epss_t, price, payout,

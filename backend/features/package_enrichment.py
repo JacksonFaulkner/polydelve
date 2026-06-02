@@ -11,6 +11,7 @@ _BQ_SA_PATH = Path(__file__).parent.parent / "secrets" / "polydelve-bq-sa.json"
 def _bq_client():
     from google.cloud import bigquery
     from google.oauth2 import service_account
+
     creds = service_account.Credentials.from_service_account_file(
         str(_BQ_SA_PATH),
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
@@ -23,7 +24,10 @@ def fetch_pypi_downloads_bulk_bq(names: list[str]) -> dict[str, int]:
     if not names:
         return {}
     import time
-    print(f"  [BQ] scanning pypi.file_downloads for {len(names)} packages...", flush=True)
+
+    print(
+        f"  [BQ] scanning pypi.file_downloads for {len(names)} packages...", flush=True
+    )
     t = time.time()
     client = _bq_client()
     placeholders = ", ".join(f"'{n}'" for n in names)
@@ -35,7 +39,10 @@ def fetch_pypi_downloads_bulk_bq(names: list[str]) -> dict[str, int]:
         GROUP BY package
     """
     result = {r.package: r.weekly_downloads for r in client.query(query).result()}
-    print(f"  [BQ] done in {time.time()-t:.1f}s  matched={len(result)}/{len(names)}", flush=True)
+    print(
+        f"  [BQ] done in {time.time() - t:.1f}s  matched={len(result)}/{len(names)}",
+        flush=True,
+    )
     return result
 
 
@@ -50,40 +57,52 @@ class PackageEnrichment:
     logo_url: str | None = None
 
 
-async def fetch_npm_downloads(client: httpx.AsyncClient, name: str, sem: asyncio.Semaphore | None = None) -> int:
+async def fetch_npm_downloads(
+    client: httpx.AsyncClient, name: str, sem: asyncio.Semaphore | None = None
+) -> int:
     async def _do():
         for attempt in range(4):
             try:
-                r = await client.get(f"https://api.npmjs.org/downloads/point/last-week/{name}", timeout=10)
+                r = await client.get(
+                    f"https://api.npmjs.org/downloads/point/last-week/{name}",
+                    timeout=10,
+                )
                 if r.status_code == 200:
                     return r.json().get("downloads") or 0
                 if r.status_code == 429:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
             except Exception:
                 pass
             return 0
         return 0
+
     if sem:
         async with sem:
             return await _do()
     return await _do()
 
 
-async def fetch_pypi_downloads(client: httpx.AsyncClient, name: str, sem: asyncio.Semaphore | None = None) -> int:
+async def fetch_pypi_downloads(
+    client: httpx.AsyncClient, name: str, sem: asyncio.Semaphore | None = None
+) -> int:
     async def _do():
         for attempt in range(4):
             try:
-                r = await client.get(f"https://pypistats.org/api/packages/{name.lower()}/recent", timeout=10)
+                r = await client.get(
+                    f"https://pypistats.org/api/packages/{name.lower()}/recent",
+                    timeout=10,
+                )
                 if r.status_code == 200:
                     return r.json().get("data", {}).get("last_week") or 0
                 if r.status_code == 429:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
             except Exception:
                 pass
             return 0
         return 0
+
     if sem:
         async with sem:
             return await _do()
@@ -97,13 +116,19 @@ async def validate_packages(
     """Return subset of (name, ecosystem) tuples that actually exist on the registry."""
     sem = asyncio.Semaphore(concurrency)
 
-    async def check(client: httpx.AsyncClient, name: str, eco: str) -> tuple[str, str] | None:
+    async def check(
+        client: httpx.AsyncClient, name: str, eco: str
+    ) -> tuple[str, str] | None:
         async with sem:
             try:
                 if eco == "npm":
-                    r = await client.get(f"https://registry.npmjs.org/{name}", timeout=10)
+                    r = await client.get(
+                        f"https://registry.npmjs.org/{name}", timeout=10
+                    )
                 elif eco == "PyPI":
-                    r = await client.get(f"https://pypi.org/pypi/{name}/json", timeout=10)
+                    r = await client.get(
+                        f"https://pypi.org/pypi/{name}/json", timeout=10
+                    )
                 else:
                     return None
                 if r.status_code == 200:
@@ -113,7 +138,9 @@ async def validate_packages(
             return None
 
     async with httpx.AsyncClient(timeout=10) as client:
-        results = await asyncio.gather(*[check(client, name, eco) for name, eco in packages])
+        results = await asyncio.gather(
+            *[check(client, name, eco) for name, eco in packages]
+        )
     return {r for r in results if r is not None}
 
 
@@ -141,10 +168,17 @@ async def fetch_downloads_bulk(
         unscoped = [n for n in npm_names if not n.startswith("@")]
         scoped = [n for n in npm_names if n.startswith("@")]
         batch_size = 128
-        batches = [unscoped[i:i+batch_size] for i in range(0, len(unscoped), batch_size)]
-        print(f"  [npm] {len(unscoped)} unscoped ({len(batches)} batches) + {len(scoped)} scoped...", flush=True)
+        batches = [
+            unscoped[i : i + batch_size] for i in range(0, len(unscoped), batch_size)
+        ]
+        print(
+            f"  [npm] {len(unscoped)} unscoped ({len(batches)} batches) + {len(scoped)} scoped...",
+            flush=True,
+        )
 
-        async def fetch_batch(client: httpx.AsyncClient, sem: asyncio.Semaphore, batch: list[str]) -> dict[str, int]:
+        async def fetch_batch(
+            client: httpx.AsyncClient, sem: asyncio.Semaphore, batch: list[str]
+        ) -> dict[str, int]:
             async with sem:
                 try:
                     r = await client.get(
@@ -158,15 +192,22 @@ async def fetch_downloads_bulk(
                 return {}
 
         from datetime import date, timedelta
+
         _end = date.today() - timedelta(days=1)
         _start = _end - timedelta(days=6)
 
-        async def fetch_scoped_batch(client: httpx.AsyncClient, sem: asyncio.Semaphore, batch: list[str]) -> dict[str, int]:
+        async def fetch_scoped_batch(
+            client: httpx.AsyncClient, sem: asyncio.Semaphore, batch: list[str]
+        ) -> dict[str, int]:
             async with sem:
                 try:
                     r = await client.get(
-                        f"https://npm-stat.com/api/download-counts",
-                        params={"package": ",".join(batch), "from": str(_start), "until": str(_end)},
+                        "https://npm-stat.com/api/download-counts",
+                        params={
+                            "package": ",".join(batch),
+                            "from": str(_start),
+                            "until": str(_end),
+                        },
                         timeout=15,
                     )
                     if r.status_code == 200:
@@ -175,8 +216,11 @@ async def fetch_downloads_bulk(
                     pass
                 return {}
 
-        scoped_batches = [scoped[i:i+20] for i in range(0, len(scoped), 20)]
-        print(f"  [npm-stat] {len(scoped)} scoped in {len(scoped_batches)} batches...", flush=True)
+        scoped_batches = [scoped[i : i + 20] for i in range(0, len(scoped), 20)]
+        print(
+            f"  [npm-stat] {len(scoped)} scoped in {len(scoped_batches)} batches...",
+            flush=True,
+        )
 
         unscoped_sem = asyncio.Semaphore(npm_concurrency)
         scoped_sem = asyncio.Semaphore(20)
@@ -196,8 +240,12 @@ async def fetch_downloads_bulk(
     return results
 
 
-async def _fetch_cve_ids(client: httpx.AsyncClient, name: str, ecosystem: str) -> list[str]:
-    osv_ecosystem = {"npm": "npm", "PyPI": "PyPI", "composer": "Packagist"}.get(ecosystem, ecosystem)
+async def _fetch_cve_ids(
+    client: httpx.AsyncClient, name: str, ecosystem: str
+) -> list[str]:
+    osv_ecosystem = {"npm": "npm", "PyPI": "PyPI", "composer": "Packagist"}.get(
+        ecosystem, ecosystem
+    )
     try:
         r = await client.post(
             "https://api.osv.dev/v1/query",
@@ -233,7 +281,9 @@ async def _fetch_epss(client: httpx.AsyncClient, cve_ids: list[str]) -> float | 
     return None
 
 
-async def _fetch_mal_advisory(client: httpx.AsyncClient, name: str, ecosystem: str) -> bool:
+async def _fetch_mal_advisory(
+    client: httpx.AsyncClient, name: str, ecosystem: str
+) -> bool:
     """Returns True if OSV has a MAL-* advisory for this package."""
     osv_eco = {"npm": "npm", "PyPI": "PyPI"}.get(ecosystem)
     if not osv_eco:
@@ -266,7 +316,9 @@ async def _fetch_kev_set(client: httpx.AsyncClient) -> set[str]:
     return set()
 
 
-async def _fetch_github_org(client: httpx.AsyncClient, name: str, ecosystem: str) -> str | None:
+async def _fetch_github_org(
+    client: httpx.AsyncClient, name: str, ecosystem: str
+) -> str | None:
     try:
         if ecosystem == "npm":
             r = await client.get(f"https://registry.npmjs.org/{name}")
@@ -308,8 +360,10 @@ async def _enrich_one(
     ecosystem: str,
 ) -> PackageEnrichment:
     downloads_coro = (
-        fetch_npm_downloads(client, name) if ecosystem == "npm"
-        else fetch_pypi_downloads(client, name) if ecosystem == "PyPI"
+        fetch_npm_downloads(client, name)
+        if ecosystem == "npm"
+        else fetch_pypi_downloads(client, name)
+        if ecosystem == "PyPI"
         else asyncio.sleep(0, result=0)
     )
 
@@ -322,7 +376,9 @@ async def _enrich_one(
 
     epss, logo_url = await asyncio.gather(
         _fetch_epss(client, cve_ids),
-        _fetch_github_avatar(client, github_org) if github_org else asyncio.sleep(0, result=None),
+        _fetch_github_avatar(client, github_org)
+        if github_org
+        else asyncio.sleep(0, result=None),
     )
 
     return PackageEnrichment(
@@ -342,10 +398,13 @@ async def enrich_packages(
     async with httpx.AsyncClient(timeout=10) as client:
         kev_set, results = await asyncio.gather(
             _fetch_kev_set(client),
-            asyncio.gather(*[_enrich_one(client, name, ecosystem) for name, ecosystem in packages]),
+            asyncio.gather(
+                *[_enrich_one(client, name, ecosystem) for name, ecosystem in packages]
+            ),
         )
 
     for result in results:
         result.in_cisa_kev = bool(result.cve_ids and kev_set & set(result.cve_ids))
 
     return dict(zip(packages, results))
+

@@ -87,7 +87,14 @@ be-test: ## Run backend tests
 	$(UV) pytest
 
 .PHONY: lint
-lint: ## Lint frontend TypeScript
+lint: be-lint fe-lint ## Lint backend and frontend
+
+.PHONY: be-lint
+be-lint: ## Lint backend Python (ruff)
+	uv --directory backend run ruff check .
+
+.PHONY: fe-lint
+fe-lint: ## Lint frontend TypeScript
 	$(NPM) npx tsc --noEmit
 
 .PHONY: fe-build
