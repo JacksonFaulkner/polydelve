@@ -28,7 +28,7 @@ async def main() -> None:
         print(f"[{start.date()}] fetching...", end=" ", flush=True)
         articles = await fetch_news_gpt_structured(start_date=start, end_date=end)
 
-        counts = ingest_many(conn, articles)
+        counts = await ingest_many(conn, articles)
         for k, v in counts.items():
             totals[k] += v
 

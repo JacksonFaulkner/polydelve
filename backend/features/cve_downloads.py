@@ -1,26 +1,10 @@
 import asyncio
 import httpx
 
+from features.package_enrichment import fetch_npm_downloads, fetch_pypi_downloads
+
 NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 MIN_DOWNLOADS = 100_000
-
-
-async def get_npm_downloads(client: httpx.AsyncClient, package: str) -> int:
-    try:
-        r = await client.get(
-            f"https://api.npmjs.org/downloads/point/last-week/{package}"
-        )
-        return r.json().get("downloads", 0)
-    except Exception:
-        return 0
-
-
-async def get_pypi_downloads(client: httpx.AsyncClient, package: str) -> int:
-    try:
-        r = await client.get(f"https://pypistats.org/api/packages/{package}/recent")
-        return r.json().get("data", {}).get("last_week", 0)
-    except Exception:
-        return 0
 
 
 def extract_packages(cve: dict) -> list[tuple[str, str]]:
@@ -69,9 +53,9 @@ async def main():
 
                 package = packages[0]
                 if keyword == "npm":
-                    downloads = await get_npm_downloads(client, package)
+                    downloads = await fetch_npm_downloads(client, package)
                 else:
-                    downloads = await get_pypi_downloads(client, package)
+                    downloads = await fetch_pypi_downloads(client, package)
 
                 if downloads >= MIN_DOWNLOADS:
                     metrics = cve.get("metrics", {})

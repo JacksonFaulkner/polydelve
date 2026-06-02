@@ -44,13 +44,18 @@ async def main() -> None:
 
     conn.executemany(
         """
-        INSERT INTO cve_history (osv_id, cve_id, name, ecosystem, published_date, modified_date, severity, cvss_vector)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (osv_id, name, ecosystem) DO NOTHING
+        INSERT INTO cve_history
+            (osv_id, cve_id, name, ecosystem, published_date, modified_date, severity, cvss_vector, cvss_score)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (osv_id, name, ecosystem) DO UPDATE SET
+            cvss_score   = excluded.cvss_score,
+            cvss_vector  = excluded.cvss_vector,
+            severity     = excluded.severity,
+            modified_date = excluded.modified_date
         """,
         [
             (r.osv_id, r.cve_id, r.name, r.ecosystem,
-             r.published_date, r.modified_date, r.severity, r.cvss_vector)
+             r.published_date, r.modified_date, r.severity, r.cvss_vector, r.cvss_score)
             for r in records
         ],
     )

@@ -24,55 +24,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from features.cve_history import build_cve_history, fetch_top_npm, fetch_top_pypi
 from features.db import DB_PATH, init_db
-from features.package_enrichment import _fetch_kev_set
+from features.package_enrichment import _fetch_kev_set, fetch_downloads_bulk
 
-_TOP_N = 500
-_DL_CONCURRENCY = 40
+_TOP_N = 99_999  # fetch full lists from each source
 _EPSS_CHUNK = 100
-
-
-# --- Download fetchers ---
-
-async def _npm_downloads(client: httpx.AsyncClient, sem: asyncio.Semaphore, name: str) -> int:
-    async with sem:
-        try:
-            r = await client.get(
-                f"https://api.npmjs.org/downloads/point/last-week/{name}",
-                timeout=10,
-            )
-            if r.status_code == 200:
-                return r.json().get("downloads") or 0
-        except Exception:
-            pass
-    return 0
-
-
-async def _pypi_downloads(client: httpx.AsyncClient, sem: asyncio.Semaphore, name: str) -> int:
-    async with sem:
-        try:
-            r = await client.get(
-                f"https://pypistats.org/api/packages/{name.lower()}/recent",
-                timeout=10,
-            )
-            if r.status_code == 200:
-                return r.json().get("data", {}).get("last_week") or 0
-        except Exception:
-            pass
-    return 0
-
-
-async def fetch_downloads(
-    packages: list[tuple[str, str]],
-) -> dict[tuple[str, str], int]:
-    sem = asyncio.Semaphore(_DL_CONCURRENCY)
-    async with httpx.AsyncClient(timeout=10) as client:
-        tasks = [
-            _npm_downloads(client, sem, name) if eco == "npm"
-            else _pypi_downloads(client, sem, name)
-            for name, eco in packages
-        ]
-        results = await asyncio.gather(*tasks)
-    return dict(zip(packages, results))
 
 
 # --- EPSS bulk fetcher ---
@@ -111,11 +66,14 @@ async def main() -> None:
 
     # 2. Fetch downloads for all candidates
     print("\n[2/5] fetching weekly download counts...")
-    all_candidates = (
-        [(n, "PyPI") for n in pypi_names]
-        + [(n, "npm") for n in npm_candidates]
-    )
-    downloads = await fetch_downloads(all_candidates)
+    pypi_candidates = [(n, "PyPI") for n in pypi_names]
+    npm_candidates_list = [(n, "npm") for n in npm_candidates]
+    all_candidates = pypi_candidates + npm_candidates_list
+
+    print(f"  querying BigQuery for {len(pypi_candidates)} PyPI packages...")
+    import time as _time; _t = _time.time()
+    downloads = await fetch_downloads_bulk(all_candidates, npm_concurrency=40)
+    print(f"  done in {_time.time()-_t:.1f}s  pypi={sum(1 for (n,e),v in downloads.items() if e=='PyPI' and v>0)}  npm={sum(1 for (n,e),v in downloads.items() if e=='npm' and v>0)}")
 
     # 3. Re-sort npm by actual downloads, trim to _TOP_N
     npm_ranked = sorted(
@@ -146,6 +104,26 @@ async def main() -> None:
     all_cves = list({cve for cves in cve_ids_by_pkg.values() for cve in cves})
     print(f"  {len(records)} vuln records, {len(all_cves)} unique CVEs across {len(cve_ids_by_pkg)} packages")
 
+    # upsert cve_history with CVSS data
+    conn = duckdb.connect(DB_PATH)
+    init_db(conn)
+    conn.executemany(
+        """
+        INSERT INTO cve_history
+            (osv_id, cve_id, name, ecosystem, published_date, modified_date, severity, cvss_vector, cvss_score)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (osv_id, name, ecosystem) DO UPDATE SET
+            cvss_score    = excluded.cvss_score,
+            cvss_vector   = excluded.cvss_vector,
+            severity      = excluded.severity,
+            modified_date = excluded.modified_date
+        """,
+        [(r.osv_id, r.cve_id, r.name, r.ecosystem,
+          r.published_date, r.modified_date, r.severity, r.cvss_vector, r.cvss_score)
+         for r in records],
+    )
+    print(f"  cve_history upserted={len(records)}")
+
     # 5. EPSS + KEV
     print("\n[4/5] fetching EPSS scores + CISA KEV...")
     async with httpx.AsyncClient(timeout=15) as client:
@@ -157,9 +135,6 @@ async def main() -> None:
 
     # 6. Upsert
     print("\n[5/5] upserting to DB...")
-    conn = duckdb.connect(DB_PATH)
-    init_db(conn)
-
     inserted = updated = 0
     for pkg in packages:
         name, ecosystem = pkg
