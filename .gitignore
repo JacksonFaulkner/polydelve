@@ -16,6 +16,7 @@ __pycache__/
 # Node
 node_modules/
 .next/
+tsconfig.*.tsbuildinfo
 
 # Env
 .env
