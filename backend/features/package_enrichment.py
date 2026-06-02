@@ -51,7 +51,6 @@ class PackageEnrichment:
     weekly_downloads: int | None
     cve_ids: list[str]
     epss_score: float | None
-    in_cisa_kev: bool
     has_mal_advisory: bool = False
     github_org: str | None = None
     logo_url: str | None = None
@@ -302,19 +301,6 @@ async def _fetch_mal_advisory(
     return False
 
 
-async def _fetch_kev_set(client: httpx.AsyncClient) -> set[str]:
-    try:
-        r = await client.get(
-            "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
-            timeout=15,
-        )
-        if r.status_code == 200:
-            vulns = r.json().get("vulnerabilities", [])
-            return {v["cveID"] for v in vulns}
-    except Exception:
-        pass
-    return set()
-
 
 async def _fetch_github_org(
     client: httpx.AsyncClient, name: str, ecosystem: str
@@ -385,7 +371,6 @@ async def _enrich_one(
         weekly_downloads=downloads,
         cve_ids=cve_ids,
         epss_score=epss,
-        in_cisa_kev=False,
         has_mal_advisory=has_mal,
         github_org=github_org,
         logo_url=logo_url,
@@ -396,15 +381,9 @@ async def enrich_packages(
     packages: list[tuple[str, str]],  # (name, ecosystem)
 ) -> dict[tuple[str, str], PackageEnrichment]:
     async with httpx.AsyncClient(timeout=10) as client:
-        kev_set, results = await asyncio.gather(
-            _fetch_kev_set(client),
-            asyncio.gather(
-                *[_enrich_one(client, name, ecosystem) for name, ecosystem in packages]
-            ),
+        results = await asyncio.gather(
+            *[_enrich_one(client, name, ecosystem) for name, ecosystem in packages]
         )
-
-    for result in results:
-        result.in_cisa_kev = bool(result.cve_ids and kev_set & set(result.cve_ids))
 
     return dict(zip(packages, results))
 

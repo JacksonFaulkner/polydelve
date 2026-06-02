@@ -13,7 +13,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 4438593,
       "epss_score": 0.9427,
-      "in_cisa_kev": true,
+      "has_mal_advisory": true,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -51,7 +51,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 140230480,
       "epss_score": 0.9358,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": "https://avatars.githubusercontent.com/u/7049303?v=4"
     },
@@ -89,7 +89,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 9109011,
       "epss_score": 0.9331,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -127,7 +127,7 @@
       "ecosystem": "npm",
       "weekly_downloads": 31007879,
       "epss_score": 0.9346,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -165,7 +165,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 3721499,
       "epss_score": 0.9343,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -203,7 +203,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 102517521,
       "epss_score": 0.933,
-      "in_cisa_kev": true,
+      "has_mal_advisory": true,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -241,7 +241,7 @@
       "ecosystem": "npm",
       "weekly_downloads": 3779690,
       "epss_score": 0.933,
-      "in_cisa_kev": true,
+      "has_mal_advisory": true,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -279,7 +279,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 11325618,
       "epss_score": 0.9283,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -316,7 +316,7 @@
       "ecosystem": "PyPI",
       "weekly_downloads": 4577030,
       "epss_score": 0.9383,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": false,
       "logo_url": null
     },
@@ -354,7 +354,7 @@
       "ecosystem": "npm",
       "weekly_downloads": 105000,
       "epss_score": null,
-      "in_cisa_kev": false,
+      "has_mal_advisory": false,
       "has_mal_advisory": true,
       "logo_url": null
     },

@@ -13,7 +13,6 @@ from features.package_enrichment import (
     fetch_downloads_bulk,
     _fetch_cve_ids,
     _fetch_epss,
-    _fetch_kev_set,
     _fetch_mal_advisory,
     _fetch_github_org,
     _fetch_github_avatar,
@@ -43,7 +42,7 @@ async def _pass_downloads(conn: duckdb.DuckDBPyConnection) -> int:
 
 
 async def _pass_epss(
-    conn: duckdb.DuckDBPyConnection, client: httpx.AsyncClient, kev_set: set[str]
+    conn: duckdb.DuckDBPyConnection, client: httpx.AsyncClient
 ) -> int:
     rows = conn.execute("""
         SELECT name, ecosystem, cve_ids FROM packages
@@ -59,27 +58,25 @@ async def _pass_epss(
 
     async def fetch_one(
         name: str, eco: str, existing_cve_ids: list[str]
-    ) -> tuple[str, str, list[str], float | None, bool, bool]:
+    ) -> tuple[str, str, list[str], float | None, bool]:
         async with sem:
             cve_ids = existing_cve_ids or await _fetch_cve_ids(client, name, eco)
             epss = await _fetch_epss(client, cve_ids)
-            in_kev = bool(cve_ids and kev_set & set(cve_ids))
             has_mal = await _fetch_mal_advisory(client, name, eco)
-            return name, eco, cve_ids, epss, in_kev, has_mal
+            return name, eco, cve_ids, epss, has_mal
 
     tasks = [fetch_one(name, eco, list(cve_ids or [])) for name, eco, cve_ids in rows]
     results = await tqdm.gather(*tasks, desc="  fetching epss", unit="pkg")
 
     updated = 0
-    for name, eco, cve_ids, epss, in_kev, has_mal in results:
+    for name, eco, cve_ids, epss, has_mal in results:
         if epss is not None or cve_ids:
             conn.execute(
                 """UPDATE packages SET epss_score = COALESCE(?, epss_score),
                    cve_ids = COALESCE(CASE WHEN len(?) > 0 THEN ? END, cve_ids),
-                   in_cisa_kev = CASE WHEN ? THEN TRUE ELSE in_cisa_kev END,
                    has_mal_advisory = CASE WHEN ? THEN TRUE ELSE has_mal_advisory END
                    WHERE name = ? AND ecosystem = ?""",
-                [epss, cve_ids, cve_ids, in_kev, has_mal, name, eco],
+                [epss, cve_ids, cve_ids, has_mal, name, eco],
             )
             updated += 1
     return updated
@@ -125,13 +122,11 @@ async def main() -> None:
     init_db(conn)
 
     async with httpx.AsyncClient(timeout=10) as client:
-        kev_set = await _fetch_kev_set(client)
-
         print("[1/3] downloads")
         dl_updated = await _pass_downloads(conn)
 
-        print("[2/3] epss + cves + kev")
-        epss_updated = await _pass_epss(conn, client, kev_set)
+        print("[2/3] epss + cves + mal")
+        epss_updated = await _pass_epss(conn, client)
 
         logo_updated = 0
         # logo pass disabled — run manually when needed

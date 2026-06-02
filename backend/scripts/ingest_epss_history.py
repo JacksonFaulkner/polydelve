@@ -72,7 +72,7 @@ def main() -> None:
             print("Phase 1: all files cached, skipping download.", flush=True)
 
     # Phase 2: DuckDB vectorized load
-    print(f"\nPhase 2: loading via DuckDB read_csv…", flush=True)
+    print("\nPhase 2: loading via DuckDB read_csv…", flush=True)
     conn = duckdb.connect(args.db)
 
     # Build temp CVE→package mapping table

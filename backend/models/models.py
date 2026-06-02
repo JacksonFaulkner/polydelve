@@ -70,7 +70,7 @@ class PackageRisk(BaseModel):
     weekly_downloads: int | None
     cve_ids: list[str]
     epss_score: float | None
-    in_cisa_kev: bool
+    has_mal_advisory: bool = False
 
 
 class NewsAnalysis(BaseModel):

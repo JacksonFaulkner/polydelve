@@ -50,8 +50,8 @@ export function MarketSpotlight({ market, onBet }: Props) {
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               market.package.ecosystem === "PyPI" ? "bg-blue-900/50 text-blue-300" : "bg-red-900/50 text-red-300"
             }`}>{market.package.ecosystem}</span>
-            {market.package.in_cisa_kev && (
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-orange-900/50 text-orange-300">KEV</span>
+            {market.package.has_mal_advisory && (
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-rose-900/50 text-rose-300">MAL</span>
             )}
             {market.package.epss_score != null && (
               <span className="text-[10px] text-zinc-500">EPSS <span className="text-zinc-300">{(market.package.epss_score * 100).toFixed(1)}%</span></span>

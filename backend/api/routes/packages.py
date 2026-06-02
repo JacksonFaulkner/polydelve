@@ -4,9 +4,10 @@ from typing import Literal
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from api.auth import get_current_user
 from features.db import get_db
 
-router = APIRouter(prefix="/packages")
+router = APIRouter(prefix="/packages", dependencies=[Depends(get_current_user)])
 
 
 @router.get("")
@@ -63,7 +64,6 @@ def list_packages(
             p.weekly_downloads,
             p.epss_score,
             p.risk_score,
-            p.in_cisa_kev,
             p.has_mal_advisory,
             p.sectors,
             p.logo_url,
@@ -80,7 +80,7 @@ def list_packages(
         WHERE {where}
         GROUP BY
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
-            p.risk_score, p.in_cisa_kev, p.has_mal_advisory, p.sectors, p.logo_url,
+            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
             len(p.cve_ids)
         ORDER BY {sort_col} DESC NULLS LAST
         LIMIT ? OFFSET ?
@@ -99,15 +99,14 @@ def list_packages(
                 "weekly_downloads": r[2],
                 "epss_score": round(r[3], 4) if r[3] is not None else None,
                 "risk_score": round(r[4], 2) if r[4] is not None else None,
-                "in_cisa_kev": r[5],
-                "has_mal_advisory": r[6],
-                "sectors": r[7] or [],
-                "logo_url": r[8],
-                "num_cves": r[9] or 0,
-                "news_mentions": r[10],
-                "latest_cve_date": r[11].date().isoformat() if r[11] else None,
-                "worst_severity": r[12],
-                "max_cvss_score": round(r[13], 1) if r[13] is not None else None,
+                "has_mal_advisory": r[5],
+                "sectors": r[6] or [],
+                "logo_url": r[7],
+                "num_cves": r[8] or 0,
+                "news_mentions": r[9],
+                "latest_cve_date": r[10].date().isoformat() if r[10] else None,
+                "worst_severity": r[11],
+                "max_cvss_score": round(r[12], 1) if r[12] is not None else None,
             }
             for r in rows
         ],
@@ -124,7 +123,7 @@ def get_package(
         """
         SELECT
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
-            p.risk_score, p.in_cisa_kev, p.has_mal_advisory, p.sectors, p.logo_url,
+            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
             p.cve_ids, p.last_enriched_at
         FROM packages p
         WHERE p.name = ? AND p.ecosystem = ?
@@ -183,12 +182,11 @@ def get_package(
         "weekly_downloads": row[2],
         "epss_score": round(row[3], 4) if row[3] is not None else None,
         "risk_score": round(row[4], 2) if row[4] is not None else None,
-        "in_cisa_kev": row[5],
-        "has_mal_advisory": row[6],
-        "sectors": row[7] or [],
-        "logo_url": row[8],
-        "cve_ids": row[9] or [],
-        "last_enriched_at": row[10].isoformat() if row[10] else None,
+        "has_mal_advisory": row[5],
+        "sectors": row[6] or [],
+        "logo_url": row[7],
+        "cve_ids": row[8] or [],
+        "last_enriched_at": row[9].isoformat() if row[9] else None,
         "max_cvss_score": max((c[5] for c in cve_rows if c[5] is not None), default=None),
         "cve_history": [
             {

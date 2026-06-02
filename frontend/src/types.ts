@@ -5,7 +5,6 @@ export interface MarketPackage {
   ecosystem: string
   weekly_downloads: number | null
   epss_score: number | null
-  in_cisa_kev: boolean
   has_mal_advisory: boolean
   logo_url: string | null
 }
@@ -106,7 +105,6 @@ export interface PackageDetail {
   weekly_downloads: number | null
   epss_score: number | null
   risk_score: number | null
-  in_cisa_kev: boolean
   has_mal_advisory: boolean
   sectors: string[]
   logo_url: string | null
@@ -133,7 +131,6 @@ export interface Package {
   weekly_downloads: number | null
   epss_score: number | null
   risk_score: number | null
-  in_cisa_kev: boolean
   has_mal_advisory: boolean
   num_cves: number
   latest_cve_date: string | null
@@ -149,4 +146,46 @@ export interface PackageListResponse {
   page: number
   page_size: number
   packages: Package[]
+}
+
+export interface LeaderboardContract {
+  id: string
+  package_name: string
+  package_ecosystem: string
+  market_type: string
+  purchase_price: number
+  max_payout: number
+  opening_probability: number
+  status: "open" | "won" | "lost" | "sold"
+  expires_at: string
+  created_at: string | null
+}
+
+export interface LeaderboardUser {
+  rank: number
+  id: string
+  username: string | null
+  schmeckles: number
+  total_contracts: number
+  open_contracts: number
+  won_contracts: number
+  contracts: LeaderboardContract[]
+}
+
+export interface LeaderboardResponse {
+  total: number
+  page: number
+  page_size: number
+  users: LeaderboardUser[]
+}
+
+export interface SchmecklePoint {
+  date: string
+  balance: number
+  event: "buy" | "won" | "sold" | null
+}
+
+export interface SchmeckleTimeline {
+  user_id: string
+  points: SchmecklePoint[]
 }

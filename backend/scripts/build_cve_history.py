@@ -67,7 +67,7 @@ async def main() -> None:
     for r in records:
         sev_counts[r.severity or "unknown"] = sev_counts.get(r.severity or "unknown", 0) + 1
 
-    print(f"\nDone:")
+    print("\nDone:")
     print(f"  {pkgs_with_vulns} packages with vulnerabilities")
     print(f"  {len(records)} total records ({with_cve_id} with CVE IDs)")
     print(f"  severity breakdown: {dict(sorted(sev_counts.items()))}")

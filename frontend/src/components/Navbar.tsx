@@ -1,18 +1,20 @@
-import { Boxes, Newspaper, Package, TrendingUp } from "lucide-react";
+import { Boxes, Newspaper, Package, TrendingUp, Trophy } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import { SchmeckleIcon } from "./SchmeckleIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict"] as const;
+export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Admin"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 const INFO_TABS: Sector[] = ["All", "PyPI", "npm", "News"];
-const ACTION_TABS: Sector[] = ["Predict"];
+const ACTION_TABS: Sector[] = ["Predict", "Leaderboard"];
 
 const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   PyPI: <Package className="h-3.5 w-3.5" />,
   npm: <Boxes className="h-3.5 w-3.5" />,
   News: <Newspaper className="h-3.5 w-3.5" />,
   Predict: <TrendingUp className="h-3.5 w-3.5" />,
+  Leaderboard: <Trophy className="h-3.5 w-3.5" />,
 };
 
 const TAB_LABEL: Partial<Record<Sector, string>> = {
@@ -62,6 +64,8 @@ export function Navbar({
   onSectorChange,
   onSearch,
 }: NavbarProps) {
+  const { isAuthenticated, isLoading, loginWithRedirect, logout, user: auth0User } = useAuth()
+
   return (
     <header
       className="sticky top-0 z-50 border-b border-zinc-800"
@@ -102,11 +106,34 @@ export function Navbar({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 rounded-full border border-zinc-700/60 bg-[#1C2229] px-4 py-1.5">
-          <span className="font-bold text-white">
-            {user.schmeckles.toLocaleString()}
-          </span>
-          <SchmeckleIcon className="h-8 w-8" />
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-zinc-700/60 bg-[#1C2229] px-4 py-1.5">
+            <span className="font-bold text-white">
+              {user.schmeckles.toLocaleString()}
+            </span>
+            <SchmeckleIcon className="h-8 w-8" />
+          </div>
+
+          {isLoading ? null : isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              {auth0User?.picture && (
+                <img src={auth0User.picture} alt="" className="h-7 w-7 rounded-full" />
+              )}
+              <button
+                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => loginWithRedirect()}
+              className="rounded-full border border-zinc-600 bg-zinc-800 px-4 py-1.5 text-sm font-medium text-zinc-200 hover:border-zinc-400 hover:text-white transition-colors"
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </div>
 
@@ -133,6 +160,19 @@ export function Navbar({
               onSectorChange={onSectorChange}
             />
           ))}
+
+          <div className="ml-auto">
+            <button
+              onClick={() => onSectorChange("Admin")}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                activeSector === "Admin"
+                  ? "bg-zinc-700 text-zinc-200"
+                  : "text-zinc-600 hover:text-zinc-400"
+              }`}
+            >
+              Admin
+            </button>
+          </div>
         </nav>
       </div>
     </header>

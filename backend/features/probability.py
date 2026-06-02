@@ -20,14 +20,14 @@ _EXPLOIT_STATUS_DELTA = {
 class MarketProbability:
     final: float
     base: float
-    kev_triggered: bool
+    mal_triggered: bool
     epss_used: float | None
     modifiers: dict[str, float]
 
 
 def compute(
     best_epss: float | None,
-    any_kev: bool,
+    has_mal_advisory: bool,
     exploit_status: str | None,
     severity: str | None,
     threat_actor: str | None,
@@ -35,19 +35,19 @@ def compute(
 ) -> MarketProbability:
     modifiers: dict[str, float] = {}
 
-    # KEV = confirmed exploitation in the wild, hard floor
-    if any_kev:
+    # MAL advisory = confirmed supply chain compromise, hard floor
+    if has_mal_advisory:
         base = 0.90
-        kev_triggered = True
+        mal_triggered = True
     elif best_epss is not None:
         base = best_epss
-        kev_triggered = False
+        mal_triggered = False
     else:
         base = _SEVERITY_BASELINE.get(severity or "", 0.20)
-        kev_triggered = False
+        mal_triggered = False
 
     # exploit_status nudge — meaningful when EPSS is absent or low
-    if not any_kev:
+    if not has_mal_advisory:
         delta = _EXPLOIT_STATUS_DELTA.get(exploit_status or "", 0.0)
         if delta:
             modifiers["exploit_status"] = delta
@@ -69,7 +69,7 @@ def compute(
     return MarketProbability(
         final=final,
         base=round(base, 4),
-        kev_triggered=kev_triggered,
+        mal_triggered=mal_triggered,
         epss_used=round(best_epss, 4) if best_epss is not None else None,
         modifiers=modifiers,
     )

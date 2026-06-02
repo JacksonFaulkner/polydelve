@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 import { Navbar } from "./components/Navbar";
 import type { Sector } from "./components/Navbar";
 import { MarketSpotlight } from "./components/MarketSpotlight";
@@ -6,14 +7,16 @@ import { MarketCard } from "./components/MarketCard";
 import { HotMarketsSidebar } from "./components/HotMarketsSidebar";
 import { RecentNews } from "./components/RecentNews";
 import { PackagesTable } from "./components/PackagesTable";
+import { LeaderboardTable } from "./components/LeaderboardTable";
+import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
+import { LandingPage } from "./components/LandingPage";
 import marketsData from "../mocks/markets.json";
 import spotlightData from "../mocks/market_spotlight.json";
 import userData from "../mocks/user.json";
 import type { Market, NewsItem, SpotlightMarket, User } from "./types";
-
-const API = import.meta.env.VITE_API_URL ?? "/api";
+import { useApi } from "@/lib/api";
 
 const baseMarkets = marketsData as unknown as Market[];
 const baseSpotlight = spotlightData as unknown as SpotlightMarket;
@@ -22,17 +25,33 @@ const user = userData as User;
 const SPOTLIGHT_ID = baseSpotlight.id;
 
 export default function App() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const { authFetch } = useApi();
   const [activeSector, setActiveSector] = useState<Sector>("All");
   const [news, setNews] = useState<NewsItem[]>([]);
+
   const markets = baseMarkets;
   const spotlight = baseSpotlight;
 
   useEffect(() => {
-    fetch(`${API}/news?page=1&page_size=10`)
+    if (!isAuthenticated) return;
+    authFetch(`/news?page=1&page_size=10`)
       .then((r) => r.json())
       .then((d) => setNews(d.items ?? []))
       .catch((err) => console.error("Failed to fetch news:", err));
-  }, []);
+  }, [isAuthenticated]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: "#15191D" }}>
+        <div className="h-6 w-6 rounded-full border-2 border-[#FDE832] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
 
 
 const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
@@ -40,7 +59,7 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
   async function handleBet(market: Market | SpotlightMarket) {
     const { purchase_price, cvss_threshold, epss_threshold, duration_days } = market.contract;
     try {
-      const res = await fetch(`${API}/contracts`, {
+      const res = await authFetch(`/contracts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -70,10 +89,14 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
       <Navbar user={user} activeSector={activeSector} onSectorChange={setActiveSector} />
 
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {activeSector === "News" ? (
+        {activeSector === "Admin" ? (
+          <AdminPage />
+        ) : activeSector === "News" ? (
           <NewsPage />
         ) : activeSector === "Predict" ? (
           <PredictPage />
+        ) : activeSector === "Leaderboard" ? (
+          <LeaderboardTable />
         ) : activeSector === "PyPI" || activeSector === "npm" ? (
           <PackagesTable ecosystem={activeSector} />
         ) : (

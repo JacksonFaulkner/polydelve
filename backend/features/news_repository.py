@@ -1,6 +1,6 @@
 import duckdb
 
-from features.package_enrichment import PackageEnrichment, validate_packages
+from features.package_enrichment import validate_packages
 from models.models import PackageRisk, RecentNews
 
 _SIMILARITY_THRESHOLD = 0.92
@@ -109,11 +109,11 @@ async def _insert_packages(
     # upsert canonical package record
     conn.executemany(
         """
-        INSERT INTO packages (name, ecosystem, weekly_downloads, cve_ids, epss_score, in_cisa_kev)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO packages (name, ecosystem, weekly_downloads, cve_ids, epss_score)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (name, ecosystem) DO NOTHING
         """,
-        [(p.name, p.ecosystem, p.weekly_downloads, p.cve_ids, p.epss_score, p.in_cisa_kev)
+        [(p.name, p.ecosystem, p.weekly_downloads, p.cve_ids, p.epss_score)
          for p in verified],
     )
     # insert join rows

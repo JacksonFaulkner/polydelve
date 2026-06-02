@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import type { NewsItem, NewsResponse } from "@/types"
-
-const API = import.meta.env.VITE_API_URL ?? "/api"
+import { useApi } from "@/lib/api"
 const PAGE_SIZE = 20
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -42,6 +41,7 @@ const EXPLOIT_FILTERS = [
 ] as const
 
 export function NewsPage() {
+  const { authFetch } = useApi()
   const [items, setItems] = useState<NewsItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -55,7 +55,7 @@ export function NewsPage() {
     if (severity) params.set("severity", severity)
     if (exploitStatus) params.set("exploit_status", exploitStatus)
     try {
-      const res = await fetch(`${API}/news?${params}`)
+      const res = await authFetch(`/news?${params}`)
       const json: NewsResponse = await res.json()
       setItems(json.items)
       setTotal(json.total)
@@ -64,7 +64,7 @@ export function NewsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, severity, exploitStatus])
+  }, [page, severity, exploitStatus, authFetch])
 
   useEffect(() => { fetchNews() }, [fetchNews])
   useEffect(() => { setPage(1) }, [severity, exploitStatus])

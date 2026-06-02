@@ -9,8 +9,7 @@ import {
 import type { Package, PackageListResponse } from "@/types"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { PackageExpandedRow } from "@/components/PackageExpandedRow"
-
-const API = import.meta.env.VITE_API_URL ?? "/api"
+import { useApi } from "@/lib/api"
 const PAGE_SIZE = 50
 
 const col = createColumnHelper<Package>()
@@ -182,20 +181,20 @@ const columns = [
       return <span className="tabular-nums text-sm text-zinc-200">{(v / 1_000_000).toFixed(1)}M</span>
     },
   }),
-  col.accessor("in_cisa_kev", {
+  col.accessor("has_mal_advisory", {
     header: () => (
       <ColHeader
-        label="KEV"
-        tip="Listed in CISA's Known Exploited Vulnerabilities catalogue. These CVEs are confirmed actively exploited in the wild and subject to US federal remediation mandates."
-        source="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
-        sourceLabel="cisa.gov/kev — thank you CISA!"
+        label="MAL"
+        tip="Has an OSV MAL-* advisory — confirmed or suspected supply chain compromise (malicious code injected into the package)."
+        source="https://osv.dev"
+        sourceLabel="osv.dev"
       />
     ),
     enableSorting: false,
     cell: (info) =>
       info.getValue() ? (
-        <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
-          KEV
+        <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+          MAL
         </span>
       ) : null,
   }),
@@ -221,6 +220,7 @@ interface Props {
 }
 
 export function PackagesTable({ ecosystem }: Props) {
+  const { authFetch } = useApi()
   const [data, setData] = useState<Package[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -323,7 +323,7 @@ export function PackagesTable({ ecosystem }: Props) {
     if (latestCveDays !== null) params.set("latest_cve_days", String(latestCveDays))
 
     try {
-      const res = await fetch(`${API}/packages?${params}`)
+      const res = await authFetch(`/packages?${params}`)
       const json: PackageListResponse = await res.json()
       setData(json.packages)
       setTotal(json.total)
@@ -332,7 +332,7 @@ export function PackagesTable({ ecosystem }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [page, sorting, ecosystem, latestCveDays])
+  }, [page, sorting, ecosystem, latestCveDays, authFetch])
 
   useEffect(() => {
     fetchData()

@@ -96,7 +96,6 @@ async def fetch_news_gpt_structured(
                 weekly_downloads=None,
                 cve_ids=[],
                 epss_score=None,
-                in_cisa_kev=False,
             )
             for p in raw_packages
         ]

@@ -12,7 +12,7 @@
     "ecosystem": "npm",
     "weekly_downloads": 6422838,
     "epss_score": 0.9396,
-    "in_cisa_kev": true,
+    "has_mal_advisory": true,
     "logo_url": null
   },
   "contract": {

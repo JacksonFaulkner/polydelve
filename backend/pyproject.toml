@@ -17,6 +17,7 @@ dependencies = [
     "cvss>=3.6",
     "tqdm>=4.67.3",
     "google-cloud-bigquery>=3.41.0",
+    "auth0-fastapi-api>=1.0.0b7",
 ]
 
 [project.scripts]

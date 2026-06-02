@@ -1,0 +1,16 @@
+import os
+from functools import lru_cache
+from fastapi import Request
+from fastapi_plugin.fast_api_client import Auth0FastAPI
+
+
+@lru_cache(maxsize=1)
+def _auth0() -> Auth0FastAPI:
+    return Auth0FastAPI(
+        domain=os.environ["AUTH0_DOMAIN"],
+        audience=os.environ["AUTH0_AUDIENCE"],
+    )
+
+
+async def get_current_user(request: Request) -> dict:
+    return await _auth0().require_auth()(request)

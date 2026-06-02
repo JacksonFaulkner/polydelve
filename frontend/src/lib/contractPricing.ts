@@ -7,7 +7,7 @@ function clamp(v: number, lo: number, hi: number) {
 export function computeGrade(
   numCves: number,
   epssScore: number | null,
-  inCisaKev: boolean,
+  hasMalAdvisory: boolean,
   maxCvss: number | null,
 ): number {
   const epss = epssScore ?? 0
@@ -15,7 +15,7 @@ export function computeGrade(
   const grade =
     Math.log10(numCves + 1) * 2.5 +
     epss * 3.0 +
-    (inCisaKev ? 1.5 : 0) +
+    (hasMalAdvisory ? 1.5 : 0) +
     (cvss / 10) * 2.0
   return Math.round(clamp(grade, 0, 10) * 100) / 100
 }
@@ -24,19 +24,17 @@ export function computeProbability(
   epssScore: number | null,
   numRecentCves: number,
   totalCves: number,
-  inCisaKev: boolean,
   recentNewsCount: number,
   exploitInNews: boolean,
   cvssThreshold: number | null,
 ): number {
   const epss = epssScore ?? 0
   const cveVelocity = clamp(numRecentCves / Math.max(totalCves, 1), 0, 1)
-  const kev = inCisaKev ? 0.3 : 0
   const newsBase = clamp(recentNewsCount / 10, 0, 1) * 0.15
   const newsBoost = exploitInNews ? 0.1 : 0
   const newsSignal = clamp(newsBase + newsBoost, 0, 0.25)
 
-  let p = 0.45 * epss + 0.30 * cveVelocity + 0.15 * kev + 0.10 * newsSignal
+  let p = 0.55 * epss + 0.35 * cveVelocity + 0.10 * newsSignal
 
   if (cvssThreshold != null) {
     const penalty = Math.pow(cvssThreshold / 10, 1.5)

@@ -89,7 +89,6 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             weekly_downloads INTEGER,
             cve_ids          VARCHAR[],
             epss_score       FLOAT,
-            in_cisa_kev      BOOLEAN NOT NULL DEFAULT false,
             has_mal_advisory BOOLEAN NOT NULL DEFAULT false,
             risk_score       FLOAT,
             last_enriched_at TIMESTAMPTZ,
@@ -98,21 +97,24 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
         )
     """)
     # Migrate existing DBs that predate new columns
-    for col in ("sectors VARCHAR[]", "risk_score FLOAT"):
+    def _safe(sql: str) -> None:
         try:
-            conn.execute(f"ALTER TABLE packages ADD COLUMN {col}")
+            conn.execute(sql)
         except Exception:
-            pass
-    try:
-        conn.execute("ALTER TABLE packages ADD COLUMN has_mal_advisory BOOLEAN DEFAULT false")
-        conn.execute("UPDATE packages SET has_mal_advisory = false WHERE has_mal_advisory IS NULL")
-    except Exception:
-        pass
-    # Migrate contracts: add opening_epss for drift-based sell value
-    try:
-        conn.execute("ALTER TABLE contracts ADD COLUMN opening_epss FLOAT")
-    except Exception:
-        pass
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:
+                pass
+
+    _safe("ALTER TABLE packages ADD COLUMN sectors VARCHAR[]")
+    _safe("ALTER TABLE packages ADD COLUMN risk_score FLOAT")
+    _safe("ALTER TABLE packages ADD COLUMN has_mal_advisory BOOLEAN DEFAULT false")
+    _safe("UPDATE packages SET has_mal_advisory = false WHERE has_mal_advisory IS NULL")
+    _safe("ALTER TABLE packages DROP COLUMN in_cisa_kev")
+    _safe("ALTER TABLE packages ADD COLUMN mal_advisory_published_at TIMESTAMPTZ")
+    _safe("ALTER TABLE contracts ADD COLUMN opening_epss FLOAT")
+    _safe("ALTER TABLE users ADD COLUMN email VARCHAR")
+    _safe("ALTER TABLE users ALTER COLUMN username DROP NOT NULL")
     # epss_history: daily snapshot per package for drift tracking
     conn.execute("""
         CREATE TABLE IF NOT EXISTS epss_history (

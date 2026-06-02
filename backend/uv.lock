@@ -7,6 +7,7 @@ name = "action-odds-backend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "auth0-fastapi-api" },
     { name = "cvss" },
     { name = "duckdb" },
     { name = "exa-py" },
@@ -38,6 +39,7 @@ schema-export = [
 
 [package.metadata]
 requires-dist = [
+    { name = "auth0-fastapi-api", specifier = ">=1.0.0b7" },
     { name = "cvss", specifier = ">=3.6" },
     { name = "duckdb", specifier = ">=1.5.3" },
     { name = "exa-py", specifier = ">=1.0.0" },
@@ -68,6 +70,25 @@ schema-export = [
 ]
 
 [[package]]
+name = "ada-url"
+version = "1.31.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4a/03/35d9d534d80b169f1a370b1e20f47db1ed9cb0d232bf172d27fa09cf0632/ada_url-1.31.1.tar.gz", hash = "sha256:c5952d9f0cc26b69cb4f9d4225b8c31428c63d5cba87e5bb081072ad3b35a45c", size = 272436, upload-time = "2026-05-27T16:19:36.216Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/eb/8e43bf08dd0f94978bc27c39ab7e6a5a093cdd4fe0b2d42aaf54a56dcfb3/ada_url-1.31.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:7fdc9fe5a5403cc88e9c1b6951457fe30624712edc9c85c7137243f8781966b6", size = 718644, upload-time = "2026-05-27T16:19:21.844Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/89/ada616ac4b2277031668538c94d5469bef959aeefa19bb6848e9c69f3697/ada_url-1.31.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:f531e96e9689679e68e2c9337809afe288cd5e18be74a28e47b397adaf231443", size = 496724, upload-time = "2026-05-27T16:19:23.217Z" },
+    { url = "https://files.pythonhosted.org/packages/40/36/3195da53d0b732c37713265f6f75211ec4ab0004799c81914962c8ed1cec/ada_url-1.31.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:8c69d3c3f0f845c7c8c687396b30976d36a5e2e97b6d377514afb90d3b3654bd", size = 493387, upload-time = "2026-05-27T16:19:24.903Z" },
+    { url = "https://files.pythonhosted.org/packages/63/cb/a2f83a81ca7f13880485f2119a7d6925669428ae47a673c85439a3b69ba0/ada_url-1.31.1-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:cc1a53ae71f5fb38a7bf28798da0dee51bcaedb52b6ad771593f523080d99ff9", size = 1753506, upload-time = "2026-05-27T16:19:26.549Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/2e/b63944ede1007e7ebcdbc867c8c27f60d56ab7e8ae27823845ed8722c44c/ada_url-1.31.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:19b2ab5f3311a1d0a5427d4e3e44b3106ebff69d510a842fdbd205fe3c398fbd", size = 1789044, upload-time = "2026-05-27T16:19:29.898Z" },
+    { url = "https://files.pythonhosted.org/packages/58/7b/6c3db43adf2a9cfff0a05e6dd0b7812dded70a28f7f31ea5cc51f6ab045d/ada_url-1.31.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:3ddf4b934bcaf5ca1db2a4a66ca00146e678cb615556e7311383a048ce91b971", size = 2693706, upload-time = "2026-05-27T16:19:31.673Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/d8/6ac2c2e80494a4d01b8dfccc9eba13eb419f5557ab022827a2083370c2e3/ada_url-1.31.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:49f72d9f44458f950a11f98fdc2c2acc07deb8536369be0236561d456c1a2dc0", size = 2806857, upload-time = "2026-05-27T16:19:33.228Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/d3/6754b90220763d3a71d72dbfbb3ec5f88374134f6341f253dbfb0822fe3b/ada_url-1.31.1-cp314-cp314-win_amd64.whl", hash = "sha256:372be2dab85c8ba11abde434a51cf65adb92e06cf8431957d4fc13a2de44993c", size = 466802, upload-time = "2026-05-27T16:19:34.899Z" },
+]
+
+[[package]]
 name = "annotated-doc"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -95,6 +116,48 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/19/14/2c5dd9f512b66549ae92767a9c7b330ae88e1932ca57876909410251fe13/anyio-4.13.0.tar.gz", hash = "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc", size = 231622, upload-time = "2026-03-24T12:59:09.671Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/da/42/e921fccf5015463e32a3cf6ee7f980a6ed0f395ceeaa45060b61d86486c2/anyio-4.13.0-py3-none-any.whl", hash = "sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708", size = 114353, upload-time = "2026-03-24T12:59:08.246Z" },
+]
+
+[[package]]
+name = "auth0-api-python"
+version = "1.0.0b9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ada-url" },
+    { name = "authlib" },
+    { name = "httpx" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/be/29/1fcdf0bcbcb86319e6cf626543f6b97a94c4c0945aabd9fee653889a05fa/auth0_api_python-1.0.0b9.tar.gz", hash = "sha256:3a39f2ed2f6ecf71605af111986120ab05e984135547ce77535360efe64a934b", size = 33279, upload-time = "2026-04-30T09:11:10.337Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/e9/7b571b6bf18338727b6545f3793491fc69d25a3e5097e0c15d6b86581b6d/auth0_api_python-1.0.0b9-py3-none-any.whl", hash = "sha256:4be52ad431c45a249c207c3ea86de966c33f682867d47d1719518939a7e151e8", size = 31906, upload-time = "2026-04-30T09:11:09.156Z" },
+]
+
+[[package]]
+name = "auth0-fastapi-api"
+version = "1.0.0b7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "auth0-api-python" },
+    { name = "fastapi" },
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/5a/2a812fe337c960419b52824174fe9d1bc485830d60764ea54d1f936e3560/auth0_fastapi_api-1.0.0b7.tar.gz", hash = "sha256:a0c2cf4459fa10985024a3d038fee1fd12a36e9af63c32354d4dffa6e284479d", size = 9185, upload-time = "2026-04-09T15:36:40.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/12/88fc569e5fcffcd5d648bce062fc511bf15a93b6855e5900d81a34d20c8e/auth0_fastapi_api-1.0.0b7-py3-none-any.whl", hash = "sha256:864d101e28c271a30bbe7a19ae020a41234b8c0df128be835c8395bf009de8ba", size = 10566, upload-time = "2026-04-09T15:36:38.868Z" },
+]
+
+[[package]]
+name = "authlib"
+version = "1.7.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "joserfc" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/36/98/7d93f30d029643c0275dbc0bd6d5a6f670661ee6c9a94d93af7ab4887600/authlib-1.7.2.tar.gz", hash = "sha256:2cea25fefcd4e7173bdf1372c0afc265c8034b23a8cd5dcb6a9164b826c64231", size = 176511, upload-time = "2026-05-06T08:10:23.116Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/95/adcb68e20c34162e9135f370d6e31737719c2b6f94bc953fe7ed1f10fe21/authlib-1.7.2-py2.py3-none-any.whl", hash = "sha256:3e1faedc9d87e7d56a164eca3ccb6ace0d61b94abe83e92242f8dc8bba9b4a9f", size = 259548, upload-time = "2026-05-06T08:10:21.436Z" },
 ]
 
 [[package]]
@@ -637,6 +700,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/60/e3/935b8034fd143f21125c87d51404a9e0e1449186a494405721ff5d1d695e/jiter-0.15.0-cp314-cp314t-win32.whl", hash = "sha256:7f6163c0f10b055245f814dcc59f4818da60dfe72f3e72ab89fc24b6bd5e9c52", size = 207950, upload-time = "2026-05-19T10:09:09.616Z" },
     { url = "https://files.pythonhosted.org/packages/93/59/984fd9ece895953dad3e0880a650e766f5a2da2c5514f0eafdaaabbeb5f9/jiter-0.15.0-cp314-cp314t-win_amd64.whl", hash = "sha256:980c256edb05b78a111b99c4de3b1d32e31634b867fd1fc2cf726e7b7bba9854", size = 200055, upload-time = "2026-05-19T10:09:11.367Z" },
     { url = "https://files.pythonhosted.org/packages/0e/a4/cf8d779feb133a27a2e3bc833bccb9e13aa332cdf820497ebf72c10ce8c3/jiter-0.15.0-cp314-cp314t-win_arm64.whl", hash = "sha256:66b1880df2d01e206e8339769d1c7c1753bcb653efd6289e203f6f24ebada0c0", size = 191244, upload-time = "2026-05-19T10:09:12.74Z" },
+]
+
+[[package]]
+name = "joserfc"
+version = "1.6.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5d/ac/d4fd5b30f82900eac60d765f179f0ba005825ac462cc8ced6e13ec685ab3/joserfc-1.6.8.tar.gz", hash = "sha256:878620c553a6ebdd76ccdc356782fee3f735f21a356d079a546b42a4670ace5f", size = 232930, upload-time = "2026-05-27T03:22:37.819Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/8c/5cdce2cf3ce8155849baf9a5e2ce77e89dc87ec3bdb38259e5d85fbc45bd/joserfc-1.6.8-py3-none-any.whl", hash = "sha256:22fb31a69094a5e6f44632002a9df2c30c941fc6c8ce1b037e92c03de954cf9f", size = 70927, upload-time = "2026-05-27T03:22:35.796Z" },
 ]
 
 [[package]]

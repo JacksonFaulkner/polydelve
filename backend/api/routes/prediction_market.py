@@ -5,10 +5,11 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from api.auth import get_current_user
 from features.db import get_db
 from features.prediction_market import calculate_payout
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # --- Request bodies ---

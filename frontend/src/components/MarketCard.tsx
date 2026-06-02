@@ -22,7 +22,7 @@ interface Props {
 
 export function MarketCard({ market, onBet }: Props) {
   const multiplier = (market.max_payout / market.contract.purchase_price).toFixed(1)
-  const { name, ecosystem, epss_score, weekly_downloads, in_cisa_kev, has_mal_advisory } = market.package
+  const { name, ecosystem, epss_score, weekly_downloads, has_mal_advisory } = market.package
 
   return (
     <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-4 hover:border-zinc-700 transition-colors">
@@ -31,9 +31,6 @@ export function MarketCard({ market, onBet }: Props) {
         <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
           ecosystem === "PyPI" ? "bg-blue-900/50 text-blue-300" : "bg-red-900/50 text-red-300"
         }`}>{ecosystem}</span>
-        {in_cisa_kev && (
-          <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-orange-900/50 text-orange-300">KEV</span>
-        )}
         {has_mal_advisory && (
           <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-rose-900/50 text-rose-300">MAL</span>
         )}

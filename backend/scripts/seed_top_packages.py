@@ -1,6 +1,6 @@
 """
 Seed packages table with top 500 PyPI + npm packages.
-No LLM enrichment — downloads, CVEs, EPSS, KEV only.
+No LLM enrichment — downloads, CVEs, EPSS only.
 
 Flow:
   1. Fetch package name candidates (PyPI list is pre-sorted; npm candidates are re-ranked)
@@ -8,9 +8,8 @@ Flow:
   3. Re-sort npm by downloads, trim to top 500
   4. Batch-fetch CVE IDs via OSV querybatch (via build_cve_history)
   5. Bulk-fetch EPSS scores for all found CVEs
-  6. Fetch CISA KEV set
-  7. Compute risk_score = weekly_downloads * epss_score
-  8. Upsert into packages table
+  6. Compute risk_score = weekly_downloads * epss_score
+  7. Upsert into packages table
 """
 import asyncio
 import sys
@@ -24,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from features.cve_history import build_cve_history, fetch_top_npm, fetch_top_pypi
 from features.db import DB_PATH, init_db
-from features.package_enrichment import _fetch_kev_set, fetch_downloads_bulk
+from features.package_enrichment import fetch_downloads_bulk
 
 _TOP_N = 99_999  # fetch full lists from each source
 _EPSS_CHUNK = 100
@@ -125,14 +124,10 @@ async def main() -> None:
     )
     print(f"  cve_history upserted={len(records)}")
 
-    # 5. EPSS + KEV
-    print("\n[4/5] fetching EPSS scores + CISA KEV...")
-    async with httpx.AsyncClient(timeout=15) as client:
-        epss_scores, kev_set = await asyncio.gather(
-            bulk_epss(all_cves),
-            _fetch_kev_set(client),
-        )
-    print(f"  EPSS scores fetched={len(epss_scores)}  KEV entries={len(kev_set)}")
+    # 5. EPSS
+    print("\n[4/5] fetching EPSS scores...")
+    epss_scores = await bulk_epss(all_cves)
+    print(f"  EPSS scores fetched={len(epss_scores)}")
 
     # 6. Upsert
     print("\n[5/5] upserting to DB...")
@@ -142,7 +137,6 @@ async def main() -> None:
         weekly_dl = downloads.get(pkg, 0) or 0
         cve_ids   = cve_ids_by_pkg.get(pkg, [])
         pkg_epss  = max((epss_scores.get(c, 0.0) for c in cve_ids), default=None) if cve_ids else None
-        in_kev    = bool(cve_ids and kev_set & set(cve_ids))
         risk      = weekly_dl * (pkg_epss or 0.0)
 
         existing = conn.execute(
@@ -157,22 +151,21 @@ async def main() -> None:
                 SET weekly_downloads  = ?,
                     cve_ids           = ?,
                     epss_score        = ?,
-                    in_cisa_kev       = ?,
                     risk_score        = ?,
                     last_enriched_at  = now()
                 WHERE name = ? AND ecosystem = ?
                 """,
-                [weekly_dl, cve_ids, pkg_epss, in_kev, risk, name, ecosystem],
+                [weekly_dl, cve_ids, pkg_epss, risk, name, ecosystem],
             )
             updated += 1
         else:
             conn.execute(
                 """
                 INSERT INTO packages
-                    (name, ecosystem, weekly_downloads, cve_ids, epss_score, in_cisa_kev, risk_score)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (name, ecosystem, weekly_downloads, cve_ids, epss_score, risk_score)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                [name, ecosystem, weekly_dl, cve_ids, pkg_epss, in_kev, risk],
+                [name, ecosystem, weekly_dl, cve_ids, pkg_epss, risk],
             )
             inserted += 1
 

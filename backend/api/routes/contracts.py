@@ -5,10 +5,11 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from api.auth import get_current_user
 from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
 from features.db import get_db
 
-router = APIRouter(prefix="/contracts")
+router = APIRouter(prefix="/contracts", dependencies=[Depends(get_current_user)])
 
 DURATION_OPTIONS = [7, 14, 30]
 
@@ -62,7 +63,6 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
     epss_payout = min(terms.max_payout, round(terms.epss_payout * max(drift, 1.0)))
     epss_win = epss_payout - price
     cvss_win = terms.cvss_payout - price
-    kev_win  = terms.kev_payout  - price
     mal_win  = terms.mal_payout  - price
 
     max_loss = -price
@@ -88,23 +88,20 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
             "sell_pnl": sell_pnl,
             "epss_win": round(epss_win * time_factor),
             "cvss_win": round(cvss_win * time_factor),
-            "kev_win":  round(kev_win  * time_factor),
             "mal_win":  round(mal_win  * time_factor),
         })
 
     return {
         "epss_payout": epss_payout,
         "cvss_payout": terms.cvss_payout,
-        "kev_payout":  terms.kev_payout,
         "mal_payout":  terms.mal_payout,
         "epss_win": epss_win,
         "cvss_win": cvss_win,
-        "kev_win":  kev_win,
         "mal_win":  mal_win,
-        "max_win": max(epss_win, cvss_win, kev_win, mal_win),
+        "max_win": max(epss_win, cvss_win, mal_win),
         "max_loss": max_loss,
         "y_min": round(max_loss * 1.1),
-        "y_max": round(max(epss_win, cvss_win, kev_win, mal_win) * 1.1),
+        "y_max": round(max(epss_win, cvss_win, mal_win) * 1.1),
         "curve": curve,
     }
 

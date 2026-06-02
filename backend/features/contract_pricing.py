@@ -3,10 +3,10 @@ Contract pricing: grade + probability + payout for package prediction markets.
 
 Grade (0–10):
   Composite danger score per package. Drives payout multiplier.
-  grade = clamp(log10(num_cves+1)*2.5 + epss*3 + kev*1.5 + max_cvss/10*2, 0, 10)
+  grade = clamp(log10(num_cves+1)*2.5 + epss*3 + max_cvss/10*2, 0, 10)
 
 Probability (weighted signal blend):
-  p = 0.45*epss + 0.30*cve_velocity + 0.15*kev + 0.10*news_signal
+  p = 0.55*epss + 0.35*cve_velocity + 0.10*news_signal
 
 Payout:
   max_payout = purchase_price * (1 / probability) * (1 + grade/10 * 4)
@@ -29,7 +29,6 @@ class ContractTerms:
     max_payout: int
     epss_payout: int
     cvss_payout: int
-    kev_payout: int
     mal_payout: int
     description: str
 
@@ -41,7 +40,7 @@ def _clamp(v: float, lo: float, hi: float) -> float:
 def compute_grade(
     num_cves: int,
     epss_score: float | None,
-    in_cisa_kev: bool,
+    has_mal_advisory: bool,
     max_cvss: float | None,
 ) -> float:
     epss = epss_score or 0.0
@@ -49,7 +48,7 @@ def compute_grade(
     grade = (
         math.log10(num_cves + 1) * 2.5
         + epss * 3.0
-        + (1.5 if in_cisa_kev else 0.0)
+        + (1.5 if has_mal_advisory else 0.0)
         + (cvss / 10.0) * 2.0
     )
     return round(_clamp(grade, 0.0, 10.0), 2)
@@ -77,13 +76,6 @@ def compute_cvss_probability(
     return round(_clamp(p, 0.001, 0.95), 4)
 
 
-def compute_kev_probability(in_cisa_kev: bool, exploit_in_news: bool) -> float:
-    """P(KEV listing): rare event — exploit in news is the main signal."""
-    if in_cisa_kev:
-        return 0.001  # already listed, contract can't trigger
-    p = 0.03 + (0.14 if exploit_in_news else 0.0)
-    return round(_clamp(p, 0.001, 0.95), 4)
-
 
 def compute_mal_probability(has_mal_advisory: bool, exploit_in_news: bool) -> float:
     """P(OSV MAL-* advisory published): supply chain compromise signal."""
@@ -97,19 +89,17 @@ def compute_probability(
     epss_score: float | None,
     num_recent_cves: int,
     total_cves: int,
-    in_cisa_kev: bool,
     recent_news_count: int,
     exploit_in_news: bool,
     cvss_threshold: float | None = None,
 ) -> float:
     epss = epss_score or 0.0
     cve_velocity = min(num_recent_cves / max(total_cves, 1), 1.0)
-    kev = 0.3 if in_cisa_kev else 0.0
     news_base = min(recent_news_count / 10.0, 1.0) * 0.15
     news_boost = 0.10 if exploit_in_news else 0.0
     news_signal = min(news_base + news_boost, 0.25)
 
-    p = 0.45 * epss + 0.30 * cve_velocity + 0.15 * kev + 0.10 * news_signal
+    p = 0.55 * epss + 0.35 * cve_velocity + 0.10 * news_signal
 
     # Higher CVSS threshold = less likely to hit = lower probability = bigger payout
     if cvss_threshold is not None:
@@ -215,7 +205,7 @@ def price_contract(
 ) -> ContractTerms:
     pkg = conn.execute(
         """
-        SELECT epss_score, in_cisa_kev, array_length(cve_ids), has_mal_advisory
+        SELECT epss_score, array_length(cve_ids), has_mal_advisory
         FROM packages WHERE name = ? AND ecosystem = ?
         """,
         [package_name, ecosystem],
@@ -223,7 +213,7 @@ def price_contract(
     if not pkg:
         raise ValueError(f"Package {package_name}/{ecosystem} not found")
 
-    epss_score, in_cisa_kev, num_cves, has_mal_advisory = pkg
+    epss_score, num_cves, has_mal_advisory = pkg
     num_cves = num_cves or 0
 
     max_cvss = conn.execute(
@@ -252,24 +242,20 @@ def price_contract(
     ).fetchone()
     exploit_in_news = bool(news_row[1]) if news_row else False
 
-    grade = compute_grade(num_cves, epss_score, bool(in_cisa_kev), max_cvss)
+    grade = compute_grade(num_cves, epss_score, bool(has_mal_advisory), max_cvss)
 
     epss_prob = compute_epss_probability(epss_score)
     cvss_prob = compute_cvss_probability(recent_cves, max(num_cves, 1), max_cvss, cvss_threshold or 7.0)
-    kev_prob  = compute_kev_probability(bool(in_cisa_kev), exploit_in_news)
     mal_prob  = compute_mal_probability(bool(has_mal_advisory), exploit_in_news)
 
     epss_payout = compute_payout(purchase_price, epss_prob, grade, duration_days)
     cvss_payout = compute_payout(purchase_price, cvss_prob, grade, duration_days)
-    kev_payout  = compute_payout(purchase_price, kev_prob,  grade, duration_days)
     mal_payout  = compute_payout(purchase_price, mal_prob,  grade, duration_days)
 
     # Blended opening probability (any event triggers)
-    prob = round(_clamp(1.0 - (1.0 - epss_prob) * (1.0 - cvss_prob) * (1.0 - kev_prob) * (1.0 - mal_prob), 0.001, 0.99), 4)
+    prob = round(_clamp(1.0 - (1.0 - epss_prob) * (1.0 - cvss_prob) * (1.0 - mal_prob), 0.001, 0.99), 4)
 
     parts = [f"EPSS {round((epss_score or 0)*100, 1)}%", f"{num_cves} CVEs", f"grade {grade}/10"]
-    if in_cisa_kev:
-        parts.append("CISA KEV")
     if has_mal_advisory:
         parts.append("OSV MAL advisory")
     if exploit_in_news:
@@ -278,10 +264,9 @@ def price_contract(
     return ContractTerms(
         opening_probability=prob,
         package_grade=grade,
-        max_payout=max(epss_payout, cvss_payout, kev_payout, mal_payout),
+        max_payout=max(epss_payout, cvss_payout, mal_payout),
         epss_payout=epss_payout,
         cvss_payout=cvss_payout,
-        kev_payout=kev_payout,
         mal_payout=mal_payout,
         description=", ".join(parts),
     )

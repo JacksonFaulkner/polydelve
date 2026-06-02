@@ -5,8 +5,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from "recharts"
 import type { Package } from "@/types"
-
-const API = import.meta.env.VITE_API_URL ?? "/api"
+import { useApi } from "@/lib/api"
 const USER_ID = "default-user"
 
 const DURATION_OPTIONS = [7, 14, 30]
@@ -16,18 +15,15 @@ interface SimCurvePoint {
   sell_pnl: number
   epss_win: number
   cvss_win: number
-  kev_win: number
   mal_win: number
 }
 
 interface SimResult {
   epss_payout: number
   cvss_payout: number
-  kev_payout: number
   mal_payout: number
   epss_win: number
   cvss_win: number
-  kev_win: number
   mal_win: number
   max_win: number
   max_loss: number
@@ -37,13 +33,23 @@ interface SimResult {
 }
 
 export function PredictPage() {
+  const { authFetch } = useApi()
   const [packages, setPackages] = useState<Package[]>([])
   const [search, setSearch] = useState("")
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
   const [cvssThreshold, setCvssThreshold] = useState(7.0)
   const [price, setPrice] = useState(100)
   const [duration, setDuration] = useState(30)
-  const [epssDrift, setEpssDrift] = useState(1.0)
+  const [epssSliderPos, setEpssSliderPos] = useState(0.5) // log-scale position 0–1
+
+  const EPSS_MIN = 0.001
+  const EPSS_MAX = 1.0
+  const posToEpss = (pos: number) => EPSS_MIN * Math.pow(EPSS_MAX / EPSS_MIN, pos)
+  const epssToPos = (v: number) => Math.log(v / EPSS_MIN) / Math.log(EPSS_MAX / EPSS_MIN)
+  const currentEpss = selectedPkg?.epss_score ?? 0.01
+  const epssTarget = posToEpss(epssSliderPos)
+  const epssDrift = epssTarget / Math.max(currentEpss, 0.001)
+
   const [buying, setBuying] = useState(false)
   const [schmeckles, setSchmeckles] = useState<number | null>(null)
   const [sim, setSim] = useState<SimResult | null>(null)
@@ -54,7 +60,7 @@ export function PredictPage() {
     const t = setTimeout(async () => {
       setSimLoading(true)
       try {
-        const res = await fetch(`${API}/contracts/simulate`, {
+        const res = await authFetch(`/contracts/simulate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -72,30 +78,28 @@ export function PredictPage() {
       }
     }, 150)
     return () => clearTimeout(t)
-  }, [selectedPkg, cvssThreshold, price, duration, epssDrift])
-
-  const maxEpssDrift = selectedPkg?.epss_score != null && selectedPkg.epss_score > 0
-    ? Math.min(10, Math.floor((1.0 / selectedPkg.epss_score) * 10) / 10)
-    : 10.0
+  }, [selectedPkg, cvssThreshold, price, duration, epssDrift, authFetch])
 
   useEffect(() => {
-    if (!selectedPkg) setEpssDrift(1.0)
-    else setEpssDrift(prev => Math.min(prev, maxEpssDrift))
-  }, [selectedPkg, maxEpssDrift])
+    if (selectedPkg?.epss_score != null && selectedPkg.epss_score > 0)
+      setEpssSliderPos(epssToPos(selectedPkg.epss_score))
+    else
+      setEpssSliderPos(epssToPos(0.01))
+  }, [selectedPkg])
 
   useEffect(() => {
-    fetch(`${API}/packages?sort=weekly_downloads&page_size=500&has_cves=true`)
+    authFetch(`/packages?sort=weekly_downloads&page_size=500&has_cves=true`)
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
       .then((d) => setPackages(d.packages ?? []))
       .catch((e) => console.error("packages fetch failed:", e))
   }, [])
 
   const refreshUser = useCallback(() => {
-    fetch(`${API}/users/${USER_ID}`)
+    authFetch(`/users/${USER_ID}`)
       .then((r) => r.json())
       .then((d) => setSchmeckles(d.schmeckles))
       .catch(() => {})
-  }, [])
+  }, [authFetch])
 
   useEffect(() => { refreshUser() }, [refreshUser])
 
@@ -107,7 +111,7 @@ export function PredictPage() {
     if (!selectedPkg) return
     setBuying(true)
     try {
-      await fetch(`${API}/contracts`, {
+      await authFetch(`/contracts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -222,7 +226,6 @@ export function PredictPage() {
                 {[
                   { label: "EPSS spike",  key: "epss_win", color: "text-emerald-400", dot: "bg-emerald-400" },
                   { label: "CVSS event",  key: "cvss_win", color: "text-[#FDE832]",   dot: "bg-[#FDE832]" },
-                  { label: "KEV listed",  key: "kev_win",  color: "text-purple-400",  dot: "bg-purple-400" },
                   { label: "MAL advisory",key: "mal_win",  color: "text-rose-400",    dot: "bg-rose-400" },
                 ] .map(({ label, key, color, dot }) => (
                   <div key={key} className="rounded-lg bg-zinc-800/50 px-3 py-2.5">
@@ -302,36 +305,34 @@ export function PredictPage() {
                   EPSS Scenario
                   {selectedPkg.epss_score != null && (
                     <span className="ml-2 normal-case tracking-normal text-zinc-400">
-                      now {(selectedPkg.epss_score * 100).toFixed(1)}%
+                      now {(selectedPkg.epss_score * 100).toFixed(2)}%
                     </span>
                   )}
                 </label>
                 <span className={`text-xs font-semibold tabular-nums ${
                   epssDrift > 1.5 ? "text-green-400" : epssDrift < 0.75 ? "text-red-400" : "text-zinc-400"
                 }`}>
-                  {epssDrift === 1.0 ? "baseline"
+                  {epssDrift >= 0.99 && epssDrift <= 1.01 ? "baseline"
                     : epssDrift > 1.0
-                      ? `+${Math.round((epssDrift - 1) * 100)}% spike`
-                      : `−${Math.round((1 - epssDrift) * 100)}% drop`
+                      ? `${epssDrift.toFixed(1)}× spike`
+                      : `${epssDrift.toFixed(2)}× drop`
                   }
-                  {selectedPkg.epss_score != null && (
-                    <span className="ml-1.5 text-zinc-200">
-                      → {((selectedPkg.epss_score * epssDrift) * 100).toFixed(1)}%
-                    </span>
-                  )}
+                  <span className="ml-1.5 text-zinc-200">
+                    → {(epssTarget * 100).toFixed(2)}%
+                  </span>
                 </span>
               </div>
               <input
-                type="range" min={0.1} max={maxEpssDrift} step={0.01}
-                value={epssDrift}
-                onChange={(e) => setEpssDrift(Number(e.target.value))}
+                type="range" min={0} max={1} step={0.001}
+                value={epssSliderPos}
+                onChange={(e) => setEpssSliderPos(Number(e.target.value))}
                 className="w-full accent-emerald-400"
               />
               <div className="flex justify-between text-[10px] text-zinc-600">
-                <span>0.1× quiet</span>
-                <span>{(maxEpssDrift * 0.25).toFixed(1)}×</span>
-                <span>{(maxEpssDrift * 0.5).toFixed(1)}×</span>
-                <span>{maxEpssDrift.toFixed(1)}× max</span>
+                <span>0.1%</span>
+                <span>1%</span>
+                <span>10%</span>
+                <span>100%</span>
               </div>
             </div>
 
@@ -348,10 +349,6 @@ export function PredictPage() {
                       <linearGradient id="cvssGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#FDE832" stopOpacity={0.5} />
                         <stop offset="100%" stopColor="#FDE832" stopOpacity={0.1} />
-                      </linearGradient>
-                      <linearGradient id="kevGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.1} />
                       </linearGradient>
                       <linearGradient id="malGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#fb7185" stopOpacity={0.5} />
@@ -394,14 +391,12 @@ export function PredictPage() {
                         const sell = get("sell_pnl")
                         const epss = get("epss_win")
                         const cvss = get("cvss_win")
-                        const kev  = get("kev_win")
                         const mal  = get("mal_win")
                         return (
                           <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-1">
                             <p className="text-zinc-400 font-medium">{label}</p>
                             {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} sch</p>}
                             {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} sch</p>}
-                            {kev  != null && <p className="text-purple-400">KEV listed → +{kev.toLocaleString()} sch</p>}
                             {mal  != null && <p className="text-rose-400">MAL advisory → +{mal.toLocaleString()} sch</p>}
                             {sell != null && (
                               <p className={`font-medium border-t border-zinc-800 pt-1 mt-1 ${sell >= 0 ? "text-green-400" : "text-red-400"}`}>
@@ -413,16 +408,11 @@ export function PredictPage() {
                       }}
                     />
 
-                    {/* Stacked win areas: MAL (bottom), KEV, CVSS, EPSS (top) */}
+                    {/* Stacked win areas: MAL (bottom), CVSS, EPSS (top) */}
                     <Area stackId="win" type="monotone" dataKey="mal_win"
                       stroke="#fb7185" strokeWidth={1}
                       fill="url(#malGrad)" dot={false}
                       activeDot={{ r: 3, fill: "#fb7185", stroke: "none" }}
-                    />
-                    <Area stackId="win" type="monotone" dataKey="kev_win"
-                      stroke="#a855f7" strokeWidth={1}
-                      fill="url(#kevGrad)" dot={false}
-                      activeDot={{ r: 3, fill: "#a855f7", stroke: "none" }}
                     />
                     <Area stackId="win" type="monotone" dataKey="cvss_win"
                       stroke="#FDE832" strokeWidth={1}
@@ -453,7 +443,6 @@ export function PredictPage() {
                     <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#FDE832]/60" /> CVSS event
                   </span>
                   <span className="flex items-center gap-1 text-purple-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-purple-400/60" /> KEV listed
                   </span>
                   <span className="flex items-center gap-1 text-rose-400">
                     <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-400/60" /> MAL advisory
