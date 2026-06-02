@@ -18,7 +18,7 @@ export function RecentNews({ items }: { items: NewsItem[] }) {
               {item.title}
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-xs text-zinc-600">{item.source}</span>
+              <span className="text-xs text-zinc-600">{item.source_name}</span>
               <span className="text-zinc-700">·</span>
               <span className="text-xs text-zinc-600">{timeAgo(item.published_at)}</span>
             </div>

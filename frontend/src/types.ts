@@ -1,9 +1,13 @@
 export type Grade = "A" | "B" | "C" | "D" | "F"
 
-export interface Company {
-  id: string
-  title: string
-  logo: string
+export interface MarketPackage {
+  name: string
+  ecosystem: string
+  weekly_downloads: number | null
+  epss_score: number | null
+  in_cisa_kev: boolean
+  has_mal_advisory: boolean
+  logo_url: string | null
 }
 
 export interface ProbPoint {
@@ -11,17 +15,24 @@ export interface ProbPoint {
   prob: number
 }
 
+export interface ContractParams {
+  cvss_threshold: number | null
+  epss_threshold: number | null
+  duration_days: number
+  purchase_price: number
+}
+
 export interface Market {
   id: string
   title: string
   description: string
   grade: Grade
-  price: number
-  payout: number
-  end_date: string
+  max_payout: number
+  opening_probability: number
   status: "open" | "won" | "expired"
   bet_count: number
-  company: Company
+  package: MarketPackage
+  contract: ContractParams
   probability_history: ProbPoint[]
 }
 
@@ -36,15 +47,31 @@ export interface SpotlightMarket extends Market {
   events: MarketEvent[]
 }
 
+export interface AffectedPackage {
+  name: string
+  ecosystem: "PyPI" | "npm"
+}
+
 export interface NewsItem {
   id: string
   title: string
-  source: string
+  summary: string | null
   url: string
+  source_name: string | null
   published_at: string
-  summary: string
-  tags: string[]
-  company_id: string | null
+  sector_labels: string[]
+  company_labels: string[]
+  threat_actor: string | null
+  exploit_status: "poc_available" | "actively_exploited" | "patched" | "unpatched" | null
+  severity: "critical" | "high" | "medium" | "low" | null
+  affected_packages: AffectedPackage[]
+}
+
+export interface NewsResponse {
+  total: number
+  page: number
+  page_size: number
+  items: NewsItem[]
 }
 
 export interface BalancePoint {
@@ -57,4 +84,69 @@ export interface User {
   username: string
   schmeckles: number
   schmeckle_history: BalancePoint[]
+}
+
+export interface CveRecord {
+  osv_id: string
+  cve_id: string | null
+  published_date: string | null
+  severity: "critical" | "high" | "medium" | "low" | null
+  cvss_vector: string | null
+  cvss_score: number | null
+}
+
+export interface EpssPoint {
+  date: string
+  epss: number
+}
+
+export interface PackageDetail {
+  name: string
+  ecosystem: string
+  weekly_downloads: number | null
+  epss_score: number | null
+  risk_score: number | null
+  in_cisa_kev: boolean
+  has_mal_advisory: boolean
+  sectors: string[]
+  logo_url: string | null
+  cve_ids: string[]
+  last_enriched_at: string | null
+  max_cvss_score: number | null
+  cve_history: CveRecord[]
+  epss_history: EpssPoint[]
+  recent_news: {
+    id: string
+    title: string
+    published_date: string | null
+    source_name: string | null
+    url: string
+    summary: string | null
+    exploit_status: string | null
+    severity: string | null
+  }[]
+}
+
+export interface Package {
+  name: string
+  ecosystem: "PyPI" | "npm"
+  weekly_downloads: number | null
+  epss_score: number | null
+  risk_score: number | null
+  in_cisa_kev: boolean
+  has_mal_advisory: boolean
+  num_cves: number
+  latest_cve_date: string | null
+  worst_severity: "critical" | "high" | "medium" | "low" | null
+  max_cvss_score: number | null
+  sectors: string[]
+  logo_url: string | null
+  news_mentions: number
+}
+
+export interface PackageListResponse {
+  total: number
+  page: number
+  page_size: number
+  packages: Package[]
 }
