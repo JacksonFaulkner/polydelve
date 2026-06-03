@@ -53,7 +53,14 @@ type ChartPoint = {
 
 type CveTooltip = { cx: number; cy: number; payload: { cve_id: string | null; cvss: number; severity: string | null; date: string } }
 
-export default function EpssChart({ data, cveData }: { data: ChartPoint[]; cveData: ChartPoint[] }) {
+export default function EpssChart({
+  data, cveData, selectedCveId, onCveClick,
+}: {
+  data: ChartPoint[]
+  cveData: ChartPoint[]
+  selectedCveId?: string | null
+  onCveClick?: (cveId: string | null) => void
+}) {
   const [cveHover, setCveHover] = useState<CveTooltip | null>(null)
 
   if (!data.length) return null
@@ -76,9 +83,21 @@ export default function EpssChart({ data, cveData }: { data: ChartPoint[]; cveDa
   const xMax = epssPoints[epssPoints.length - 1]?.x ?? 0
 
   return (
-    <div className="relative">
-    <ResponsiveContainer width="100%" height={180}>
-      <ComposedChart margin={{ top: 8, right: 44, bottom: 20, left: 4 }}>
+    <div className="relative flex-1">
+    {/* Chart title + legend */}
+    <div className="absolute top-2 left-3 z-10 flex items-center gap-3">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">EPSS Trend</span>
+      <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span className="inline-block h-px w-4 bg-emerald-400" />
+        EPSS
+      </span>
+      <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
+        CVE
+      </span>
+    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart margin={{ top: 24, right: 44, bottom: 8, left: 4 }}>
         <XAxis
           dataKey="x"
           type="number"
@@ -94,7 +113,7 @@ export default function EpssChart({ data, cveData }: { data: ChartPoint[]; cveDa
           tickCount={4}
         />
 
-        {/* EPSS axis (left, 0–1) */}
+        {/* EPSS axis (right, 0–1) */}
         <YAxis
           yAxisId="epss"
           domain={[0, 1]}
@@ -105,6 +124,7 @@ export default function EpssChart({ data, cveData }: { data: ChartPoint[]; cveDa
           orientation="right"
           width={44}
           tickCount={4}
+          label={{ value: "EPSS", angle: 90, position: "insideRight", offset: 12, style: { fill: "#52525b", fontSize: 9, textAnchor: "middle" } }}
         />
 
         {/* CVSS axis (left, 0–10) for scatter dots */}
@@ -156,14 +176,17 @@ export default function EpssChart({ data, cveData }: { data: ChartPoint[]; cveDa
           shape={(props: { cx?: number; cy?: number; payload?: { cve_id: string | null; cvss: number; severity: string | null; date: string } }) => {
             const { cx = 0, cy = 0, payload } = props
             if (!payload) return <g />
+            const isSelected = selectedCveId != null && payload.cve_id === selectedCveId
             return (
               <circle
-                cx={cx} cy={cy} r={5}
+                cx={cx} cy={cy} r={isSelected ? 7 : 5}
                 fill={dotColor(payload.cvss, payload.severity)}
-                stroke="#18181b" strokeWidth={1}
+                stroke={isSelected ? "#fff" : "#18181b"}
+                strokeWidth={isSelected ? 2 : 1}
                 style={{ cursor: "pointer" }}
                 onMouseEnter={() => setCveHover({ cx, cy, payload })}
                 onMouseLeave={() => setCveHover(null)}
+                onClick={() => onCveClick?.(isSelected ? null : payload.cve_id)}
               />
             )
           }}

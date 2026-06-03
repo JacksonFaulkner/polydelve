@@ -11,26 +11,6 @@ const SEV_COLOR: Record<string, string> = {
   low: "#71717a",
 }
 
-const EXPLOIT_STYLES: Record<string, string> = {
-  actively_exploited: "bg-red-900/60 text-red-300",
-  poc_available: "bg-orange-900/60 text-orange-300",
-  patched: "bg-green-900/60 text-green-300",
-  unpatched: "bg-zinc-700 text-zinc-400",
-}
-
-const EXPLOIT_LABEL: Record<string, string> = {
-  actively_exploited: "Active",
-  poc_available: "PoC",
-  patched: "Patched",
-  unpatched: "Unpatched",
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const h = Math.floor(diff / 3600000)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
 
 const SCORE_COLOR = (s: number) =>
   s >= 9 ? "#f87171" : s >= 7 ? "#fb923c" : s >= 4 ? "#facc15" : "#71717a"
@@ -102,14 +82,11 @@ interface Props {
   colSpan: number
 }
 
-const TABS = ["CVEs", "News", "Trend"] as const
-type Tab = typeof TABS[number]
-
 export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
   const { authFetch } = useApi()
   const [detail, setDetail] = useState<PackageDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>("CVEs")
+  const [selectedCveId, setSelectedCveId] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -150,62 +127,45 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
               ) : !detail ? (
                 <div className="py-8 text-center text-sm text-zinc-500">Failed to load</div>
               ) : (
-                <div className="space-y-4">
+                <div className="flex items-stretch gap-6" style={{ minHeight: 220 }}>
 
-                  {/* Stats strip */}
-                  <div className="flex flex-wrap items-center gap-6 text-sm">
-                    <div>
-                      <span className="text-xs text-zinc-500">Weekly DL</span>
-                      <p className="font-medium text-zinc-200 tabular-nums">
-                        {detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-zinc-500">EPSS</span>
-                      <p className="font-medium text-zinc-200">
-                        {detail.epss_score !== null ? `${(detail.epss_score * 100).toFixed(1)}%` : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-zinc-500">CVEs</span>
-                      <p className="font-medium text-zinc-200">{detail.cve_ids.length}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-zinc-500">Risk Score</span>
-                      <p className="font-medium text-zinc-200">
-                        {detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : "—"}
-                      </p>
-                    </div>
-                    {detail.has_mal_advisory && (
-                      <span className="rounded bg-rose-900/60 px-2 py-0.5 text-xs font-bold text-rose-300">OSV MAL</span>
-                    )}
-                    {detail.sectors.map((s) => (
-                      <span key={s} className="rounded bg-zinc-700/60 px-2 py-0.5 text-xs text-zinc-400">{s}</span>
-                    ))}
-                  </div>
+                  {/* Left: stats + tab toggle + content */}
+                  <div className="shrink-0 space-y-4">
 
-                  {/* Tab bar */}
-                  <div className="flex gap-1 border-b border-zinc-800 pb-0">
-                    {TABS.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setTab(t)}
-                        className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors border-b-2 -mb-px ${
-                          tab === t
-                            ? "border-zinc-400 text-zinc-200"
-                            : "border-transparent text-zinc-600 hover:text-zinc-400"
-                        }`}
-                      >
-                        {t === "CVEs" && `CVEs${detail.cve_history.length > 0 ? ` · ${detail.cve_history.length}` : ""}`}
-                        {t === "News" && `News${detail.recent_news.length > 0 ? ` · ${detail.recent_news.length}` : ""}`}
-                        {t === "Trend" && `Trend${epssChart ? ` · ${epssChart.cveCount} CVE${epssChart.cveCount !== 1 ? "s" : ""}` : ""}`}
-                      </button>
-                    ))}
-                  </div>
+                    {/* Stats strip */}
+                    <div className="flex flex-wrap items-center gap-6 text-sm">
+                      <div>
+                        <span className="text-xs text-zinc-500">Weekly DL</span>
+                        <p className="font-medium text-zinc-200 tabular-nums">
+                          {detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-zinc-500">EPSS</span>
+                        <p className="font-medium text-zinc-200">
+                          {detail.epss_score !== null ? `${(detail.epss_score * 100).toFixed(1)}%` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-zinc-500">CVEs</span>
+                        <p className="font-medium text-zinc-200">{detail.cve_ids.length}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-zinc-500">Risk Score</span>
+                        <p className="font-medium text-zinc-200">
+                          {detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : "—"}
+                        </p>
+                      </div>
+                      {detail.has_mal_advisory && (
+                        <span className="rounded bg-rose-900/60 px-2 py-0.5 text-xs font-bold text-rose-300">OSV MAL</span>
+                      )}
+                      {detail.sectors.map((s) => (
+                        <span key={s} className="rounded bg-zinc-700/60 px-2 py-0.5 text-xs text-zinc-400">{s}</span>
+                      ))}
+                    </div>
 
-                  {/* Panels */}
-                  {tab === "CVEs" && (
-                    detail.cve_history.length > 0 ? (
+                    {/* CVE table */}
+                    {detail.cve_history.length > 0 ? (
                       <div className="max-h-52 overflow-y-auto rounded border border-zinc-800">
                         <table className="w-full text-xs">
                           <thead className="sticky top-0 bg-zinc-900">
@@ -219,7 +179,14 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
                           </thead>
                           <tbody>
                             {detail.cve_history.map((c) => (
-                              <tr key={c.osv_id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                              <tr
+                                key={c.osv_id}
+                                className={`border-b border-zinc-800/50 transition-colors ${
+                                  selectedCveId && c.cve_id === selectedCveId
+                                    ? "bg-zinc-700/50"
+                                    : "hover:bg-zinc-800/30"
+                                }`}
+                              >
                                 <td className="px-3 py-1.5 font-mono">
                                   {c.cve_id ? (
                                     <a
@@ -248,45 +215,21 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
                       </div>
                     ) : (
                       <p className="py-6 text-center text-xs text-zinc-600">No CVEs recorded</p>
-                    )
-                  )}
+                    )}
 
-                  {tab === "News" && (
-                    detail.recent_news.length > 0 ? (
-                      <div className="space-y-2">
-                        {detail.recent_news.slice(0, 5).map((n) => (
-                          <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 group">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-zinc-300 group-hover:text-white line-clamp-1 transition-colors">{n.title}</p>
-                              <div className="mt-0.5 flex items-center gap-1.5">
-                                {n.exploit_status && (
-                                  <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${EXPLOIT_STYLES[n.exploit_status]}`}>
-                                    {EXPLOIT_LABEL[n.exploit_status]}
-                                  </span>
-                                )}
-                                {n.severity && (
-                                  <span className="text-[10px] capitalize" style={{ color: SEV_COLOR[n.severity] ?? "#71717a" }}>{n.severity}</span>
-                                )}
-                                <span className="text-[10px] text-zinc-600">
-                                  {n.source_name} · {n.published_date ? timeAgo(n.published_date) : ""}
-                                </span>
-                              </div>
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="py-6 text-center text-xs text-zinc-600">No recent news</p>
-                    )
-                  )}
+                  </div>
 
-                  {tab === "Trend" && (
-                    epssChart ? (
-                      <EpssChart data={epssChart.chartData} cveData={epssChart.scatterData} />
-                    ) : (
-                      <p className="py-6 text-center text-xs text-zinc-600">No EPSS history</p>
-                    )
-                  )}
+                  {/* Right: graph always visible */}
+                  {epssChart ? (
+                    <div className="min-w-0 flex-1 flex flex-col rounded border border-zinc-800">
+                      <EpssChart
+                        data={epssChart.chartData}
+                        cveData={epssChart.scatterData}
+                        selectedCveId={selectedCveId}
+                        onCveClick={(id) => setSelectedCveId(id)}
+                      />
+                    </div>
+                  ) : null}
 
                 </div>
               )}
