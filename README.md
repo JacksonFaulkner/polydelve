@@ -1,6 +1,6 @@
 # Polydelve
 
-> Open-source supply chain risk intelligence — track CVEs, EPSS trends, and exploit signals across your dependencies before they become incidents.
+> Prediction markets meet software security events
 
 ## What it does
 
@@ -41,4 +41,4 @@ make dev
 
 ## License
 
-MIT
+GPL-3.0
