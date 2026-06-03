@@ -1,14 +1,6 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 import os
-
-# Load .env if present
-_env = Path(__file__).parent / ".env"
-if _env.exists():
-    for _line in _env.read_text().splitlines():
-        if _line.strip() and not _line.startswith("#") and "=" in _line:
-            _k, _, _v = _line.partition("=")
-            os.environ.setdefault(_k.strip(), _v.strip())
+from pathlib import Path
 
 import duckdb
 import uvicorn
@@ -24,6 +16,19 @@ from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
 from api.auth import _auth0
 from features.db import DB_PATH, init_db, seed_companies
+
+
+def _load_env() -> None:
+    env = Path(__file__).parent / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text().splitlines():
+        if line.strip() and not line.startswith("#") and "=" in line:
+            k, _, v = line.partition("=")
+            os.environ.setdefault(k.strip(), v.strip())
+
+
+_load_env()
 
 
 @asynccontextmanager
