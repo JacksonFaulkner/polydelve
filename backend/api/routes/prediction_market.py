@@ -5,10 +5,12 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from api.auth import get_current_user
+from api.auth import get_current_user, get_optional_user
+from api.cache import cache_get, cache_set, ttl_for
 from features.db import get_db
 from features.prediction_market import calculate_payout
 
+public_router = APIRouter()
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
@@ -33,14 +35,18 @@ class CreateUserRequest(BaseModel):
 
 # --- News ---
 
-@router.get("/news")
+@public_router.get("/news")
 def list_news(
     page: int = 1,
     page_size: int = 20,
     severity: str | None = None,
     exploit_status: str | None = None,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    user: dict | None = Depends(get_optional_user),
 ) -> dict:
+    cache_key = f"news:{page}:{page_size}:{severity}:{exploit_status}"
+    if cached := cache_get(cache_key):
+        return cached
     filters = ["published_date IS NOT NULL"]
     params: list = []
     if severity:
@@ -86,7 +92,7 @@ def list_news(
                 out.append({"name": parts[0], "ecosystem": parts[1]})
         return out
 
-    return {
+    result = {
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -108,23 +114,37 @@ def list_news(
             for r in rows
         ],
     }
+    cache_set(cache_key, result, ttl_for(user))
+    return result
 
 
 # --- Companies ---
 
-@router.get("/companies")
-def list_companies(conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> list[dict]:
+@public_router.get("/companies")
+def list_companies(
+    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    user: dict | None = Depends(get_optional_user),
+) -> list[dict]:
+    cache_key = "companies"
+    if cached := cache_get(cache_key):
+        return cached
     rows = conn.execute("SELECT id, title, logo, grade FROM companies").fetchall()
-    return [{"id": r[0], "title": r[1], "logo": r[2], "grade": r[3]} for r in rows]
+    result = [{"id": r[0], "title": r[1], "logo": r[2], "grade": r[3]} for r in rows]
+    cache_set(cache_key, result, ttl_for(user))
+    return result
 
 
 # --- Markets ---
 
-@router.get("/markets")
+@public_router.get("/markets")
 def list_markets(
     status: str = "open",
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    user: dict | None = Depends(get_optional_user),
 ) -> list[dict]:
+    cache_key = f"markets:{status}"
+    if cached := cache_get(cache_key):
+        return cached
     rows = conn.execute(
         """
         SELECT m.id, m.title, m.description, m.grade, m.price, m.payout,
@@ -135,7 +155,7 @@ def list_markets(
         """,
         [status],
     ).fetchall()
-    return [
+    result = [
         {
             "id": r[0], "title": r[1], "description": r[2], "grade": r[3],
             "price": r[4], "payout": r[5], "end_date": r[6], "status": r[7],
@@ -143,13 +163,19 @@ def list_markets(
         }
         for r in rows
     ]
+    cache_set(cache_key, result, ttl_for(user))
+    return result
 
 
-@router.get("/markets/{market_id}")
+@public_router.get("/markets/{market_id}")
 def get_market(
     market_id: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    user: dict | None = Depends(get_optional_user),
 ) -> dict:
+    cache_key = f"market:{market_id}"
+    if cached := cache_get(cache_key):
+        return cached
     row = conn.execute(
         """
         SELECT m.id, m.title, m.description, m.grade, m.price, m.payout,
@@ -162,11 +188,13 @@ def get_market(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Market not found")
-    return {
+    result = {
         "id": row[0], "title": row[1], "description": row[2], "grade": row[3],
         "price": row[4], "payout": row[5], "end_date": row[6], "status": row[7],
         "company": {"id": row[8], "title": row[9], "logo": row[10]},
     }
+    cache_set(cache_key, result, ttl_for(user))
+    return result
 
 
 @router.post("/markets", status_code=201)

@@ -207,6 +207,9 @@ COMPANIES = [
 
 
 def seed_companies(conn: duckdb.DuckDBPyConnection) -> None:
+    count = conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+    if count >= len(COMPANIES):
+        return
     conn.executemany(
         """
         INSERT INTO companies (id, title, logo, grade) VALUES (?, ?, ?, ?)

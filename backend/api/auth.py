@@ -14,3 +14,10 @@ def _auth0() -> Auth0FastAPI:
 
 async def get_current_user(request: Request) -> dict:
     return await _auth0().require_auth()(request)
+
+
+async def get_optional_user(request: Request) -> dict | None:
+    try:
+        return await _auth0().require_auth()(request)
+    except Exception:
+        return None

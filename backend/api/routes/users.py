@@ -2,9 +2,11 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from api.auth import get_current_user
+from api.auth import get_current_user, get_optional_user
+from api.cache import cache_get, cache_set, ttl_for
 from features.db import get_db
 
+public_router = APIRouter(prefix="/users")
 router = APIRouter(prefix="/users", dependencies=[Depends(get_current_user)])
 
 
@@ -79,12 +81,17 @@ def get_me(
     return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3])
 
 
-@router.get("/leaderboard", response_model=LeaderboardResponse)
+@public_router.get("/leaderboard", response_model=LeaderboardResponse)
 def get_leaderboard(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    user: dict | None = Depends(get_optional_user),
 ) -> LeaderboardResponse:
+    cache_key = f"leaderboard:{page}:{page_size}"
+    if cached := cache_get(cache_key):
+        return cached
+
     offset = (page - 1) * page_size
 
     total_row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
@@ -150,7 +157,9 @@ def get_leaderboard(
             contracts=ctrs,
         ))
 
-    return LeaderboardResponse(total=total, page=page, page_size=page_size, users=users)
+    result = LeaderboardResponse(total=total, page=page, page_size=page_size, users=users)
+    cache_set(cache_key, result, ttl_for(user))
+    return result
 
 
 @router.get("/leaderboard/{user_id}/timeline", response_model=SchmeckleTimeline)

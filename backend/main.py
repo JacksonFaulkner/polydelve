@@ -8,8 +8,11 @@ from api.middleware.cors import add_cors
 from api.routes.health import router as health_router
 from api.routes.contracts import router as contracts_router
 from api.routes.packages import router as packages_router
+from api.routes.prediction_market import public_router as pm_public_router
 from api.routes.prediction_market import router as pm_router
+from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
+from api.auth import _auth0
 from features.db import DB_PATH, init_db, seed_companies
 
 
@@ -19,6 +22,10 @@ async def lifespan(app: FastAPI):
     init_db(conn)
     seed_companies(conn)
     app.state.db = conn
+    try:
+        await _auth0().api_client._discover()
+    except Exception:
+        pass
     yield
     conn.close()
 
@@ -27,7 +34,9 @@ app = FastAPI(title="Action Odds", lifespan=lifespan)
 
 add_cors(app)
 app.include_router(health_router)
+app.include_router(users_public_router)
 app.include_router(users_router)
+app.include_router(pm_public_router)
 app.include_router(pm_router)
 app.include_router(packages_router)
 app.include_router(contracts_router)
