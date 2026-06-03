@@ -6,7 +6,6 @@ import {
 } from "recharts"
 import type { Package } from "@/types"
 import { useApi } from "@/lib/api"
-const USER_ID = "default-user"
 
 const DURATION_OPTIONS = [7, 14, 30]
 
@@ -32,7 +31,7 @@ interface SimResult {
   curve: SimCurvePoint[]
 }
 
-export function PredictPage() {
+export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const { authFetch } = useApi()
   const [packages, setPackages] = useState<Package[]>([])
   const [search, setSearch] = useState("")
@@ -50,6 +49,7 @@ export function PredictPage() {
   const epssTarget = posToEpss(epssSliderPos)
   const epssDrift = epssTarget / Math.max(currentEpss, 0.001)
 
+  const [meId, setMeId] = useState<string | null>(null)
   const [buying, setBuying] = useState(false)
   const [schmeckles, setSchmeckles] = useState<number | null>(null)
   const [sim, setSim] = useState<SimResult | null>(null)
@@ -95,9 +95,9 @@ export function PredictPage() {
   }, [])
 
   const refreshUser = useCallback(() => {
-    authFetch(`/users/${USER_ID}`)
+    authFetch(`/users/me`)
       .then((r) => r.json())
-      .then((d) => setSchmeckles(d.schmeckles))
+      .then((d) => { setMeId(d.id); setSchmeckles(d.schmeckles) })
       .catch(() => {})
   }, [authFetch])
 
@@ -108,14 +108,14 @@ export function PredictPage() {
   ).slice(0, 20)
 
   async function buyContract() {
-    if (!selectedPkg) return
+    if (!selectedPkg || !meId) return
     setBuying(true)
     try {
       await authFetch(`/contracts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: USER_ID,
+          user_id: meId,
           package_name: selectedPkg.name,
           ecosystem: selectedPkg.ecosystem,
           cvss_threshold: cvssThreshold,
@@ -126,6 +126,7 @@ export function PredictPage() {
       })
       setSelectedPkg(null)
       refreshUser()
+      onBuy?.()
     } finally {
       setBuying(false)
     }

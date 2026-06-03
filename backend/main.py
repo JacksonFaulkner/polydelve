@@ -1,4 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+import os
+
+# Load .env if present
+_env = Path(__file__).parent / ".env"
+if _env.exists():
+    for _line in _env.read_text().splitlines():
+        if _line.strip() and not _line.startswith("#") and "=" in _line:
+            _k, _, _v = _line.partition("=")
+            os.environ.setdefault(_k.strip(), _v.strip())
 
 import duckdb
 import uvicorn

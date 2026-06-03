@@ -11,15 +11,14 @@ import { LeaderboardTable } from "./components/LeaderboardTable";
 import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
+import { DashboardPage } from "./components/DashboardPage";
 import marketsData from "../mocks/markets.json";
 import spotlightData from "../mocks/market_spotlight.json";
-import userData from "../mocks/user.json";
 import type { Market, NewsItem, SpotlightMarket, User } from "./types";
 import { useApi } from "@/lib/api";
 
 const baseMarkets = marketsData as unknown as Market[];
 const baseSpotlight = spotlightData as unknown as SpotlightMarket;
-const user = userData as User;
 
 const SPOTLIGHT_ID = baseSpotlight.id;
 
@@ -28,6 +27,7 @@ export default function App() {
   const { authFetch } = useApi();
   const [activeSector, setActiveSector] = useState<Sector>("All");
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [me, setMe] = useState<User | null>(null);
 
   const markets = baseMarkets;
   const spotlight = baseSpotlight;
@@ -38,6 +38,14 @@ export default function App() {
       .then((d) => setNews(d.items ?? []))
       .catch((err) => console.error("Failed to fetch news:", err));
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    authFetch("/users/me")
+      .then((r) => r.json())
+      .then(setMe)
+      .catch((err) => console.error("Failed to fetch user:", err));
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -60,7 +68,7 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: me?.id,
           package_name: market.package.name,
           ecosystem: market.package.ecosystem,
           cvss_threshold,
@@ -76,6 +84,7 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
       }
       const data = await res.json();
       alert(`Contract bought! Max payout: ${data.max_payout} sch · ${Number(data.multiplier).toFixed(1)}×`);
+      authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {});
     } catch {
       alert("Network error — is the backend running?");
     }
@@ -83,15 +92,17 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
 
   return (
     <div className="min-h-screen text-white" style={{ backgroundColor: "#15191D" }}>
-      <Navbar user={user} activeSector={activeSector} onSectorChange={setActiveSector} />
+      <Navbar user={me ?? undefined} activeSector={activeSector} onSectorChange={setActiveSector} />
 
       <main className="mx-auto max-w-7xl px-4 py-6">
         {activeSector === "Admin" ? (
           <AdminPage />
         ) : activeSector === "News" ? (
           <NewsPage />
+        ) : activeSector === "Dashboard" ? (
+          <DashboardPage />
         ) : activeSector === "Predict" ? (
-          <PredictPage />
+          <PredictPage onBuy={() => authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {})} />
         ) : activeSector === "Leaderboard" ? (
           <LeaderboardTable />
         ) : activeSector === "PyPI" || activeSector === "npm" ? (

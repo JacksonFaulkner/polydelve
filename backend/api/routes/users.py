@@ -74,7 +74,7 @@ def get_me(
     if not row:
         conn.execute(
             "INSERT INTO users (id, email, username, schmeckles) VALUES (?, ?, ?, 1000)",
-            [sub, email, None],
+            [sub, email, email or sub],
         )
         return User(id=sub, email=email, schmeckles=1000)
 

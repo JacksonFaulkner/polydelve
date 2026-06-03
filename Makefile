@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-UV  := uv --directory backend run
+UV  := cd backend && uv run
 NPM := cd frontend &&
 
 ##@ Help

@@ -207,11 +207,23 @@ def buy_contract(req: BuyRequest, conn: duckdb.DuckDBPyConnection = Depends(get_
     }
 
 
+@router.get("/me")
+def list_my_contracts(
+    claims: dict = Depends(get_current_user),
+    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+) -> list[dict]:
+    return list_user_contracts_inner(claims["sub"], conn)
+
+
 @router.get("/user/{user_id}")
 def list_user_contracts(
     user_id: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> list[dict]:
+    return list_user_contracts_inner(user_id, conn)
+
+
+def list_user_contracts_inner(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[dict]:
     rows = conn.execute(
         """
         SELECT c.id, c.package_name, c.package_ecosystem, c.market_type,

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Boxes, Newspaper, Package, Search, TrendingUp, Trophy } from "lucide-react";
+import { Boxes, LayoutDashboard, Newspaper, Package, Search, TrendingUp, Trophy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { SchmeckleIcon } from "./SchmeckleIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Admin"] as const;
+export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Admin"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
@@ -13,6 +13,7 @@ const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   News: <Newspaper className="h-3.5 w-3.5" />,
   Predict: <TrendingUp className="h-3.5 w-3.5" />,
   Leaderboard: <Trophy className="h-3.5 w-3.5" />,
+  Dashboard: <LayoutDashboard className="h-3.5 w-3.5" />,
 };
 
 const TAB_LABEL: Partial<Record<Sector, string>> = {
@@ -61,7 +62,7 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
   const [searchOpen, setSearchOpen] = useState(false);
 
   const publicTabs: Sector[] = ["All", "News", "Leaderboard"];
-  const authTabs: Sector[] = ["PyPI", "npm", "Predict"];
+  const authTabs: Sector[] = ["PyPI", "npm", "Predict", "Dashboard"];
   const visibleTabs = isAuthenticated ? [...publicTabs, ...authTabs] : publicTabs;
 
   return (
