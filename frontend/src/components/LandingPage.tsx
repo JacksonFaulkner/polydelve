@@ -1,8 +1,8 @@
-import { useAuth0 } from "@auth0/auth0-react"
+import { useAuth } from "@/lib/auth"
 import { SchmeckleIcon } from "./SchmeckleIcon"
 
 export function LandingPage() {
-  const { loginWithRedirect } = useAuth0()
+  const { loginWithRedirect } = useAuth()
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ backgroundColor: "#15191D" }}>

@@ -1,7 +1,7 @@
 {
   "id": "user-001",
   "username": "jackson",
-  "schmeckles": 1340,
+  "schmeckles": 134000,
   "schmeckle_history": [
     { "date": "2026-04-25", "balance": 1000 },
     { "date": "2026-04-27", "balance": 900 },

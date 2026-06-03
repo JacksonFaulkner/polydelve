@@ -11,7 +11,6 @@ import { LeaderboardTable } from "./components/LeaderboardTable";
 import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
-import { LandingPage } from "./components/LandingPage";
 import marketsData from "../mocks/markets.json";
 import spotlightData from "../mocks/market_spotlight.json";
 import userData from "../mocks/user.json";
@@ -25,7 +24,7 @@ const user = userData as User;
 const SPOTLIGHT_ID = baseSpotlight.id;
 
 export default function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
   const { authFetch } = useApi();
   const [activeSector, setActiveSector] = useState<Sector>("All");
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -34,12 +33,11 @@ export default function App() {
   const spotlight = baseSpotlight;
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     authFetch(`/news?page=1&page_size=10`)
       .then((r) => r.json())
       .then((d) => setNews(d.items ?? []))
       .catch((err) => console.error("Failed to fetch news:", err));
-  }, [isAuthenticated]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -49,14 +47,13 @@ export default function App() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <LandingPage />;
-  }
-
-
 const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
 
   async function handleBet(market: Market | SpotlightMarket) {
+    if (!isAuthenticated) {
+      loginWithRedirect();
+      return;
+    }
     const { purchase_price, cvss_threshold, epss_threshold, duration_days } = market.contract;
     try {
       const res = await authFetch(`/contracts`, {
