@@ -3,45 +3,22 @@ from datetime import date, timedelta
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 
 from api.auth import get_current_user
 from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
 from features.db import get_db
+from models.models import (
+    BuyRequest, BuyResponse, ContractDetail,
+    QuoteRequest, QuoteResponse,
+    SellResponse, SimCurvePoint, SimulateRequest, SimulateResponse,
+)
 
 router = APIRouter(prefix="/contracts", dependencies=[Depends(get_current_user)])
 
-DURATION_OPTIONS = [7, 14, 30]
 
-
-class QuoteRequest(BaseModel):
-    package_name: str
-    ecosystem: str
-    cvss_threshold: float | None = None
-    epss_threshold: float | None = None
-    purchase_price: int
-    duration_days: int = 30
-
-
-class BuyRequest(QuoteRequest):
-    user_id: str
-
-
-class SimulateRequest(BaseModel):
-    package_name: str
-    ecosystem: str
-    cvss_threshold: float | None = None
-    purchase_price: int
-    duration_days: int = 30
-    epss_drift: float = 1.0
-
-
-@router.post("/simulate")
-def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> dict:
+@router.post("/simulate", response_model=SimulateResponse)
+def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> SimulateResponse:
     """Return sell-value curve + three stacked win areas for the predict page chart."""
-    if req.duration_days not in DURATION_OPTIONS:
-        raise HTTPException(422, f"duration_days must be one of {DURATION_OPTIONS}")
-
     try:
         terms = price_contract(
             conn=conn,
@@ -56,24 +33,19 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
         raise HTTPException(404, str(e))
 
     price = req.purchase_price
-    drift = req.epss_drift
     dur = req.duration_days
 
-    # EPSS slider scales the EPSS-event payout; sell value stays independent
-    epss_payout = min(terms.max_payout, round(terms.epss_payout * max(drift, 1.0)))
+    epss_payout = min(terms.max_payout, round(terms.epss_payout * max(req.epss_drift, 1.0)))
     epss_win = epss_payout - price
     cvss_win = terms.cvss_payout - price
     mal_win  = terms.mal_payout  - price
-
     max_loss = -price
 
     exponent = min(0.3 + max(0.0, dur / 7 - 1) * 0.55, 3.0)
-
     today = date.today()
-    curve = []
+    curve: list[SimCurvePoint] = []
     for day in range(dur + 1):
         sv = sell_value_at_day(price, day, dur, 1.0, terms.max_payout)
-        sell_pnl = sv - price
         days_remaining = max(dur - day, 0)
         time_factor = (days_remaining / dur) ** exponent if dur > 0 else 0.0
         if day == 0:
@@ -83,36 +55,34 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
         else:
             d = today + timedelta(days=day)
             label = f"{d.month}/{d.day}"
-        curve.append({
-            "label": label,
-            "sell_pnl": sell_pnl,
-            "epss_win": round(epss_win * time_factor),
-            "cvss_win": round(cvss_win * time_factor),
-            "mal_win":  round(mal_win  * time_factor),
-        })
+        curve.append(SimCurvePoint(
+            label=label,
+            sell_pnl=sv - price,
+            epss_win=round(epss_win * time_factor),
+            cvss_win=round(cvss_win * time_factor),
+            mal_win=round(mal_win * time_factor),
+        ))
 
-    return {
-        "epss_payout": epss_payout,
-        "cvss_payout": terms.cvss_payout,
-        "mal_payout":  terms.mal_payout,
-        "epss_win": epss_win,
-        "cvss_win": cvss_win,
-        "mal_win":  mal_win,
-        "max_win": max(epss_win, cvss_win, mal_win),
-        "max_loss": max_loss,
-        "y_min": round(max_loss * 1.1),
-        "y_max": round(max(epss_win, cvss_win, mal_win) * 1.1),
-        "curve": curve,
-    }
+    max_win = max(epss_win, cvss_win, mal_win)
+    return SimulateResponse(
+        epss_payout=epss_payout,
+        cvss_payout=terms.cvss_payout,
+        mal_payout=terms.mal_payout,
+        epss_win=epss_win,
+        cvss_win=cvss_win,
+        mal_win=mal_win,
+        max_win=max_win,
+        max_loss=max_loss,
+        y_min=round(max_loss * 1.1),
+        y_max=round(max_win * 1.1),
+        curve=curve,
+    )
 
 
-@router.post("/quote")
-def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> dict:
-    if req.duration_days not in DURATION_OPTIONS:
-        raise HTTPException(422, f"duration_days must be one of {DURATION_OPTIONS}")
+@router.post("/quote", response_model=QuoteResponse)
+def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> QuoteResponse:
     if req.purchase_price < 10:
         raise HTTPException(422, "minimum purchase_price is 10 schmeckles")
-
     try:
         terms = price_contract(
             conn=conn,
@@ -127,27 +97,24 @@ def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(
         raise HTTPException(404, str(e))
 
     expires_at = date.today() + timedelta(days=req.duration_days)
-    return {
-        "package_name": req.package_name,
-        "ecosystem": req.ecosystem,
-        "market_type": req.market_type,
-        "cvss_threshold": req.cvss_threshold,
-        "epss_threshold": req.epss_threshold,
-        "purchase_price": req.purchase_price,
-        "max_payout": terms.max_payout,
-        "opening_probability": terms.opening_probability,
-        "package_grade": terms.package_grade,
-        "expires_at": expires_at.isoformat(),
-        "description": terms.description,
-        "multiplier": round(terms.max_payout / req.purchase_price, 2),
-    }
+    return QuoteResponse(
+        package_name=req.package_name,
+        ecosystem=req.ecosystem,
+        market_type="all",
+        cvss_threshold=req.cvss_threshold,
+        epss_threshold=req.epss_threshold,
+        purchase_price=req.purchase_price,
+        max_payout=terms.max_payout,
+        opening_probability=terms.opening_probability,
+        package_grade=terms.package_grade,
+        expires_at=expires_at.isoformat(),
+        description=terms.description,
+        multiplier=round(terms.max_payout / req.purchase_price, 2),
+    )
 
 
-@router.post("", status_code=201)
-def buy_contract(req: BuyRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> dict:
-    if req.duration_days not in DURATION_OPTIONS:
-        raise HTTPException(422, f"duration_days must be one of {DURATION_OPTIONS}")
-
+@router.post("", status_code=201, response_model=BuyResponse)
+def buy_contract(req: BuyRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> BuyResponse:
     user = conn.execute("SELECT schmeckles FROM users WHERE id = ?", [req.user_id]).fetchone()
     if not user:
         raise HTTPException(404, "User not found")
@@ -170,11 +137,11 @@ def buy_contract(req: BuyRequest, conn: duckdb.DuckDBPyConnection = Depends(get_
     contract_id = str(uuid.uuid4())
     expires_at = date.today() + timedelta(days=req.duration_days)
 
-    opening_epss = conn.execute(
+    opening_epss_row = conn.execute(
         "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
         [req.package_name, req.ecosystem],
     ).fetchone()
-    opening_epss = opening_epss[0] if opening_epss else None
+    opening_epss = opening_epss_row[0] if opening_epss_row else None
 
     conn.execute(
         """
@@ -196,34 +163,34 @@ def buy_contract(req: BuyRequest, conn: duckdb.DuckDBPyConnection = Depends(get_
         [req.purchase_price, req.user_id],
     )
 
-    return {
-        "id": contract_id,
-        "max_payout": terms.max_payout,
-        "opening_probability": terms.opening_probability,
-        "package_grade": terms.package_grade,
-        "expires_at": expires_at.isoformat(),
-        "multiplier": round(terms.max_payout / req.purchase_price, 2),
-        "description": terms.description,
-    }
+    return BuyResponse(
+        id=contract_id,
+        max_payout=terms.max_payout,
+        opening_probability=terms.opening_probability,
+        package_grade=terms.package_grade,
+        expires_at=expires_at.isoformat(),
+        multiplier=round(terms.max_payout / req.purchase_price, 2),
+        description=terms.description,
+    )
 
 
-@router.get("/me")
+@router.get("/me", response_model=list[ContractDetail])
 def list_my_contracts(
     claims: dict = Depends(get_current_user),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
-) -> list[dict]:
-    return list_user_contracts_inner(claims["sub"], conn)
+) -> list[ContractDetail]:
+    return _list_contracts(claims["sub"], conn)
 
 
-@router.get("/user/{user_id}")
+@router.get("/user/{user_id}", response_model=list[ContractDetail])
 def list_user_contracts(
     user_id: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
-) -> list[dict]:
-    return list_user_contracts_inner(user_id, conn)
+) -> list[ContractDetail]:
+    return _list_contracts(user_id, conn)
 
 
-def list_user_contracts_inner(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[dict]:
+def _list_contracts(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[ContractDetail]:
     rows = conn.execute(
         """
         SELECT c.id, c.package_name, c.package_ecosystem, c.market_type,
@@ -239,11 +206,11 @@ def list_user_contracts_inner(user_id: str, conn: duckdb.DuckDBPyConnection) -> 
         [user_id],
     ).fetchall()
 
-    result = []
-    for r in rows:
+    result: list[ContractDetail] = []
+    for row in rows:
         (cid, pkg, eco, mtype, cvss_t, epss_t, price, payout,
          open_prob, grade, expires, status, resolved_at, sell_price, created_at,
-         opening_epss, current_epss) = r
+         opening_epss, current_epss) = row
 
         sell_val = None
         if status == "open":
@@ -255,33 +222,33 @@ def list_user_contracts_inner(user_id: str, conn: duckdb.DuckDBPyConnection) -> 
                 current_epss=current_epss,
             )
 
-        result.append({
-            "id": cid,
-            "package_name": pkg,
-            "ecosystem": eco,
-            "market_type": mtype,
-            "cvss_threshold": cvss_t,
-            "epss_threshold": epss_t,
-            "purchase_price": price,
-            "max_payout": payout,
-            "opening_probability": open_prob,
-            "package_grade": grade,
-            "expires_at": expires.isoformat() if hasattr(expires, "isoformat") else str(expires),
-            "status": status,
-            "resolved_at": resolved_at.isoformat() if resolved_at else None,
-            "sell_price": sell_price,
-            "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
-            "current_sell_value": sell_val,
-            "multiplier": round(payout / price, 2),
-        })
+        result.append(ContractDetail(
+            id=cid,
+            package_name=pkg,
+            ecosystem=eco,
+            market_type=mtype,
+            cvss_threshold=cvss_t,
+            epss_threshold=epss_t,
+            purchase_price=price,
+            max_payout=payout,
+            opening_probability=open_prob,
+            package_grade=grade,
+            expires_at=expires.isoformat() if hasattr(expires, "isoformat") else str(expires),
+            status=status,
+            resolved_at=resolved_at.isoformat() if resolved_at else None,
+            sell_price=sell_price,
+            created_at=created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+            current_sell_value=sell_val,
+            multiplier=round(payout / price, 2),
+        ))
     return result
 
 
-@router.post("/{contract_id}/sell")
+@router.post("/{contract_id}/sell", response_model=SellResponse)
 def sell_contract(
     contract_id: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
-) -> dict:
+) -> SellResponse:
     row = conn.execute(
         """
         SELECT c.user_id, c.purchase_price, c.max_payout, c.opening_probability,
@@ -296,7 +263,7 @@ def sell_contract(
     if not row:
         raise HTTPException(404, "Contract not found")
 
-    user_id, price, payout, open_prob, expires, status, created_at, opening_epss, current_epss = row
+    user_id, price, _payout, _open_prob, expires, status, created_at, opening_epss, current_epss = row
     if status != "open":
         raise HTTPException(409, f"Contract is {status}, cannot sell")
 
@@ -309,11 +276,7 @@ def sell_contract(
     )
 
     conn.execute(
-        """
-        UPDATE contracts
-        SET status = 'sold', sell_price = ?, resolved_at = now()
-        WHERE id = ?
-        """,
+        "UPDATE contracts SET status = 'sold', sell_price = ?, resolved_at = now() WHERE id = ?",
         [sell_val, contract_id],
     )
     conn.execute(
@@ -321,4 +284,4 @@ def sell_contract(
         [sell_val, user_id],
     )
 
-    return {"sell_price": sell_val, "status": "sold"}
+    return SellResponse(sell_price=sell_val, status="sold")

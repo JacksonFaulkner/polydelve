@@ -96,6 +96,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             PRIMARY KEY (name, ecosystem)
         )
     """)
+
     # Migrate existing DBs that predate new columns
     def _safe(sql: str) -> None:
         try:
@@ -187,21 +188,41 @@ _CDN = "https://cdn.simpleicons.org"
 COMPANIES = [
     # Grade A — massive security orgs, slow to adopt unvetted deps
     {"id": "google", "title": "Google", "logo": f"{_CDN}/google", "grade": "A"},
-    {"id": "microsoft", "title": "Microsoft", "logo": "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg", "grade": "A"},
+    {
+        "id": "microsoft",
+        "title": "Microsoft",
+        "logo": "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
+        "grade": "A",
+    },
     # Grade B — strong security, but broader open-source surface
     {"id": "stripe", "title": "Stripe", "logo": f"{_CDN}/stripe", "grade": "B"},
-    {"id": "cloudflare", "title": "Cloudflare", "logo": f"{_CDN}/cloudflare", "grade": "B"},
+    {
+        "id": "cloudflare",
+        "title": "Cloudflare",
+        "logo": f"{_CDN}/cloudflare",
+        "grade": "B",
+    },
     {"id": "github", "title": "GitHub", "logo": f"{_CDN}/github", "grade": "B"},
     # Grade C — medium exposure, real third-party integration risk
     {"id": "shopify", "title": "Shopify", "logo": f"{_CDN}/shopify", "grade": "C"},
     {"id": "twilio", "title": "Twilio", "logo": f"{_CDN}/twilio", "grade": "C"},
     {"id": "okta", "title": "Okta", "logo": f"{_CDN}/okta", "grade": "C"},
     # Grade D — high npm/pip dependency count, fast-moving teams
-    {"id": "robinhood", "title": "Robinhood", "logo": f"{_CDN}/robinhood", "grade": "D"},
+    {
+        "id": "robinhood",
+        "title": "Robinhood",
+        "logo": f"{_CDN}/robinhood",
+        "grade": "D",
+    },
     {"id": "coinbase", "title": "Coinbase", "logo": f"{_CDN}/coinbase", "grade": "D"},
     # Grade F — open source everything, huge transitive dep surface
     {"id": "vercel", "title": "Vercel", "logo": f"{_CDN}/vercel", "grade": "F"},
-    {"id": "huggingface", "title": "Hugging Face", "logo": f"{_CDN}/huggingface", "grade": "F"},
+    {
+        "id": "huggingface",
+        "title": "Hugging Face",
+        "logo": f"{_CDN}/huggingface",
+        "grade": "F",
+    },
     {"id": "replit", "title": "Replit", "logo": f"{_CDN}/replit", "grade": "F"},
 ]
 
@@ -225,3 +246,4 @@ if __name__ == "__main__":
     init_db(conn)
     seed_companies(conn)
     conn.close()
+

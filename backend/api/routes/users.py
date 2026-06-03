@@ -1,62 +1,19 @@
+from collections import defaultdict
+from datetime import date as dt
+
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 
 from api.auth import get_current_user, get_optional_user
 from api.cache import cache_get, cache_set, ttl_for
 from features.db import get_db
+from models.models import (
+    LeaderboardContract, LeaderboardResponse, LeaderboardUser,
+    SchmecklePoint, SchmeckleTimeline, User,
+)
 
 public_router = APIRouter(prefix="/users")
 router = APIRouter(prefix="/users", dependencies=[Depends(get_current_user)])
-
-
-class User(BaseModel):
-    id: str
-    email: str | None = None
-    username: str | None = None
-    schmeckles: int = 1000
-
-
-class LeaderboardContract(BaseModel):
-    id: str
-    package_name: str
-    package_ecosystem: str
-    market_type: str
-    purchase_price: int
-    max_payout: int
-    opening_probability: float
-    status: str
-    expires_at: str
-    created_at: str | None = None
-
-
-class LeaderboardUser(BaseModel):
-    rank: int
-    id: str
-    username: str | None = None
-    schmeckles: int
-    total_contracts: int
-    open_contracts: int
-    won_contracts: int
-    contracts: list[LeaderboardContract]
-
-
-class LeaderboardResponse(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    users: list[LeaderboardUser]
-
-
-class SchmecklePoint(BaseModel):
-    date: str
-    balance: int
-    event: str | None = None  # "buy", "won", "sold"
-
-
-class SchmeckleTimeline(BaseModel):
-    user_id: str
-    points: list[SchmecklePoint]
 
 
 @router.get("/me", response_model=User)
@@ -93,9 +50,7 @@ def get_leaderboard(
         return cached
 
     offset = (page - 1) * page_size
-
-    total_row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
-    total = total_row[0] if total_row else 0
+    total = (conn.execute("SELECT COUNT(*) FROM users").fetchone() or (0,))[0]
 
     ranked = conn.execute(
         """
@@ -126,8 +81,7 @@ def get_leaderboard(
         user_ids,
     ).fetchall()
 
-    from collections import defaultdict
-    contracts_by_user: dict[str, list] = defaultdict(list)
+    contracts_by_user: dict[str, list[LeaderboardContract]] = defaultdict(list)
     for row in contracts_rows:
         uid, cid, pkg_name, pkg_eco, mtype, price, payout, prob, status, expires, created = row
         contracts_by_user[uid].append(LeaderboardContract(
@@ -143,19 +97,19 @@ def get_leaderboard(
             created_at=created,
         ))
 
-    users = []
-    for uid, username, schmeckles, rank in ranked:
-        ctrs = contracts_by_user[uid]
-        users.append(LeaderboardUser(
+    users = [
+        LeaderboardUser(
             rank=int(rank),
             id=uid,
             username=username,
             schmeckles=schmeckles,
-            total_contracts=len(ctrs),
-            open_contracts=sum(1 for c in ctrs if c.status == "open"),
-            won_contracts=sum(1 for c in ctrs if c.status == "won"),
-            contracts=ctrs,
-        ))
+            total_contracts=len(contracts_by_user[uid]),
+            open_contracts=sum(1 for c in contracts_by_user[uid] if c.status == "open"),
+            won_contracts=sum(1 for c in contracts_by_user[uid] if c.status == "won"),
+            contracts=contracts_by_user[uid],
+        )
+        for uid, username, schmeckles, rank in ranked
+    ]
 
     result = LeaderboardResponse(total=total, page=page, page_size=page_size, users=users)
     cache_set(cache_key, result, ttl_for(user))
@@ -175,13 +129,8 @@ def get_schmeckle_timeline(
 
     rows = conn.execute(
         """
-        SELECT
-            created_at::VARCHAR,
-            resolved_at::VARCHAR,
-            purchase_price,
-            max_payout,
-            sell_price,
-            status
+        SELECT created_at::VARCHAR, resolved_at::VARCHAR,
+               purchase_price, max_payout, sell_price, status
         FROM contracts
         WHERE user_id = ?
         ORDER BY created_at ASC
@@ -189,34 +138,25 @@ def get_schmeckle_timeline(
         [user_id],
     ).fetchall()
 
-    # Build events list: (date_str, delta, event_label)
     events: list[tuple[str, int, str]] = []
     for created, resolved, price, payout, sell_price, status in rows:
         if created:
-            day = created[:10]
-            events.append((day, -price, "buy"))
+            events.append((created[:10], -price, "buy"))
         if status == "won" and resolved:
-            day = resolved[:10]
-            events.append((day, payout, "won"))
+            events.append((resolved[:10], payout, "won"))
         elif status == "sold" and resolved and sell_price:
-            day = resolved[:10]
-            events.append((day, sell_price, "sold"))
+            events.append((resolved[:10], sell_price, "sold"))
 
     events.sort(key=lambda e: e[0])
 
-    # Start at 1000 and walk forward
-    STARTING_BALANCE = 1000
-    balance = STARTING_BALANCE
-    points: list[SchmecklePoint] = [
-        SchmecklePoint(date=events[0][0] if events else "2025-01-01", balance=balance, event=None)
-    ] if events else []
-
-    for date, delta, label in events:
+    balance = 1000
+    points: list[SchmecklePoint] = (
+        [SchmecklePoint(date=events[0][0], balance=balance, event=None)] if events else []
+    )
+    for event_date, delta, label in events:
         balance += delta
-        points.append(SchmecklePoint(date=date, balance=balance, event=label))
+        points.append(SchmecklePoint(date=event_date, balance=balance, event=label))  # type: ignore[arg-type]
 
-    # Append today as final point with current balance to reflect any manual adjustments
-    from datetime import date as dt
     today = dt.today().isoformat()
     current = int(user_row[0])
     if points and points[-1].date != today:
