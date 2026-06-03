@@ -1,21 +1,32 @@
 import asyncio
+import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 
-_BQ_SA_PATH = Path(__file__).parent.parent / "secrets" / "polydelve-bq-sa.json"
+_LOCAL_BQ_SA_PATH = Path(__file__).parent.parent / "secrets" / "polydelve-bq-sa.json"
 
 
 def _bq_client():
     from google.cloud import bigquery
     from google.oauth2 import service_account
 
-    creds = service_account.Credentials.from_service_account_file(
-        str(_BQ_SA_PATH),
-        scopes=["https://www.googleapis.com/auth/cloud-platform"],
-    )
+    bq_sa_json = os.getenv("BQ_SA_JSON")
+    if bq_sa_json:
+        info = json.loads(bq_sa_json)
+        creds = service_account.Credentials.from_service_account_info(
+            info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+    elif _LOCAL_BQ_SA_PATH.exists():
+        creds = service_account.Credentials.from_service_account_file(
+            str(_LOCAL_BQ_SA_PATH),
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+    else:
+        raise RuntimeError("No BQ credentials: set BQ_SA_JSON env var or provide secrets/polydelve-bq-sa.json")
     return bigquery.Client(credentials=creds, project="polydelve")
 
 

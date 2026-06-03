@@ -8,7 +8,7 @@ DB_PATH = os.getenv("DB_PATH", "action_odds.dev.duckdb")
 
 
 def get_db(request: Request) -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(DB_PATH)
+    return request.app.state.db
 
 
 def get_db_conn() -> duckdb.DuckDBPyConnection:

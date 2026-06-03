@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 # ── Shared literals ──────────────────────────────────────────────────────────
 
 Ecosystem = Literal["PyPI", "npm", "composer", "other"]
-ContractStatus = Literal["open", "won", "sold", "expired"]
-MarketType = Literal["all"]
+ContractStatus = Literal["open", "won", "sold", "expired", "lost"]
+MarketType = Literal["all", "epss_threshold", "new_cve", "kev_listing"]
 ContractDuration = Literal[7, 14, 30]
 ExploitStatus = Literal["poc_available", "actively_exploited", "patched", "unpatched"]
 Severity = Literal["critical", "high", "medium", "low"]
