@@ -2,6 +2,8 @@
 
 > Prediction markets meet software security events
 
+**🚀 Live at [polydelve.com](https://polydelve.com) — deployed but very buggy, proceed with caution**
+
 ## What it does
 
 - **CVE tracking** — monitor packages across npm, PyPI, and more for known vulnerabilities
