@@ -1,0 +1,12 @@
+secrets/
+.env
+*.duckdb
+__pycache__/
+**/__pycache__/
+.venv/
+outputs/
+tests/
+docs/
+scripts/
+*.md
+mkdocs.yml

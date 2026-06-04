@@ -101,6 +101,33 @@ fe-lint: ## Lint frontend TypeScript
 fe-build: ## Build frontend for production
 	$(NPM) npm run build
 
+##@ Deploy
+
+.PHONY: deploy
+deploy: deploy-be deploy-fe ## Deploy backend + frontend
+
+.PHONY: deploy-be
+deploy-be: ## Build + push backend Docker image, force new ECS deployment
+	./scripts/deploy-backend.sh
+
+.PHONY: deploy-fe
+deploy-fe: ## Build frontend, sync to S3, invalidate CloudFront
+	./scripts/deploy-frontend.sh
+
+.PHONY: tf-init
+tf-init: ## Initialize terraform
+	terraform -chdir=terraform init
+
+.PHONY: tf-plan
+tf-plan: ## Plan terraform changes
+	terraform -chdir=terraform plan
+
+.PHONY: tf-apply
+tf-apply: ## Apply terraform changes
+	terraform -chdir=terraform apply
+
+##@ Cleanup
+
 .PHONY: clean
 clean: ## Remove build artifacts
 	rm -rf frontend/dist backend/.venv backend/__pycache__

@@ -25,3 +25,8 @@ tsconfig.*.tsbuildinfo
 # OS
 .DS_Store
 *.mov
+terraform/terraform.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform/
+terraform/.env

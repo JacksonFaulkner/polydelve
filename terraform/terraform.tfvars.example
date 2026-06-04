@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars or export as TF_VAR_* env vars — never commit real values
+motherduck_token = "..."
+openai_api_key   = "..."
+exa_api_key      = "..."
+gcp_sa_json      = "{...}"
+auth0_domain     = "your-tenant.auth0.com"
+auth0_audience   = "https://your-api-identifier"

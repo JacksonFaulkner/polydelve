@@ -3,7 +3,7 @@ import os
 import duckdb
 from fastapi import Request
 
-# Switch to "md:action_odds" for MotherDuck
+# Switch to "md:polydelve" for MotherDuck
 DB_PATH = os.getenv("DB_PATH", "action_odds.dev.duckdb")
 
 
@@ -28,7 +28,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS markets (
             id          VARCHAR PRIMARY KEY,
-            company_id  VARCHAR NOT NULL REFERENCES companies(id),
+            company_id  VARCHAR NOT NULL,
             title       VARCHAR NOT NULL,
             description VARCHAR NOT NULL,
             grade       VARCHAR NOT NULL,
@@ -48,8 +48,8 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS bets (
             id         VARCHAR PRIMARY KEY,
-            user_id    VARCHAR NOT NULL REFERENCES users(id),
-            market_id  VARCHAR NOT NULL REFERENCES markets(id),
+            user_id    VARCHAR NOT NULL,
+            market_id  VARCHAR NOT NULL,
             placed_at  TIMESTAMP NOT NULL
         )
     """)
@@ -128,7 +128,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS news_packages (
-            news_id   VARCHAR NOT NULL REFERENCES news(id),
+            news_id   VARCHAR NOT NULL,
             name      VARCHAR NOT NULL,
             ecosystem VARCHAR NOT NULL,
             PRIMARY KEY (news_id, name)
@@ -155,7 +155,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS contracts (
             id                   VARCHAR PRIMARY KEY,
-            user_id              VARCHAR NOT NULL REFERENCES users(id),
+            user_id              VARCHAR NOT NULL,
             package_name         VARCHAR NOT NULL,
             package_ecosystem    VARCHAR NOT NULL,
             market_type          VARCHAR NOT NULL,  -- new_cve | kev_listing | epss_threshold
@@ -175,7 +175,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS news_duplicates (
             candidate_url    VARCHAR NOT NULL,
-            matched_news_id  VARCHAR NOT NULL REFERENCES news(id),
+            matched_news_id  VARCHAR NOT NULL,
             similarity_score FLOAT NOT NULL,
             detected_at      TIMESTAMPTZ DEFAULT now(),
             PRIMARY KEY (candidate_url, matched_news_id)

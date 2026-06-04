@@ -1,10 +1,14 @@
 from contextlib import asynccontextmanager
+import logging
 import os
 from pathlib import Path
 
 import duckdb
 import uvicorn
 from fastapi import FastAPI
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from api.middleware.cors import add_cors
 from api.routes.health import router as health_router
@@ -31,8 +35,18 @@ def _load_env() -> None:
 _load_env()
 
 
+class _HealthFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "GET /health" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if token := os.getenv("MOTHERDUCK_TOKEN"):
+        os.environ.setdefault("motherduck_token", token)
     conn = duckdb.connect(DB_PATH)
     init_db(conn)
     seed_companies(conn)
@@ -45,7 +59,11 @@ async def lifespan(app: FastAPI):
     conn.close()
 
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
 app = FastAPI(title="Action Odds", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 add_cors(app)
 app.include_router(health_router)
