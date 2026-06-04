@@ -56,6 +56,7 @@ const columns = [
   col.accessor("total_contracts", {
     header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Contracts</span>,
     enableSorting: false,
+    meta: { className: "hidden sm:table-cell" },
     cell: (info) => (
       <span className="tabular-nums text-sm text-zinc-400">{info.getValue()}</span>
     ),
@@ -63,6 +64,7 @@ const columns = [
   col.accessor("open_contracts", {
     header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Open</span>,
     enableSorting: false,
+    meta: { className: "hidden sm:table-cell" },
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
@@ -73,6 +75,7 @@ const columns = [
   col.accessor("won_contracts", {
     header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Won</span>,
     enableSorting: false,
+    meta: { className: "hidden sm:table-cell" },
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
@@ -83,6 +86,7 @@ const columns = [
   col.display({
     id: "win_rate",
     header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Win Rate</span>,
+    meta: { className: "hidden md:table-cell" },
     cell: (info) => {
       const { total_contracts, won_contracts } = info.row.original
       if (!total_contracts) return <span className="text-zinc-600">—</span>
@@ -147,7 +151,10 @@ export function LeaderboardTable() {
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b border-zinc-800">
                 {hg.headers.map((header) => (
-                  <th key={header.id} className="px-3 py-2.5 text-left whitespace-nowrap">
+                  <th
+                    key={header.id}
+                    className={`px-3 py-2.5 text-left whitespace-nowrap ${(header.column.columnDef.meta as { className?: string })?.className ?? ""}`}
+                  >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -175,7 +182,10 @@ export function LeaderboardTable() {
                     className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-2.5">
+                      <td
+                        key={cell.id}
+                        className={`px-3 py-2.5 ${(cell.column.columnDef.meta as { className?: string })?.className ?? ""}`}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}

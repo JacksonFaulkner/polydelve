@@ -7,7 +7,7 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 echo "==> Reading terraform outputs ..."
 ECR_URL=$(terraform -chdir=terraform output -raw ecr_repository_url)
 CLUSTER=$(terraform -chdir=terraform output -raw ecs_cluster_name 2>/dev/null || echo "polydelve")
-SERVICE=$(terraform -chdir=terraform output -raw ecs_service_name 2>/dev/null || echo "polydelve-backend")
+SERVICE=$(terraform -chdir=terraform output -raw ecs_service_name 2>/dev/null || echo "polydelve-backend-v2")
 
 FULL_IMAGE="${ECR_URL}:${IMAGE_TAG}"
 

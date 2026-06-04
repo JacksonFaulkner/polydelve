@@ -61,7 +61,7 @@ export function MarketSpotlight({ market, onBet }: Props) {
         </div>
       </div>
 
-      <div className="mb-5 flex items-center gap-6">
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div>
           <p className="text-zinc-500 text-xs">Payout</p>
           <p className="text-xl font-semibold text-emerald-400">{multiplier}×</p>
@@ -70,7 +70,7 @@ export function MarketSpotlight({ market, onBet }: Props) {
           <p className="text-zinc-500 text-xs">Price</p>
           <p className="text-xl font-semibold text-white">{purchase_price} <SchmeckleIcon /></p>
         </div>
-        <div className="ml-auto text-right">
+        <div className="sm:ml-auto text-right">
           <p className="text-zinc-500 text-xs">Duration</p>
           <p className="text-xl font-semibold text-white">{duration_days}d</p>
         </div>

@@ -8,7 +8,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_ecs_express_gateway_service" "backend" {
-  service_name            = "${var.app_name}-backend"
+  service_name            = "${var.app_name}-backend-v2"
   cluster                 = aws_ecs_cluster.main.name
   execution_role_arn      = aws_iam_role.execution.arn
   infrastructure_role_arn = aws_iam_role.infrastructure.arn

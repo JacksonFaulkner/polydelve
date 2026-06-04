@@ -36,7 +36,7 @@ export function SchmeckleChart({ history, current }: Props) {
           <Tooltip
             contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 6, fontSize: 12 }}
             labelFormatter={(l) => l}
-            formatter={(v: number) => [v.toLocaleString(), "schmeckles"]}
+            formatter={(v) => [(v as number).toLocaleString(), "schmeckles"]}
           />
           <Area
             type="monotone"

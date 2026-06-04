@@ -33,7 +33,7 @@ export function HotMarketsSidebar({ markets, onSelect }: Props) {
                 {Math.round((m.probability_history.at(-1)?.prob ?? 0) * 100)}%
               </span>
               <div className="flex items-center gap-0.5">
-                <span className="text-xs text-zinc-500">{fmtVolume(m.bet_count * m.price)}</span>
+                <span className="text-xs text-zinc-500">{fmtVolume(m.bet_count * m.contract.purchase_price)}</span>
                 <SchmeckleIcon className="h-3 w-3" />
               </div>
             </div>

@@ -223,7 +223,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               </div>
 
               {/* Three win amounts in a row */}
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
                   { label: "EPSS spike",  key: "epss_win", color: "text-emerald-400", dot: "bg-emerald-400" },
                   { label: "CVSS event",  key: "cvss_win", color: "text-[#FDE832]",   dot: "bg-[#FDE832]" },
@@ -246,7 +246,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
             </div>
 
             {/* Stake + Duration row */}
-            <div className="px-5 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-zinc-800/60">
+            <div className="px-5 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-800/60">
               <div className="space-y-1.5 pt-3">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
                   Stake (schmeckles)

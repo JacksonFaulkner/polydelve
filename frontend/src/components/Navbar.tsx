@@ -41,7 +41,7 @@ function Tab({
   return (
     <button
       onClick={() => onSectorChange(s)}
-      className={`flex items-center gap-1.5 px-3 py-4 text-sm font-medium transition-colors border-b-2 ${
+      className={`flex shrink-0 items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
         active
           ? isPredict
             ? "border-[#FDE832] text-[#FDE832]"
@@ -70,28 +70,15 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
       className="sticky top-0 z-50 border-b border-zinc-800"
       style={{ backgroundColor: "#15191D" }}
     >
-      <div className="mx-auto flex max-w-7xl items-stretch px-4">
-        {/* Logo */}
-        <div className="flex shrink-0 items-center gap-2 pr-6 py-3">
+      {/* Top bar: logo + right controls */}
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
+        <div className="flex shrink-0 items-center gap-2">
           <img src="/logo.png" alt="Polydelve" className="h-7 object-contain invert" />
           <span className="text-base font-bold tracking-tight text-white">Polydelve</span>
         </div>
 
-        {/* Tabs */}
-        <nav className="flex items-stretch">
-          {visibleTabs.map((s) => (
-            <Tab key={s} s={s} active={activeSector === s} onSectorChange={onSectorChange} />
-          ))}
-          {isAuthenticated && (
-            <>
-              <div className="mx-1 my-3 w-px bg-zinc-800" />
-              <Tab s="Admin" active={activeSector === "Admin"} onSectorChange={onSectorChange} />
-            </>
-          )}
-        </nav>
-
-        {/* Right side */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Search */}
           {searchOpen ? (
             <input
               autoFocus
@@ -99,24 +86,26 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
               placeholder="Search markets..."
               onChange={(e) => onSearch?.(e.target.value)}
               onBlur={() => setSearchOpen(false)}
-              className="w-48 rounded-full border border-zinc-700/60 bg-[#1C2229] py-1.5 px-3 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-zinc-500"
+              className="w-36 sm:w-48 rounded-full border border-zinc-700/60 bg-[#1C2229] py-1.5 px-3 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-zinc-500"
             />
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="rounded-full p-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+              className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
             >
               <Search className="h-4 w-4" />
             </button>
           )}
 
+          {/* Schmeckles */}
           {isAuthenticated && user && (
-            <div className="flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">
               <SchmeckleIcon className="h-5 w-5" />
               <span className="text-sm font-bold text-white">{user.schmeckles.toLocaleString()}</span>
             </div>
           )}
 
+          {/* Auth */}
           {isLoading ? null : isAuthenticated ? (
             <div className="flex items-center gap-2">
               {auth0User?.picture && (
@@ -124,7 +113,7 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
               )}
               <button
                 onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="hidden sm:block text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 Sign out
               </button>
@@ -132,12 +121,27 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
           ) : (
             <button
               onClick={() => loginWithRedirect()}
-              className="rounded-full bg-[#FDE832] px-4 py-1.5 text-sm font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
+              className="rounded-full bg-[#FDE832] px-3 sm:px-4 py-1.5 text-sm font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
             >
               Sign in
             </button>
           )}
         </div>
+      </div>
+
+      {/* Tab strip — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto scrollbar-none border-t border-zinc-800/60">
+        <nav className="mx-auto flex max-w-7xl items-stretch px-4 min-w-max md:min-w-0">
+          {visibleTabs.map((s) => (
+            <Tab key={s} s={s} active={activeSector === s} onSectorChange={onSectorChange} />
+          ))}
+          {isAuthenticated && (
+            <>
+              <div className="mx-1 my-2.5 w-px bg-zinc-800 shrink-0" />
+              <Tab s="Admin" active={activeSector === "Admin"} onSectorChange={onSectorChange} />
+            </>
+          )}
+        </nav>
       </div>
     </header>
   );

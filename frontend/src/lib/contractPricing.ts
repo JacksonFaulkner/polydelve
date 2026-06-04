@@ -120,7 +120,7 @@ export function buildPayoutCurve(
   const grade = computeGrade(numCves, epssScore, inCisaKev, maxCvss)
   return Array.from({ length: steps }, (_, i) => {
     const threshold = 1 + (i / (steps - 1)) * 9
-    const prob = computeProbability(epssScore, numCves, Math.max(numCves, 1), inCisaKev, recentNewsCount, exploitInNews, threshold)
+    const prob = computeProbability(epssScore, numCves, Math.max(numCves, 1), recentNewsCount, exploitInNews, threshold)
     const mult = computeMultiplier(prob, grade, purchasePrice, durationDays)
     return {
       threshold: Math.round(threshold * 4) / 4,

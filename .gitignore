@@ -30,3 +30,4 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/.terraform/
 terraform/.env
+frontend/dist/
