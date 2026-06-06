@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -241,6 +241,40 @@ class NewsEmbeddings(BaseModel):
     title: list[float] = Field(exclude=True)
     description: list[float] = Field(exclude=True)
     source: list[float] = Field(exclude=True)
+
+
+# ── DB row shapes (ingestion / enrichment) ────────────────────────────────────
+
+class EpssHistoryRow(BaseModel):
+    name: str
+    ecosystem: Ecosystem
+    epss_score: float
+    recorded_at: date = Field(default_factory=date.today)
+
+
+class MalAdvisoryRow(BaseModel):
+    osv_id: str
+    name: str
+    ecosystem: Ecosystem
+    published_at: datetime | None
+    modified_at: datetime | None
+    withdrawn: bool = False
+    summary: str | None = None
+
+
+class PackageRow(BaseModel):
+    name: str
+    ecosystem: Ecosystem
+    github_org: str | None = None
+    logo_url: str | None = None
+    weekly_downloads: int | None = None
+    cve_ids: list[str] = Field(default_factory=list)
+    epss_score: float | None = None
+    has_mal_advisory: bool = False
+    mal_advisory_published_at: datetime | None = None
+    risk_score: float | None = None
+    last_enriched_at: datetime | None = None
+    sectors: list[str] = Field(default_factory=list)
 
 
 class RecentNews(BaseModel):

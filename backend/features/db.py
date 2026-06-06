@@ -4,7 +4,7 @@ import duckdb
 from fastapi import Request
 
 # Switch to "md:polydelve" for MotherDuck
-DB_PATH = os.getenv("DB_PATH", "action_odds.dev.duckdb")
+DB_PATH = os.getenv("DB_PATH", "polydelve.dev.duckdb")
 
 
 def get_db(request: Request) -> duckdb.DuckDBPyConnection:
@@ -13,7 +13,9 @@ def get_db(request: Request) -> duckdb.DuckDBPyConnection:
 
 def get_db_conn() -> duckdb.DuckDBPyConnection:
     """Direct connection for scripts (no FastAPI Request context)."""
-    return duckdb.connect(DB_PATH)
+    conn = duckdb.connect(DB_PATH)
+    init_db(conn)
+    return conn
 
 
 def init_db(conn: duckdb.DuckDBPyConnection) -> None:
@@ -179,6 +181,18 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             similarity_score FLOAT NOT NULL,
             detected_at      TIMESTAMPTZ DEFAULT now(),
             PRIMARY KEY (candidate_url, matched_news_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS mal_advisories (
+            osv_id       VARCHAR NOT NULL,
+            name         VARCHAR NOT NULL,
+            ecosystem    VARCHAR NOT NULL,
+            published_at TIMESTAMPTZ,
+            modified_at  TIMESTAMPTZ,
+            withdrawn    BOOLEAN NOT NULL DEFAULT false,
+            summary      VARCHAR,
+            PRIMARY KEY (osv_id, name, ecosystem)
         )
     """)
 
