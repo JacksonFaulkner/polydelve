@@ -11,7 +11,18 @@ NPM := cd frontend &&
 .PHONY: help
 help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \
-	/^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2 } \
+	/^[a-zA-Z_0-9-]+:.*?##/ { \
+		target = $$1; desc = $$2; \
+		while (length(desc) > 42) { \
+			split_at = 42; \
+			while (split_at > 1 && substr(desc, split_at, 1) != " ") split_at--; \
+			if (target != "") { printf "  \033[36m%-22s\033[0m %s\n", target, substr(desc, 1, split_at - 1); target = ""; } \
+			else printf "  %-22s  %s\n", "", substr(desc, 1, split_at - 1); \
+			desc = substr(desc, split_at + 1); \
+		} \
+		if (target == "") printf "  %-22s  %s\n", "", desc; \
+		else printf "  \033[36m%-22s\033[0m %s\n", target, desc; \
+	} \
 	/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 
 ##@ Dev
@@ -44,27 +55,51 @@ be-install: ## Install backend dependencies
 fe-install: ## Install frontend dependencies
 	$(NPM) npm install
 
-##@ Data pipeline
+##@ Data pipeline — Onboarding (run once for new packages)
 
 .PHONY: seed-packages
-seed-packages: ## Seed top 500 PyPI + npm packages (downloads, CVEs, EPSS, KEV, risk_score)
+seed-packages: ## Bulk seed PyPI + npm packages up to ~100k (downloads, CVEs, EPSS, risk_score)
 	$(UV) python scripts/seed_top_packages.py
 
+.PHONY: build-cve-history
+build-cve-history: ## Backfill CVE history for all tracked packages (requires seed-packages first)
+	$(UV) python scripts/build_cve_history.py
+
+.PHONY: classify-sectors-llm
+classify-sectors-llm: ## LLM sector classification — slow + costs money, run for new packages only
+	$(UV) python scripts/classify_package_sectors_llm.py
+
+##@ Data pipeline — Scheduled (daily/frequent)
+
+.PHONY: refresh-epss
+refresh-epss: ## Refresh EPSS scores from FIRST API (safe to run frequently)
+	$(UV) python scripts/refresh_epss.py
+
+.PHONY: ingest-mal
+ingest-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (daily)
+	$(UV) python scripts/ingest_mal_advisories.py
+
 .PHONY: news-update
-news-update: ## Fetch and store latest security news
+news-update: ## Fetch + ingest structured security news via GPT (daily, 7-day window)
 	$(UV) python scripts/news_update.py
 
 .PHONY: enrich-packages
-enrich-packages: ## Enrich packages with logo + GitHub org (run after seed-packages)
+enrich-packages: ## Fill NULL package fields: downloads, logos, CVEs (daily, do not run with refresh-epss)
 	$(UV) python scripts/enrich_packages.py
 
 .PHONY: enrich-sectors
-enrich-sectors: ## Classify package sectors via heuristics
+enrich-sectors: ## Heuristic sector classification for packages missing sectors (daily)
 	$(UV) python scripts/enrich_package_sectors.py
 
-.PHONY: classify-sectors-llm
-classify-sectors-llm: ## Classify package sectors via LLM (slow, optional)
-	$(UV) python scripts/classify_package_sectors_llm.py
+##@ Data pipeline — Export
+
+.PHONY: push-motherduck
+push-motherduck: ## Sync local DuckDB → MotherDuck prod (run last, after all enrichment)
+	$(UV) python scripts/push_to_motherduck.py
+
+.PHONY: ingest-epss-history
+ingest-epss-history: ## Bulk-load historical EPSS CSV files (weekly, expensive I/O)
+	$(UV) python scripts/ingest_epss_history.py
 
 ##@ Docs
 
