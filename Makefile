@@ -104,16 +104,8 @@ ingest-epss-history: ## Bulk-load historical EPSS CSV files (weekly, expensive I
 ##@ Docs
 
 .PHONY: docs
-docs: ## Serve docs locally with live reload
-	$(UV) --group docs mkdocs serve
-
-.PHONY: docs-build
-docs-build: ## Build static docs site
-	$(UV) --group docs mkdocs build
-
-.PHONY: docs-deploy
-docs-deploy: ## Deploy docs to GitHub Pages
-	$(UV) --group docs mkdocs gh-deploy
+docs: ## Serve docs locally (Next.js, port 3001)
+	cd docs && npm run dev
 
 ##@ Quality
 

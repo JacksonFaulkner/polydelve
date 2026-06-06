@@ -1,0 +1,38 @@
+---
+title: "Market UX"
+description: "How users interact with markets and contracts in the UI."
+---
+
+## Buying a contract
+
+1. Find a package via the market feed or Predict page.
+2. Review the EPSS chart — higher EPSS = higher probability of exploitation = higher contract cost.
+3. Click **Buy** on a market card or configure thresholds manually in Predict.
+4. Auth0 login gate: unauthenticated users are redirected to login on buy attempt.
+5. On success, a confirmation shows `max_payout` and `multiplier`.
+
+## EPSS chart
+
+`EpssChart` renders a time-series line of daily EPSS scores for a package's CVEs. CVE publication dates appear as scatter points on the same axis. This lets users see how exploitation risk evolved after each disclosure.
+
+## Contract simulation
+
+`ContractSimChart` shows a user how a contract's payout changes under different EPSS trajectories. Useful for setting thresholds before committing Schmeckles.
+
+## Market cards
+
+`MarketCard` displays:
+- Package name, ecosystem badge, sector tags
+- Current EPSS score and trend arrow
+- Contract price and payout multiplier
+- Exploit signal badges (PoC, active exploit, malicious)
+
+`MarketSpotlight` is the same data in a larger format with the EPSS chart embedded.
+
+## Auth flow
+
+Auth is handled by Auth0 via `@/lib/auth`. The `useAuth` hook exposes `isAuthenticated`, `isLoading`, and `loginWithRedirect`. On first authenticated load, `POST /users` is called to provision the account if it doesn't exist yet.
+
+## Schmeckle display
+
+`SchmeckleIcon` and `SchmeckleChart` appear throughout the app. Balance is fetched from `GET /users/me` and kept in local React state — no global store. Balance refreshes after any buy or resolution event.

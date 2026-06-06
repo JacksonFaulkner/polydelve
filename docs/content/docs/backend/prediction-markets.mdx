@@ -1,0 +1,46 @@
+---
+title: "Prediction Markets"
+description: "How contracts are created, priced, and resolved."
+---
+
+## What is a contract?
+
+A contract is a bet that a target package will receive a CVE meeting specific criteria before a deadline. Users buy contracts for a fixed price; if the condition is met, they receive a payout.
+
+### Contract parameters
+
+| Field | Description |
+|-------|-------------|
+| `package_name` | Target npm or PyPI package |
+| `ecosystem` | `npm` or `PyPI` |
+| `cvss_threshold` | Minimum CVSS score to trigger resolution (e.g. 7.0) |
+| `epss_threshold` | Minimum EPSS score to trigger resolution (optional) |
+| `purchase_price` | Cost in Schmeckles |
+| `duration_days` | Days until the contract expires unresolved |
+
+### Resolution
+
+Contracts resolve **YES** when OSV records a new CVE against the package that meets the CVSS/EPSS thresholds before the deadline. Resolution runs on the EPSS refresh cycle.
+
+Contracts expire **NO** if the deadline passes without a qualifying CVE.
+
+## Pricing
+
+Contract price is calculated in `features/contract_pricing.py`. Inputs:
+
+- **Base EPSS score** — higher exploitation probability → higher cost
+- **CVE history weight** — packages with frequent past CVEs cost more
+- **Download weight** — widely-used packages carry higher demand premium
+- **Multiplier** — payout = `purchase_price × multiplier`
+
+The multiplier is inversely proportional to probability: low-risk packages pay more per Schmeckle.
+
+## Schmeckles
+
+Users start with 1000 Schmeckles. Buying a contract deducts `purchase_price` immediately. Payouts credit on resolution. Balance is tracked in the `users` table.
+
+There is no mechanism to earn Schmeckles outside of winning contracts — scarcity is intentional.
+
+## Markets vs contracts
+
+A **market** is a curated contract surfaced on the home feed. Markets are editorially selected for packages with interesting EPSS trends or recent exploit activity. Any contract can exist; only featured ones appear as markets.

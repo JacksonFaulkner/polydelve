@@ -1,0 +1,36 @@
+---
+title: "Pages & Navigation"
+description: "The main views in Polydelve and what each one does."
+---
+
+Navigation lives in the `Navbar` component. Sector tabs (All, npm, PyPI, AI/ML, …) filter the main market feed. Named sections are separate pages.
+
+## Home (All / sector view)
+
+The default view. Shows:
+- **Market Spotlight** — a single featured market with full contract detail and buy button
+- **Market grid** — remaining open markets as cards
+- **Hot Markets sidebar** — ranked by EPSS score or recent activity
+- **Recent News** — latest security news items tagged by package/sector
+
+Selecting a sector (e.g. "npm", "AI/ML") filters the market grid to packages in that sector.
+
+## Predict
+
+`PredictPage` — browse all packages and build a custom contract. Users select a package, set their CVSS/EPSS thresholds and duration, and see a live price + payout estimate before buying.
+
+## Dashboard
+
+`DashboardPage` — authenticated users see their open contracts, resolved history, Schmeckle balance over time (`SchmeckleTimeline`), and per-contract P&L.
+
+## Leaderboard
+
+`LeaderboardTable` — all users ranked by accuracy score. Shows username, score, and contract count.
+
+## News
+
+`NewsPage` — full security news feed with pagination. Articles are tagged by sector and package. Clicking a tag filters to related markets.
+
+## Admin
+
+`AdminPage` — restricted to admin users. Tools for triggering data refresh, inspecting raw contract state, and resolving markets manually.
