@@ -2,131 +2,147 @@
 Refresh EPSS scores for all tracked packages.
 
 Strategy:
-  1. For each package, collect its CVE IDs from cve_history.
-  2. Query FIRST EPSS API in batches of 100 CVEs.
-  3. For each package, take the MAX EPSS across its CVEs (most dangerous signal wins).
-  4. Write snapshot to epss_history, update packages.epss_score.
+  1. Download today's EPSS CSV.gz (single request, ~220k CVEs).
+  2. Join against cve_history to find scores for tracked packages.
+  3. MAX(epss) per package — most dangerous signal wins.
+  4. Update packages.epss_score, snapshot to epss_history if changed or 10+ days stale.
 
-Run daily via cron or: uv run python scripts/refresh_epss.py
+Run daily/frequently: uv run python scripts/refresh_epss.py
 """
+import argparse
 import sys
-import time
 from datetime import date
 from pathlib import Path
 
+import duckdb
 import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from features.db import get_db_conn  # noqa: E402
 
-EPSS_API = "https://api.first.org/data/1.0/epss"
-BATCH = 100
-SLEEP_BETWEEN_BATCHES = 0.5  # seconds — be polite to FIRST API
+BULK_URL = "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz"
+CACHE_DIR = Path("/tmp/epss_csv")
 
 
-def fetch_epss_batch(cve_ids: list[str]) -> dict[str, float]:
-    """Query FIRST API for a batch of CVE IDs. Returns {cve_id: epss_score}."""
-    try:
-        resp = httpx.get(
-            EPSS_API,
-            params={"cve": ",".join(cve_ids)},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        data = resp.json().get("data", [])
-        return {row["cve"]: float(row["epss"]) for row in data}
-    except Exception as e:
-        print(f"  WARN: batch fetch failed ({e}), skipping")
-        return {}
+def download_today(today: date) -> Path:
+    dest = CACHE_DIR / f"epss_{today.isoformat()}.csv.gz"
+    if dest.exists() and dest.stat().st_size > 1000:
+        print(f"  using cached {dest.name}", flush=True)
+        return dest
+    print(f"  downloading {BULK_URL.format(date=today.isoformat())} …", flush=True)
+    r = httpx.get(BULK_URL.format(date=today.isoformat()), timeout=60, follow_redirects=True)
+    r.raise_for_status()
+    dest.write_bytes(r.content)
+    print(f"  saved {dest.stat().st_size // 1_000} KB", flush=True)
+    return dest
+
+
+def _latest_cached() -> date | None:
+    files = sorted(CACHE_DIR.glob("epss_*.csv.gz"))
+    return date.fromisoformat(files[-1].name.removeprefix("epss_").removesuffix(".csv.gz")) if files else None
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--date", help="YYYY-MM-DD — use specific cached file (default: today)")
+    parser.add_argument("--latest-cached", action="store_true", help="Use most recent cached file, no download")
+    args = parser.parse_args()
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    if args.latest_cached:
+        cached = _latest_cached()
+        if not cached:
+            print("No cached files found in", CACHE_DIR)
+            return
+        today = cached
+        print(f"  using latest cached: {today}", flush=True)
+    elif args.date:
+        today = date.fromisoformat(args.date)
+    else:
+        today = date.today()
+
+    csv_path = download_today(today)
+
     conn = get_db_conn()
-    today = date.today()
 
-    # Collect CVE IDs per package
-    rows = conn.execute(
-        """
-        SELECT ch.name, ch.ecosystem, LIST(ch.cve_id) AS cve_ids
-        FROM cve_history ch
-        WHERE ch.cve_id IS NOT NULL AND ch.cve_id != ''
-        GROUP BY ch.name, ch.ecosystem
-        """
-    ).fetchall()
+    # Build temp CVE→package mapping
+    conn.execute("""
+        CREATE TEMP TABLE _pkg_cves AS
+        SELECT name, ecosystem, cve_id
+        FROM cve_history
+        WHERE cve_id LIKE 'CVE-%'
+    """)
+    n_cves = conn.execute("SELECT COUNT(DISTINCT cve_id) FROM _pkg_cves").fetchone()[0]
+    print(f"  tracked CVEs: {n_cves}", flush=True)
 
-    if not rows:
-        print("No CVE data found — nothing to refresh.")
-        return
+    # Compute max EPSS per package via vectorized join
+    conn.execute(f"""
+        CREATE TEMP TABLE _today_epss AS
+        SELECT
+            pc.name,
+            pc.ecosystem,
+            MAX(CAST(e.epss AS FLOAT)) AS epss_score
+        FROM read_csv(
+            '{csv_path}',
+            skip=1,
+            header=true,
+            columns={{'cve':'VARCHAR','epss':'VARCHAR','percentile':'VARCHAR'}}
+        ) AS e
+        JOIN _pkg_cves pc ON pc.cve_id = e.cve
+        GROUP BY pc.name, pc.ecosystem
+    """)
 
-    print(f"Refreshing EPSS for {len(rows)} packages ({today})…")
+    n_pkgs = conn.execute("SELECT COUNT(*) FROM _today_epss").fetchone()[0]
+    print(f"  packages with EPSS data: {n_pkgs}", flush=True)
 
-    # Collect all unique CVE IDs across all packages
-    all_cves: set[str] = set()
-    pkg_cves: dict[tuple[str, str], list[str]] = {}
-    for name, eco, cve_list in rows:
-        valid = [c for c in (cve_list or []) if c and c.startswith("CVE-")]
-        if valid:
-            pkg_cves[(name, eco)] = valid
-            all_cves.update(valid)
+    # Update packages.epss_score
+    conn.execute("""
+        UPDATE packages p
+        SET epss_score = t.epss_score
+        FROM _today_epss t
+        WHERE p.name = t.name AND p.ecosystem = t.ecosystem
+    """)
+    print(f"  packages.epss_score updated: {n_pkgs}", flush=True)
 
-    all_cves_list = sorted(all_cves)
-    print(f"  {len(all_cves_list)} unique CVEs across all packages")
-
-    # Fetch from FIRST in batches
-    epss_map: dict[str, float] = {}
-    for i in range(0, len(all_cves_list), BATCH):
-        batch = all_cves_list[i : i + BATCH]
-        result = fetch_epss_batch(batch)
-        epss_map.update(result)
-        print(f"  batch {i//BATCH + 1}: fetched {len(result)}/{len(batch)} scores")
-        if i + BATCH < len(all_cves_list):
-            time.sleep(SLEEP_BETWEEN_BATCHES)
-
-    print(f"  total EPSS scores fetched: {len(epss_map)}")
-
-    # Compute max EPSS per package and write
-    updated = 0
-    snapshotted = 0
-    for (name, eco), cves in pkg_cves.items():
-        scores = [epss_map[c] for c in cves if c in epss_map]
-        if not scores:
-            continue
-        max_epss = max(scores)
-
-        conn.execute(
-            "UPDATE packages SET epss_score = ? WHERE name = ? AND ecosystem = ?",
-            [max_epss, name, eco],
+    # Snapshot to epss_history — only if score changed or 10+ days since last record
+    snapshotted = conn.execute(f"""
+        INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
+        SELECT t.name, t.ecosystem, t.epss_score, DATE '{today.isoformat()}'
+        FROM _today_epss t
+        WHERE NOT EXISTS (
+            SELECT 1 FROM epss_history h
+            WHERE h.name = t.name
+              AND h.ecosystem = t.ecosystem
+              AND h.recorded_at = DATE '{today.isoformat()}'
         )
-        updated += 1
+        AND (
+            -- no history yet
+            NOT EXISTS (
+                SELECT 1 FROM epss_history h2
+                WHERE h2.name = t.name AND h2.ecosystem = t.ecosystem
+            )
+            OR
+            -- score changed
+            (
+                SELECT ROUND(h3.epss_score, 6)
+                FROM epss_history h3
+                WHERE h3.name = t.name AND h3.ecosystem = t.ecosystem
+                ORDER BY h3.recorded_at DESC LIMIT 1
+            ) != ROUND(t.epss_score, 6)
+            OR
+            -- 10+ days since last snapshot
+            (
+                SELECT (DATE '{today.isoformat()}' - MAX(h4.recorded_at))
+                FROM epss_history h4
+                WHERE h4.name = t.name AND h4.ecosystem = t.ecosystem
+            ) >= 10
+        )
+        ON CONFLICT (name, ecosystem, recorded_at) DO NOTHING
+        RETURNING 1
+    """).fetchall()
 
-        # Only write history if value changed OR 10+ days since last record
-        last = conn.execute(
-            """
-            SELECT epss_score, recorded_at FROM epss_history
-            WHERE name = ? AND ecosystem = ?
-            ORDER BY recorded_at DESC LIMIT 1
-            """,
-            [name, eco],
-        ).fetchone()
-
-        value_changed = last is None or round(last[0], 6) != round(max_epss, 6)
-        days_since = (today - last[1]).days if last else 999
-
-        if value_changed or days_since >= 10:
-            try:
-                conn.execute(
-                    """
-                    INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    [name, eco, max_epss, today],
-                )
-                snapshotted += 1
-            except Exception:
-                pass  # already have today's record
-
-    print(f"  packages updated: {updated}")
-    print(f"  history rows added: {snapshotted}")
+    print(f"  epss_history rows added: {len(snapshotted)}")
     conn.close()
     print("Done.")
 

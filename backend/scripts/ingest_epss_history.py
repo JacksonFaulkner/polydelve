@@ -4,8 +4,11 @@ Bulk-ingest historical EPSS scores into a DuckDB (default: action_odds.dev.duckd
 Reads pre-downloaded CSV.GZ files from /tmp/epss_csv/ via DuckDB read_csv (vectorized).
 Downloads any missing files first.
 
+Earliest available date from empiricalsecurity.com: 2021-04-14
+
 Usage:
-  uv run python scripts/ingest_epss_history.py --start 2022-01-01 --end 2026-03-01
+  uv run python scripts/ingest_epss_history.py --start 2021-04-14
+  uv run python scripts/ingest_epss_history.py --start 2021-04-14 --end 2026-03-01
   uv run python scripts/ingest_epss_history.py --skip-download  # use cached files only
 """
 import argparse

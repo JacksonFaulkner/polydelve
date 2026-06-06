@@ -20,7 +20,7 @@ import duckdb
 import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from features.db import DB_PATH, init_db
+from features.db import get_db_conn
 
 BULK_URLS = {
     "npm":  "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
@@ -140,20 +140,6 @@ def upsert(conn: duckdb.DuckDBPyConnection, records: list[dict]) -> int:
     return len(records)
 
 
-def ensure_schema(conn: duckdb.DuckDBPyConnection) -> None:
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS mal_advisories (
-            osv_id       VARCHAR NOT NULL,
-            name         VARCHAR NOT NULL,
-            ecosystem    VARCHAR NOT NULL,
-            published_at TIMESTAMPTZ,
-            modified_at  TIMESTAMPTZ,
-            withdrawn    BOOLEAN NOT NULL DEFAULT false,
-            summary      VARCHAR,
-            PRIMARY KEY (osv_id, name, ecosystem)
-        )
-    """)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -165,9 +151,7 @@ def main() -> None:
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-    conn = duckdb.connect(DB_PATH)
-    init_db(conn)
-    ensure_schema(conn)
+    conn = get_db_conn()
 
     ecosystems = [args.ecosystem] if args.ecosystem else list(BULK_URLS)
 
