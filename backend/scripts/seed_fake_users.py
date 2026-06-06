@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from features.db import get_db_conn, init_db
+from features.db import get_db_conn
 
 MARKET_TYPES = ["new_cve", "kev_listing", "epss_threshold"]
 STATUSES = ["open", "won", "lost", "sold"]
@@ -99,7 +99,6 @@ def seed(conn) -> None:
 
 if __name__ == "__main__":
     conn = get_db_conn()
-    init_db(conn)
     if "--remove" in sys.argv:
         remove_seeds(conn)
     else:

@@ -19,7 +19,7 @@ from api.routes.prediction_market import router as pm_router
 from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
 from api.auth import _auth0
-from features.db import DB_PATH, init_db, seed_companies
+from features.db import DB_PATH, init_db
 
 
 def _load_env() -> None:
@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI):
         os.environ.setdefault("motherduck_token", token)
     conn = duckdb.connect(DB_PATH)
     init_db(conn)
-    seed_companies(conn)
     app.state.db = conn
     try:
         await _auth0().api_client._discover()
@@ -81,4 +80,3 @@ def dev() -> None:
 
 if __name__ == "__main__":
     dev()
-

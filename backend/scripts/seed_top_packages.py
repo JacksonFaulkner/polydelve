@@ -1,11 +1,11 @@
 """
-Seed packages table with top 500 PyPI + npm packages.
+Seed packages table with top PyPI + npm packages (up to ~100k each).
 No LLM enrichment — downloads, CVEs, EPSS only.
 
 Flow:
   1. Fetch package name candidates (PyPI list is pre-sorted; npm candidates are re-ranked)
   2. Fetch actual weekly download counts for all candidates
-  3. Re-sort npm by downloads, trim to top 500
+  3. Re-sort npm by downloads
   4. Batch-fetch CVE IDs via OSV querybatch (via build_cve_history)
   5. Bulk-fetch EPSS scores for all found CVEs
   6. Compute risk_score = weekly_downloads * epss_score
