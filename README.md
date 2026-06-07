@@ -1,45 +1,37 @@
 # Polydelve
 
-> Prediction markets meet software security events
+Prediction markets for software security risk. Open contracts on whether a package gets a new CVE, crosses an EPSS threshold, or lands on the KEV list. Built as a research and demo platform for exploring exploit-signal forecasting over the npm and PyPI ecosystems.
 
-**🚀 Live at [polydelve.com](https://polydelve.com) — deployed but very buggy, proceed with caution**
+Live at [polydelve.com](https://polydelve.com)
 
 ## What it does
 
-- **CVE tracking** — monitor packages across npm, PyPI, and more for known vulnerabilities
-- **EPSS trend charts** — see exploitation probability over time with CVE scatter overlay
+- **CVE tracking** — monitor packages across npm and PyPI for known vulnerabilities
+- **EPSS trend charts** — exploitation probability over time with CVE scatter overlay
 - **Exploit signals** — OSV malicious advisory detection, PoC and active exploit flags
-- **Prediction markets** — bet on whether a CVE gets exploited; let the market price your risk
-- **Leaderboard** — top contributors ranked by accuracy
+- **Prediction markets** — open contracts on security events; Schmeckle-denominated, no real money
+- **Leaderboard** — users ranked by prediction accuracy
 
 ## Stack
 
-- **Backend** — FastAPI, Duckdb, Motherduck, uv, Gemini Embed 2
-- **Frontend** — React, Tailwind, Shadcn, Recharts
-- **Data** — OSV, NVD, EPSS (FIRST.org)
+| Layer | Tech |
+|---|---|
+| Frontend | React, Vite, TypeScript, Tailwind, Shadcn, Recharts |
+| Backend | FastAPI, Python 3.14, DuckDB |
+| Database | MotherDuck (serverless DuckDB cloud) |
+| Infra | AWS ECS Fargate, CloudFront, S3, Step Functions, EventBridge |
+| Auth | Auth0 |
 
-<p align="center">
-  <strong>Polydelve in action</strong><br/>
-  <img src="./assets/demo.gif" alt="Polydelve demo" width="100%" />
-</p>
-
-## Running locally
+## Local dev
 
 ```bash
-# Install all dependencies
-make install
-
-# Start backend + frontend together
-make dev
+make install    # install all deps
+make dev        # backend (8000) + frontend (5173)
+make docs       # docs site (3001)
+make help       # all targets
 ```
 
-## Compliance
-
-<p align="center"><i>Proud to be the only company to fail a SOC 2 audit by Delve.</i></p>
-
-<p align="center">
-  <img src="https://www.aomni.com/landing/assets/soc2.png" alt="NOT SOC 2 Compliant" height="120" />
-</p>
+See the [docs](./docs) for architecture, API reference, data pipeline, and model docs.
 
 ## License
 

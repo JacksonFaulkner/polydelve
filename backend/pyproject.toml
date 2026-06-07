@@ -1,5 +1,5 @@
 [project]
-name = "action-odds-backend"
+name = "polydelve-backend"
 version = "0.1.0"
 description = "Backend for Polydelve — a prediction market platform for software security events"
 readme = "README.md"
