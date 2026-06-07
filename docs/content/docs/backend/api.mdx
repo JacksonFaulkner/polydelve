@@ -3,6 +3,12 @@ title: "API Reference"
 description: "Backend REST endpoints. Base URL: https://api.polydelve.com (prod) or http://localhost:8000 (local)."
 ---
 
+import DrawioEmbed from '../../../app/components/DrawioEmbed';
+
+## Architecture
+
+<DrawioEmbed file="diagrams/read-path.drawio" height={580} />
+
 ## Auth
 
 All write endpoints require an Auth0 JWT in the `Authorization: Bearer <token>` header. Read endpoints are public.
