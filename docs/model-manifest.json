@@ -1,0 +1,1129 @@
+[
+  {
+    "name": "Market",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Unique market identifier.')",
+        "description": "Unique market identifier."
+      },
+      {
+        "name": "title",
+        "type": "str",
+        "default": "Field(description='Display name of the market.')",
+        "description": "Display name of the market."
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='Human-readable description of the market event.')",
+        "description": "Human-readable description of the market event."
+      },
+      {
+        "name": "grade",
+        "type": "Literal['A', 'B', 'C', 'D', 'F']",
+        "default": "Field(description='Risk grade of the market. A = low risk, F = high risk.')",
+        "description": "Risk grade of the market. A = low risk, F = high risk."
+      },
+      {
+        "name": "price",
+        "type": "int",
+        "default": "Field(description='Cost in Schmeckles to enter this market.')",
+        "description": "Cost in Schmeckles to enter this market."
+      },
+      {
+        "name": "payout",
+        "type": "int",
+        "default": "Field(description='Schmeckle payout if the market resolves YES.')",
+        "description": "Schmeckle payout if the market resolves YES."
+      },
+      {
+        "name": "end_date",
+        "type": "datetime",
+        "default": "Field(description='Deadline for market resolution. Must be within 31 days.')",
+        "description": "Deadline for market resolution. Must be within 31 days."
+      },
+      {
+        "name": "status",
+        "type": "Literal['open', 'won', 'expired']",
+        "default": "Field(description='Current market state.')",
+        "description": "Current market state."
+      }
+    ],
+    "lineno": 30
+  },
+  {
+    "name": "Bet",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Unique bet identifier.')",
+        "description": "Unique bet identifier."
+      },
+      {
+        "name": "user_id",
+        "type": "str",
+        "default": "Field(description='Auth0 user ID of the bettor.')",
+        "description": "Auth0 user ID of the bettor."
+      },
+      {
+        "name": "market_id",
+        "type": "str",
+        "default": "Field(description='Market this bet belongs to.')",
+        "description": "Market this bet belongs to."
+      },
+      {
+        "name": "placed_at",
+        "type": "datetime",
+        "default": "Field(description='Timestamp when the bet was placed.')",
+        "description": "Timestamp when the bet was placed."
+      }
+    ],
+    "lineno": 50
+  },
+  {
+    "name": "Company",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Unique company identifier.')",
+        "description": "Unique company identifier."
+      },
+      {
+        "name": "title",
+        "type": "str",
+        "default": "Field(description='Company display name.')",
+        "description": "Company display name."
+      },
+      {
+        "name": "logo",
+        "type": "str",
+        "default": "Field(description='URL to the company logo image.')",
+        "description": "URL to the company logo image."
+      },
+      {
+        "name": "grade",
+        "type": "Literal['A', 'B', 'C', 'D', 'F']",
+        "default": "Field(description='Security risk grade. A = lowest risk, F = highest.')",
+        "description": "Security risk grade. A = lowest risk, F = highest."
+      }
+    ],
+    "lineno": 57
+  },
+  {
+    "name": "User",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Auth0 user ID (sub claim).')",
+        "description": "Auth0 user ID (sub claim)."
+      },
+      {
+        "name": "email",
+        "type": "str | None",
+        "default": "Field(default=None, description='User email from Auth0 profile.')",
+        "description": "User email from Auth0 profile."
+      },
+      {
+        "name": "username",
+        "type": "str | None",
+        "default": "Field(default=None, description='Display name chosen by the user.')",
+        "description": "Display name chosen by the user."
+      },
+      {
+        "name": "schmeckles",
+        "type": "int",
+        "default": "Field(default=1000, description='In-game currency balance. New users start with 1000.')",
+        "description": "In-game currency balance. New users start with 1000."
+      }
+    ],
+    "lineno": 66
+  },
+  {
+    "name": "ContractBase",
+    "fields": [
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package the contract is written against.')",
+        "description": "Package the contract is written against."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": "Field(default=None, description='CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition.')",
+        "description": "CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition."
+      },
+      {
+        "name": "epss_threshold",
+        "type": "float | None",
+        "default": "Field(default=None, description='EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition.')",
+        "description": "EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(description='Schmeckles paid upfront to open the contract.')",
+        "description": "Schmeckles paid upfront to open the contract."
+      },
+      {
+        "name": "duration_days",
+        "type": "ContractDuration",
+        "default": "Field(default=30, description='Contract lifetime in days. One of 7, 14, or 30.')",
+        "description": "Contract lifetime in days. One of 7, 14, or 30."
+      }
+    ],
+    "lineno": 75
+  },
+  {
+    "name": "QuoteRequest",
+    "fields": [],
+    "lineno": 84
+  },
+  {
+    "name": "BuyRequest",
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "str",
+        "default": "Field(description='Auth0 user ID of the buyer. Deducted from their Schmeckle balance.')",
+        "description": "Auth0 user ID of the buyer. Deducted from their Schmeckle balance."
+      }
+    ],
+    "lineno": 88
+  },
+  {
+    "name": "SimulateRequest",
+    "fields": [
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package to simulate a contract for.')",
+        "description": "Package to simulate a contract for."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": "Field(default=None, description='CVSS threshold to test as a win condition. Null to exclude.')",
+        "description": "CVSS threshold to test as a win condition. Null to exclude."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(description='Hypothetical Schmeckle cost to simulate.')",
+        "description": "Hypothetical Schmeckle cost to simulate."
+      },
+      {
+        "name": "duration_days",
+        "type": "ContractDuration",
+        "default": "Field(default=30, description='Contract duration to simulate: 7, 14, or 30 days.')",
+        "description": "Contract duration to simulate: 7, 14, or 30 days."
+      },
+      {
+        "name": "epss_drift",
+        "type": "float",
+        "default": "Field(default=1.0, description='Multiplier applied to current EPSS to model future drift. 1.0 = no change.')",
+        "description": "Multiplier applied to current EPSS to model future drift. 1.0 = no change."
+      }
+    ],
+    "lineno": 92
+  },
+  {
+    "name": "SimCurvePoint",
+    "fields": [
+      {
+        "name": "label",
+        "type": "str",
+        "default": "Field(description='X-axis label for this point on the payout curve (e.g. day or scenario name).')",
+        "description": "X-axis label for this point on the payout curve (e.g. day or scenario name)."
+      },
+      {
+        "name": "sell_pnl",
+        "type": "int",
+        "default": "Field(description='Profit/loss in Schmeckles if the contract is sold at this point.')",
+        "description": "Profit/loss in Schmeckles if the contract is sold at this point."
+      },
+      {
+        "name": "epss_win",
+        "type": "int",
+        "default": "Field(description='Schmeckle payout if the EPSS win condition triggers at this point.')",
+        "description": "Schmeckle payout if the EPSS win condition triggers at this point."
+      },
+      {
+        "name": "cvss_win",
+        "type": "int",
+        "default": "Field(description='Schmeckle payout if the CVSS win condition triggers at this point.')",
+        "description": "Schmeckle payout if the CVSS win condition triggers at this point."
+      },
+      {
+        "name": "mal_win",
+        "type": "int",
+        "default": "Field(description='Schmeckle payout if the MAL advisory win condition triggers at this point.')",
+        "description": "Schmeckle payout if the MAL advisory win condition triggers at this point."
+      }
+    ],
+    "lineno": 101
+  },
+  {
+    "name": "SimulateResponse",
+    "fields": [
+      {
+        "name": "epss_payout",
+        "type": "int",
+        "default": "Field(description='Max payout if the EPSS condition wins.')",
+        "description": "Max payout if the EPSS condition wins."
+      },
+      {
+        "name": "cvss_payout",
+        "type": "int",
+        "default": "Field(description='Max payout if the CVSS condition wins.')",
+        "description": "Max payout if the CVSS condition wins."
+      },
+      {
+        "name": "mal_payout",
+        "type": "int",
+        "default": "Field(description='Max payout if the MAL advisory condition wins.')",
+        "description": "Max payout if the MAL advisory condition wins."
+      },
+      {
+        "name": "epss_win",
+        "type": "int",
+        "default": "Field(description='Estimated Schmeckle profit on an EPSS win (payout minus purchase price).')",
+        "description": "Estimated Schmeckle profit on an EPSS win (payout minus purchase price)."
+      },
+      {
+        "name": "cvss_win",
+        "type": "int",
+        "default": "Field(description='Estimated Schmeckle profit on a CVSS win.')",
+        "description": "Estimated Schmeckle profit on a CVSS win."
+      },
+      {
+        "name": "mal_win",
+        "type": "int",
+        "default": "Field(description='Estimated Schmeckle profit on a MAL win.')",
+        "description": "Estimated Schmeckle profit on a MAL win."
+      },
+      {
+        "name": "max_win",
+        "type": "int",
+        "default": "Field(description='Best-case profit across all win conditions.')",
+        "description": "Best-case profit across all win conditions."
+      },
+      {
+        "name": "max_loss",
+        "type": "int",
+        "default": "Field(description='Worst-case loss (negative) if the contract expires without winning.')",
+        "description": "Worst-case loss (negative) if the contract expires without winning."
+      },
+      {
+        "name": "y_min",
+        "type": "int",
+        "default": "Field(description='Chart Y-axis minimum for the payout curve.')",
+        "description": "Chart Y-axis minimum for the payout curve."
+      },
+      {
+        "name": "y_max",
+        "type": "int",
+        "default": "Field(description='Chart Y-axis maximum for the payout curve.')",
+        "description": "Chart Y-axis maximum for the payout curve."
+      },
+      {
+        "name": "curve",
+        "type": "list[SimCurvePoint]",
+        "default": "Field(description='Series of payout curve points for charting expected value over time.')",
+        "description": "Series of payout curve points for charting expected value over time."
+      }
+    ],
+    "lineno": 109
+  },
+  {
+    "name": "QuoteResponse",
+    "fields": [
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package the quote is for.')",
+        "description": "Package the quote is for."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "market_type",
+        "type": "MarketType",
+        "default": "Field(description='Win condition type inferred from thresholds.')",
+        "description": "Win condition type inferred from thresholds."
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": "Field(description='CVSS threshold used in this quote. Null if not applicable.')",
+        "description": "CVSS threshold used in this quote. Null if not applicable."
+      },
+      {
+        "name": "epss_threshold",
+        "type": "float | None",
+        "default": "Field(description='EPSS threshold used in this quote. Null if not applicable.')",
+        "description": "EPSS threshold used in this quote. Null if not applicable."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(description='Schmeckle cost to buy this contract.')",
+        "description": "Schmeckle cost to buy this contract."
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": "Field(description='Maximum Schmeckle payout on a win.')",
+        "description": "Maximum Schmeckle payout on a win."
+      },
+      {
+        "name": "opening_probability",
+        "type": "float",
+        "default": "Field(description='Estimated win probability at quote time (0\u20131).')",
+        "description": "Estimated win probability at quote time (0\u20131)."
+      },
+      {
+        "name": "package_grade",
+        "type": "float",
+        "default": "Field(description='Package risk score at quote time.')",
+        "description": "Package risk score at quote time."
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": "Field(description='ISO datetime this quote expires (short TTL).')",
+        "description": "ISO datetime this quote expires (short TTL)."
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='Human-readable summary of the contract terms.')",
+        "description": "Human-readable summary of the contract terms."
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": "Field(description='Payout multiplier applied based on risk and duration.')",
+        "description": "Payout multiplier applied based on risk and duration."
+      }
+    ],
+    "lineno": 123
+  },
+  {
+    "name": "BuyResponse",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='UUID of the newly created contract.')",
+        "description": "UUID of the newly created contract."
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": "Field(description='Maximum Schmeckle payout if the contract wins.')",
+        "description": "Maximum Schmeckle payout if the contract wins."
+      },
+      {
+        "name": "opening_probability",
+        "type": "float",
+        "default": "Field(description='Win probability at time of purchase (0\u20131).')",
+        "description": "Win probability at time of purchase (0\u20131)."
+      },
+      {
+        "name": "package_grade",
+        "type": "float",
+        "default": "Field(description='Package risk score at time of purchase.')",
+        "description": "Package risk score at time of purchase."
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": "Field(description='ISO datetime when the contract expires.')",
+        "description": "ISO datetime when the contract expires."
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": "Field(description='Payout multiplier applied at purchase.')",
+        "description": "Payout multiplier applied at purchase."
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='Human-readable summary of the contract terms.')",
+        "description": "Human-readable summary of the contract terms."
+      }
+    ],
+    "lineno": 138
+  },
+  {
+    "name": "ContractDetail",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='UUID for this contract.')",
+        "description": "UUID for this contract."
+      },
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package the contract is written against.')",
+        "description": "Package the contract is written against."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "market_type",
+        "type": "MarketType",
+        "default": "Field(description='Win condition type: all, epss_threshold, new_cve, or kev_listing.')",
+        "description": "Win condition type: all, epss_threshold, new_cve, or kev_listing."
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": "Field(description='CVSS threshold for a win. Null if not applicable.')",
+        "description": "CVSS threshold for a win. Null if not applicable."
+      },
+      {
+        "name": "epss_threshold",
+        "type": "float | None",
+        "default": "Field(description='EPSS threshold for a win. Null if not applicable.')",
+        "description": "EPSS threshold for a win. Null if not applicable."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(description='Schmeckles paid to open this contract.')",
+        "description": "Schmeckles paid to open this contract."
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": "Field(description='Maximum Schmeckle payout if the contract wins.')",
+        "description": "Maximum Schmeckle payout if the contract wins."
+      },
+      {
+        "name": "opening_probability",
+        "type": "float",
+        "default": "Field(description='Estimated win probability at time of purchase (0\u20131).')",
+        "description": "Estimated win probability at time of purchase (0\u20131)."
+      },
+      {
+        "name": "package_grade",
+        "type": "float | None",
+        "default": "Field(description='Package risk grade at time of purchase. Null if unavailable.')",
+        "description": "Package risk grade at time of purchase. Null if unavailable."
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": "Field(description='ISO datetime when the contract expires if unresolved.')",
+        "description": "ISO datetime when the contract expires if unresolved."
+      },
+      {
+        "name": "status",
+        "type": "ContractStatus",
+        "default": "Field(description='Current state: open, won, sold, expired, or lost.')",
+        "description": "Current state: open, won, sold, expired, or lost."
+      },
+      {
+        "name": "resolved_at",
+        "type": "str | None",
+        "default": "Field(description='ISO datetime of resolution. Null if still open.')",
+        "description": "ISO datetime of resolution. Null if still open."
+      },
+      {
+        "name": "sell_price",
+        "type": "int | None",
+        "default": "Field(description='Schmeckles received if the contract was sold early. Null otherwise.')",
+        "description": "Schmeckles received if the contract was sold early. Null otherwise."
+      },
+      {
+        "name": "created_at",
+        "type": "str",
+        "default": "Field(description='ISO datetime when the contract was purchased.')",
+        "description": "ISO datetime when the contract was purchased."
+      },
+      {
+        "name": "current_sell_value",
+        "type": "int | None",
+        "default": "Field(description='Current early-exit sell value in Schmeckles. Null if not open.')",
+        "description": "Current early-exit sell value in Schmeckles. Null if not open."
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": "Field(description='Payout multiplier applied at purchase based on risk and duration.')",
+        "description": "Payout multiplier applied at purchase based on risk and duration."
+      }
+    ],
+    "lineno": 148
+  },
+  {
+    "name": "SellResponse",
+    "fields": [
+      {
+        "name": "sell_price",
+        "type": "int",
+        "default": "Field(description='Schmeckles credited to the user for selling early.')",
+        "description": "Schmeckles credited to the user for selling early."
+      },
+      {
+        "name": "status",
+        "type": "ContractStatus",
+        "default": "Field(description=\"Contract status after the sell, always 'sold'.\")",
+        "description": "Contract status after the sell, always 'sold'."
+      }
+    ],
+    "lineno": 168
+  },
+  {
+    "name": "LeaderboardContract",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Contract UUID.')",
+        "description": "Contract UUID."
+      },
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package the contract is written against.')",
+        "description": "Package the contract is written against."
+      },
+      {
+        "name": "package_ecosystem",
+        "type": "str",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "market_type",
+        "type": "MarketType",
+        "default": "Field(description='Win condition type.')",
+        "description": "Win condition type."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(description='Schmeckles paid to open the contract.')",
+        "description": "Schmeckles paid to open the contract."
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": "Field(description='Maximum Schmeckle payout on a win.')",
+        "description": "Maximum Schmeckle payout on a win."
+      },
+      {
+        "name": "opening_probability",
+        "type": "float",
+        "default": "Field(description='Win probability at purchase time (0\u20131).')",
+        "description": "Win probability at purchase time (0\u20131)."
+      },
+      {
+        "name": "status",
+        "type": "ContractStatus",
+        "default": "Field(description='Current contract state.')",
+        "description": "Current contract state."
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": "Field(description='ISO datetime when the contract expires.')",
+        "description": "ISO datetime when the contract expires."
+      },
+      {
+        "name": "created_at",
+        "type": "str | None",
+        "default": "Field(default=None, description='ISO datetime when the contract was purchased.')",
+        "description": "ISO datetime when the contract was purchased."
+      }
+    ],
+    "lineno": 175
+  },
+  {
+    "name": "LeaderboardUser",
+    "fields": [
+      {
+        "name": "rank",
+        "type": "int",
+        "default": "Field(description=\"User's position on the leaderboard (1 = top).\")",
+        "description": "User's position on the leaderboard (1 = top)."
+      },
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='Auth0 user ID.')",
+        "description": "Auth0 user ID."
+      },
+      {
+        "name": "username",
+        "type": "str | None",
+        "default": "Field(default=None, description='Display name. Null if not set.')",
+        "description": "Display name. Null if not set."
+      },
+      {
+        "name": "schmeckles",
+        "type": "int",
+        "default": "Field(description='Current Schmeckle balance.')",
+        "description": "Current Schmeckle balance."
+      },
+      {
+        "name": "total_contracts",
+        "type": "int",
+        "default": "Field(description='Total contracts ever opened by this user.')",
+        "description": "Total contracts ever opened by this user."
+      },
+      {
+        "name": "open_contracts",
+        "type": "int",
+        "default": "Field(description='Currently open (unresolved) contracts.')",
+        "description": "Currently open (unresolved) contracts."
+      },
+      {
+        "name": "won_contracts",
+        "type": "int",
+        "default": "Field(description='Total contracts resolved as wins.')",
+        "description": "Total contracts resolved as wins."
+      },
+      {
+        "name": "contracts",
+        "type": "list[LeaderboardContract]",
+        "default": "Field(description='Recent contracts for display on the leaderboard.')",
+        "description": "Recent contracts for display on the leaderboard."
+      }
+    ],
+    "lineno": 188
+  },
+  {
+    "name": "LeaderboardResponse",
+    "fields": [
+      {
+        "name": "total",
+        "type": "int",
+        "default": "Field(description='Total number of users on the leaderboard.')",
+        "description": "Total number of users on the leaderboard."
+      },
+      {
+        "name": "page",
+        "type": "int",
+        "default": "Field(description='Current page number (1-indexed).')",
+        "description": "Current page number (1-indexed)."
+      },
+      {
+        "name": "page_size",
+        "type": "int",
+        "default": "Field(description='Number of users per page.')",
+        "description": "Number of users per page."
+      },
+      {
+        "name": "users",
+        "type": "list[LeaderboardUser]",
+        "default": "Field(description='Paginated list of leaderboard users.')",
+        "description": "Paginated list of leaderboard users."
+      }
+    ],
+    "lineno": 199
+  },
+  {
+    "name": "SchmecklePoint",
+    "fields": [
+      {
+        "name": "date",
+        "type": "str",
+        "default": "Field(description='ISO date string for the balance snapshot.')",
+        "description": "ISO date string for the balance snapshot."
+      },
+      {
+        "name": "balance",
+        "type": "int",
+        "default": "Field(description='Schmeckle balance at this point in time.')",
+        "description": "Schmeckle balance at this point in time."
+      },
+      {
+        "name": "event",
+        "type": "Literal['buy', 'won', 'sold'] | None",
+        "default": "Field(default=None, description='Event that caused the balance change, if any.')",
+        "description": "Event that caused the balance change, if any."
+      }
+    ],
+    "lineno": 208
+  },
+  {
+    "name": "SchmeckleTimeline",
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "str",
+        "default": "Field(description='Auth0 user ID this timeline belongs to.')",
+        "description": "Auth0 user ID this timeline belongs to."
+      },
+      {
+        "name": "points",
+        "type": "list[SchmecklePoint]",
+        "default": "Field(description='Chronological list of balance snapshots.')",
+        "description": "Chronological list of balance snapshots."
+      }
+    ],
+    "lineno": 214
+  },
+  {
+    "name": "PackageRisk",
+    "fields": [
+      {
+        "name": "name",
+        "type": "str",
+        "default": "Field(description=\"Exact package name as published on the registry. For scoped npm packages include the scope e.g. '@antv/g2'. No version numbers, no descriptions, no parenthetical notes.\")",
+        "description": "Exact package name as published on the registry. For scoped npm packages include the scope e.g. '@antv/g2'. No version numbers, no descriptions, no parenthetical notes."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description=\"The package registry. Use 'npm' for JavaScript, 'PyPI' for Python, 'composer' for PHP.\")",
+        "description": "The package registry. Use 'npm' for JavaScript, 'PyPI' for Python, 'composer' for PHP."
+      },
+      {
+        "name": "weekly_downloads",
+        "type": "int | None",
+        "default": "Field(description='Weekly download count at time of news ingestion. Null if unknown.')",
+        "description": "Weekly download count at time of news ingestion. Null if unknown."
+      },
+      {
+        "name": "cve_ids",
+        "type": "list[str]",
+        "default": "Field(description='CVE IDs mentioned in the article for this package.')",
+        "description": "CVE IDs mentioned in the article for this package."
+      },
+      {
+        "name": "epss_score",
+        "type": "float | None",
+        "default": "Field(description=\"Latest EPSS score for this package's CVEs at ingestion time. Null if no CVEs.\")",
+        "description": "Latest EPSS score for this package's CVEs at ingestion time. Null if no CVEs."
+      },
+      {
+        "name": "has_mal_advisory",
+        "type": "bool",
+        "default": "Field(default=False, description='True if a MAL advisory exists for this package.')",
+        "description": "True if a MAL advisory exists for this package."
+      }
+    ],
+    "lineno": 221
+  },
+  {
+    "name": "NewsAnalysis",
+    "fields": [
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='2-sentence factual summary of the security event.')",
+        "description": "2-sentence factual summary of the security event."
+      },
+      {
+        "name": "company_labels",
+        "type": "list[str]",
+        "default": "Field(description=\"Canonical organisation names only. Use full official names: 'Microsoft', 'Amazon Web Services', 'Google', 'GitHub'. No abbreviations like 'AWS' or 'GCP' standalone. No registry names like 'npm' or 'PyPI' here.\")",
+        "description": "Canonical organisation names only. Use full official names: 'Microsoft', 'Amazon Web Services', 'Google', 'GitHub'. No abbreviations like 'AWS' or 'GCP' standalone. No registry names like 'npm' or 'PyPI' here."
+      },
+      {
+        "name": "sector_labels",
+        "type": "list[str]",
+        "default": "Field(description=\"Short, consistent sector names in title case. Use these standard terms where applicable: 'Software Development', 'Open Source', 'Cloud Computing', 'DevOps / CI-CD', 'Cybersecurity', 'Artificial Intelligence', 'Enterprise Software'. Avoid long descriptive phrases.\")",
+        "description": "Short, consistent sector names in title case. Use these standard terms where applicable: 'Software Development', 'Open Source', 'Cloud Computing', 'DevOps / CI-CD', 'Cybersecurity', 'Artificial Intelligence', 'Enterprise Software'. Avoid long descriptive phrases."
+      },
+      {
+        "name": "affected_packages",
+        "type": "list[PackageRisk]",
+        "default": "Field(description=\"Only concrete package names actually mentioned in the article. No namespace wildcards like '@antv/*'. One entry per distinct package.\")",
+        "description": "Only concrete package names actually mentioned in the article. No namespace wildcards like '@antv/*'. One entry per distinct package."
+      },
+      {
+        "name": "threat_actor",
+        "type": "str | None",
+        "default": "Field(description=\"Named threat group exactly as identified in the article e.g. 'TeamPCP'. Null if unknown or not attributed.\")",
+        "description": "Named threat group exactly as identified in the article e.g. 'TeamPCP'. Null if unknown or not attributed."
+      },
+      {
+        "name": "exploit_status",
+        "type": "ExploitStatus | None",
+        "default": "Field(description='Exploitation status of the vulnerability: poc_available, actively_exploited, patched, or unpatched. Null if not determinable.')",
+        "description": "Exploitation status of the vulnerability: poc_available, actively_exploited, patched, or unpatched. Null if not determinable."
+      },
+      {
+        "name": "severity",
+        "type": "Severity | None",
+        "default": "Field(description='Severity level: critical, high, medium, or low. Null if not stated.')",
+        "description": "Severity level: critical, high, medium, or low. Null if not stated."
+      }
+    ],
+    "lineno": 230
+  },
+  {
+    "name": "NewsEmbeddings",
+    "fields": [
+      {
+        "name": "title",
+        "type": "list[float]",
+        "default": "Field(exclude=True, description='Embedding vector for the article title. Excluded from API serialization.')",
+        "description": "Embedding vector for the article title. Excluded from API serialization."
+      },
+      {
+        "name": "description",
+        "type": "list[float]",
+        "default": "Field(exclude=True, description='Embedding vector for the article description. Excluded from API serialization.')",
+        "description": "Embedding vector for the article description. Excluded from API serialization."
+      },
+      {
+        "name": "source",
+        "type": "list[float]",
+        "default": "Field(exclude=True, description='Embedding vector for the source URL domain. Excluded from API serialization.')",
+        "description": "Embedding vector for the source URL domain. Excluded from API serialization."
+      }
+    ],
+    "lineno": 240
+  },
+  {
+    "name": "EpssHistoryRow",
+    "fields": [
+      {
+        "name": "name",
+        "type": "str",
+        "default": "Field(description='Package name as published on the registry.')",
+        "description": "Package name as published on the registry."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Package registry: npm, PyPI, composer, or other.')",
+        "description": "Package registry: npm, PyPI, composer, or other."
+      },
+      {
+        "name": "epss_score",
+        "type": "float",
+        "default": "Field(description='EPSS probability score (0\u20131) at time of recording.')",
+        "description": "EPSS probability score (0\u20131) at time of recording."
+      },
+      {
+        "name": "recorded_at",
+        "type": "date",
+        "default": "Field(default_factory=date.today, description='Date the score snapshot was taken.')",
+        "description": "Date the score snapshot was taken."
+      }
+    ],
+    "lineno": 248
+  },
+  {
+    "name": "MalAdvisoryRow",
+    "fields": [
+      {
+        "name": "osv_id",
+        "type": "str",
+        "default": "Field(description='OSV advisory ID, e.g. GHSA-xxxx-xxxx-xxxx. Primary key.')",
+        "description": "OSV advisory ID, e.g. GHSA-xxxx-xxxx-xxxx. Primary key."
+      },
+      {
+        "name": "name",
+        "type": "str",
+        "default": "Field(description='Affected package name.')",
+        "description": "Affected package name."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Package registry.')",
+        "description": "Package registry."
+      },
+      {
+        "name": "published_at",
+        "type": "datetime | None",
+        "default": "Field(description='When the advisory was first published.')",
+        "description": "When the advisory was first published."
+      },
+      {
+        "name": "modified_at",
+        "type": "datetime | None",
+        "default": "Field(description='Last modification timestamp from OSV.')",
+        "description": "Last modification timestamp from OSV."
+      },
+      {
+        "name": "withdrawn",
+        "type": "bool",
+        "default": "Field(default=False, description='True if the advisory was later retracted.')",
+        "description": "True if the advisory was later retracted."
+      },
+      {
+        "name": "summary",
+        "type": "str | None",
+        "default": "Field(default=None, description='Short human-readable description of the vulnerability.')",
+        "description": "Short human-readable description of the vulnerability."
+      }
+    ],
+    "lineno": 255
+  },
+  {
+    "name": "PackageRow",
+    "fields": [
+      {
+        "name": "name",
+        "type": "str",
+        "default": "Field(description='Package name as published on the registry.')",
+        "description": "Package name as published on the registry."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Package registry.')",
+        "description": "Package registry."
+      },
+      {
+        "name": "github_org",
+        "type": "str | None",
+        "default": "Field(default=None, description='GitHub org or user that owns the repo, if known.')",
+        "description": "GitHub org or user that owns the repo, if known."
+      },
+      {
+        "name": "logo_url",
+        "type": "str | None",
+        "default": "Field(default=None, description='URL to the package or org logo for display.')",
+        "description": "URL to the package or org logo for display."
+      },
+      {
+        "name": "weekly_downloads",
+        "type": "int | None",
+        "default": "Field(default=None, description='Weekly download count from the registry API.')",
+        "description": "Weekly download count from the registry API."
+      },
+      {
+        "name": "cve_ids",
+        "type": "list[str]",
+        "default": "Field(default_factory=list, description='CVE IDs associated with this package via OSV advisories.')",
+        "description": "CVE IDs associated with this package via OSV advisories."
+      },
+      {
+        "name": "epss_score",
+        "type": "float | None",
+        "default": "Field(default=None, description=\"Latest EPSS score across all the package's CVEs.\")",
+        "description": "Latest EPSS score across all the package's CVEs."
+      },
+      {
+        "name": "has_mal_advisory",
+        "type": "bool",
+        "default": "Field(default=False, description='True if any non-withdrawn MAL advisory exists for this package.')",
+        "description": "True if any non-withdrawn MAL advisory exists for this package."
+      },
+      {
+        "name": "mal_advisory_published_at",
+        "type": "datetime | None",
+        "default": "Field(default=None, description='Earliest MAL advisory publish date for this package.')",
+        "description": "Earliest MAL advisory publish date for this package."
+      },
+      {
+        "name": "risk_score",
+        "type": "float | None",
+        "default": "Field(default=None, description='Composite risk score combining EPSS, downloads, and advisory signals.')",
+        "description": "Composite risk score combining EPSS, downloads, and advisory signals."
+      },
+      {
+        "name": "last_enriched_at",
+        "type": "datetime | None",
+        "default": "Field(default=None, description='Timestamp of the most recent enrichment run for this package.')",
+        "description": "Timestamp of the most recent enrichment run for this package."
+      },
+      {
+        "name": "sectors",
+        "type": "list[str]",
+        "default": "Field(default_factory=list, description='Sector labels assigned via heuristic or LLM classification.')",
+        "description": "Sector labels assigned via heuristic or LLM classification."
+      }
+    ],
+    "lineno": 265
+  },
+  {
+    "name": "RecentNews",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": "Field(description='URL hash used as a stable dedup key.')",
+        "description": "URL hash used as a stable dedup key."
+      },
+      {
+        "name": "title",
+        "type": "str",
+        "default": "Field(description='Article headline.')",
+        "description": "Article headline."
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='Raw article description or lede.')",
+        "description": "Raw article description or lede."
+      },
+      {
+        "name": "summary",
+        "type": "str | None",
+        "default": "Field(default=None, description='2-sentence factual summary from NewsAnalysis.')",
+        "description": "2-sentence factual summary from NewsAnalysis."
+      },
+      {
+        "name": "source_name",
+        "type": "str | None",
+        "default": "Field(default=None, description=\"Publisher name, e.g. 'Bleeping Computer'.\")",
+        "description": "Publisher name, e.g. 'Bleeping Computer'."
+      },
+      {
+        "name": "published_date",
+        "type": "datetime | None",
+        "default": "Field(description='Publication timestamp from the source.')",
+        "description": "Publication timestamp from the source."
+      },
+      {
+        "name": "source_url",
+        "type": "str",
+        "default": "Field(description='Canonical URL of the article.')",
+        "description": "Canonical URL of the article."
+      },
+      {
+        "name": "embeddings",
+        "type": "NewsEmbeddings",
+        "default": "Field(description='Vector embeddings for title, description, and source (excluded from serialization).')",
+        "description": "Vector embeddings for title, description, and source (excluded from serialization)."
+      },
+      {
+        "name": "analysis",
+        "type": "NewsAnalysis",
+        "default": "Field(description='Structured LLM extraction: packages, sectors, threat actor, severity.')",
+        "description": "Structured LLM extraction: packages, sectors, threat actor, severity."
+      }
+    ],
+    "lineno": 280
+  }
+]

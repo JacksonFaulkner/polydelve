@@ -3,6 +3,11 @@
 
 .DEFAULT_GOAL := help
 
+ifneq (,$(wildcard backend/.env))
+  include backend/.env
+  export
+endif
+
 UV  := cd backend && uv run
 NPM := cd frontend &&
 
@@ -103,8 +108,12 @@ ingest-epss-history: ## Bulk-load historical EPSS CSV files (weekly, expensive I
 
 ##@ Docs
 
+.PHONY: extract-models
+extract-models: ## Extract Pydantic models → docs/model-manifest.json
+	python3 scripts/extract_models.py
+
 .PHONY: docs
-docs: ## Serve docs locally (Next.js, port 3001)
+docs: extract-models ## Serve docs locally (Next.js, port 3001)
 	cd docs && npm run dev
 
 ##@ Quality

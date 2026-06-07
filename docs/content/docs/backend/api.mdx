@@ -3,11 +3,28 @@ title: "API Reference"
 description: "Backend REST endpoints. Base URL: https://api.polydelve.com (prod) or http://localhost:8000 (local)."
 ---
 
-import DrawioEmbed from '../../../app/components/DrawioEmbed';
-
 ## Architecture
 
-<DrawioEmbed file="diagrams/read-path.drawio" height={1100} wide />
+```mermaid
+flowchart TD
+  Users --> CF
+
+  subgraph AWS
+    CF["CloudFront CDN"]
+    S3["S3\nReact SPA"]
+    ECS["ECS Fargate\nFastAPI"]
+    ECR["ECR\ncontainer image"]
+    SM["Secrets Manager\nMD token, Auth0"]
+  end
+
+  MD["MotherDuck\nmd:polydelve"]
+
+  CF --"static assets"--> S3
+  CF --"API /v1/*"--> ECS
+  ECS --"pull image"--> ECR
+  ECS --"inject env"--> SM
+  ECS --"DuckDB HTTPS"--> MD
+```
 
 ## Auth
 

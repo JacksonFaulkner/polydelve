@@ -3,11 +3,24 @@ title: "Data Pipeline"
 description: "How package, CVE, EPSS, and news data flows into Polydelve."
 ---
 
-import DrawioEmbed from '../../../app/components/DrawioEmbed';
-
 ## Architecture
 
-<DrawioEmbed file="diagrams/seed-pipeline.drawio" height={1950} wide />
+```mermaid
+flowchart TD
+  EB["EventBridge\ncron 04:00 UTC"] --> SF["Step Functions\nstate machine"]
+
+  SF --> T1["1. refresh-epss\nEPSS delta from FIRST"]
+  T1 --> T2["2. ingest-epss-history\nbulk EPSS from BigQuery"]
+  T2 --> T3["3. ingest-mal\nMAL advisories via OSV"]
+  T3 --> T4["4. refresh-downloads\nweekly_downloads + risk_score"]
+  T4 --> T5["5. enrich-sectors\nheuristic classification"]
+  T5 --> T6["6. news-update\nExa fetch + Gemini tag"]
+
+  T1 --"cache CSV"--> S3["S3\nEPSS CSV cache"]
+  T2 --"reads"--> S3
+
+  T1 & T2 & T3 & T4 & T5 & T6 --"upsert"--> MD["MotherDuck\nmd:polydelve"]
+```
 
 ## Sources
 

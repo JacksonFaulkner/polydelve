@@ -3,11 +3,40 @@ title: "Local Dev"
 description: "Environment setup and make targets for running Polydelve locally."
 ---
 
-import DrawioEmbed from '../../../app/components/DrawioEmbed';
-
 ## Data Model
 
-<DrawioEmbed file="diagrams/data-layer.drawio" height={900} wide />
+```mermaid
+flowchart LR
+  subgraph Scripts["Seed Scripts"]
+    S1[refresh_epss.py]
+    S2[ingest_epss_history.py]
+    S3[ingest_mal_advisories.py]
+    S4[refresh_downloads.py]
+    S5[enrich_package_sectors.py]
+    S6[news_update.py]
+  end
+
+  subgraph Models["Pydantic Row Models"]
+    M1["EpssHistoryRow\nname, ecosystem\nepss_score, recorded_at"]
+    M2["MalAdvisoryRow\nosv_id, name, ecosystem\npublished_at, withdrawn"]
+    M3["PackageRow\nname, ecosystem, epss_score\nweekly_downloads, risk_score\ncve_ids[], sectors[], has_mal"]
+    M4["RecentNews\nid, title, source_url\npublished_date, analysis"]
+  end
+
+  subgraph Tables["DuckDB Tables (MotherDuck: md:polydelve)"]
+    T1["epss_scores\nname, ecosystem, epss_score, recorded_at"]
+    T2["mal_advisories\nosv_id PK, name, ecosystem\npublished_at, withdrawn"]
+    T3["packages\n(name, ecosystem) PK\nweekly_downloads, epss_score\nrisk_score, sectors[], cve_ids[]\nhas_mal_advisory"]
+    T4["news\nid PK (URL hash)\ntitle, source_url, published_date\nanalysis JSON, embeddings float[]"]
+  end
+
+  S1 --> M1 --> T1
+  S2 --> M1
+  S3 --> M2 --> T2
+  S4 --> M3 --> T3
+  S5 --> M3
+  S6 --> M4 --> T4
+```
 
 ## Prerequisites
 
