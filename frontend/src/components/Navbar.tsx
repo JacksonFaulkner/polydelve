@@ -109,7 +109,7 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
           {isLoading ? null : isAuthenticated ? (
             <div className="flex items-center gap-2">
               {auth0User?.picture && (
-                <img src={auth0User.picture} alt="" className="h-7 w-7 rounded-full" />
+                <img src={auth0User.picture} alt="" className="h-7 w-7 rounded-full object-cover" />
               )}
               <button
                 onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}

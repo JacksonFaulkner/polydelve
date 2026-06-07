@@ -34,11 +34,6 @@ schema-export = [
     "openpyxl>=3.1.0",
     "pytz>=2026.2",
 ]
-docs = [
-    "mkdocs>=1.6.0",
-    "mkdocs-material>=9.5.0",
-    "mkdocstrings[python]>=0.25.0",
-]
 
 [tool.ruff]
 exclude = ["scripts/export_schema_excel.py"]
