@@ -1,0 +1,5 @@
+.next/
+out/
+_source/
+next-env.d.ts
+tsconfig.tsbuildinfo
