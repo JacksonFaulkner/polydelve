@@ -83,9 +83,9 @@ ingest-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (daily)
 news-update: ## Fetch + ingest structured security news via GPT (daily, 7-day window)
 	$(UV) python scripts/news_update.py
 
-.PHONY: enrich-packages
-enrich-packages: ## Fill NULL package fields: downloads, logos, CVEs (daily, do not run with refresh-epss)
-	$(UV) python scripts/enrich_packages.py
+.PHONY: refresh-downloads
+refresh-downloads: ## Refresh weekly_downloads + recompute risk_score (daily)
+	$(UV) python scripts/refresh_downloads.py
 
 .PHONY: enrich-sectors
 enrich-sectors: ## Heuristic sector classification for packages missing sectors (daily)

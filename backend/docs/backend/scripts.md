@@ -6,7 +6,7 @@ One-off and scheduled data scripts. All run via `make` or directly with `uv run 
 |--------|-------------|-------------|
 | `news_update.py` | `make news-update` | Fetch latest security news via Exa |
 | `build_cve_history.py` | `make build-cve-history` | Build CVE history for top 500 npm + PyPI packages |
-| `enrich_packages.py` | `make enrich-packages` | Add download stats + descriptions to packages |
+| `refresh_downloads.py` | `make refresh-downloads` | Refresh weekly_downloads + recompute risk_score |
 | `enrich_package_sectors.py` | `make enrich-sectors` | Classify package sectors via heuristics |
 | `classify_package_sectors_llm.py` | `make classify-sectors-llm` | LLM-based sector classification (slower, higher accuracy) |
 | `export_schema_excel.py` | `make export-schema` | Export DB to Excel for analysis |
@@ -15,7 +15,7 @@ One-off and scheduled data scripts. All run via `make` or directly with `uv run 
 
 ```bash
 make build-cve-history
-make enrich-packages
+make refresh-downloads
 make enrich-sectors
 make news-update
 ```

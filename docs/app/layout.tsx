@@ -5,7 +5,7 @@ import 'fumadocs-ui/style.css';
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <RootProvider>{children}</RootProvider>
       </body>
     </html>

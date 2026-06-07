@@ -1,5 +1,5 @@
 """
-Bulk-ingest historical EPSS scores into a DuckDB (default: action_odds.dev.duckdb).
+Bulk-ingest historical EPSS scores into DuckDB (uses DB_PATH env var, default: polydelve.dev.duckdb).
 
 Reads pre-downloaded CSV.GZ files from /tmp/epss_csv/ via DuckDB read_csv (vectorized).
 Downloads any missing files first.
@@ -17,13 +17,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 from pathlib import Path
 
-import duckdb
 import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from features.db import get_db_conn  # noqa: E402
 
 BULK_URL = "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz"
-DEFAULT_DB = "action_odds.dev.duckdb"
 CACHE_DIR = Path("/tmp/epss_csv")
 DOWNLOAD_WORKERS = 30
 
@@ -45,7 +44,6 @@ def download_day(day: date) -> tuple[date, bool]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--days", type=int, default=90)
-    parser.add_argument("--db", default=DEFAULT_DB)
     parser.add_argument("--start", help="YYYY-MM-DD")
     parser.add_argument("--end", help="YYYY-MM-DD (default: yesterday)")
     parser.add_argument("--workers", type=int, default=DOWNLOAD_WORKERS)
@@ -76,7 +74,7 @@ def main() -> None:
 
     # Phase 2: DuckDB vectorized load
     print("\nPhase 2: loading via DuckDB read_csv…", flush=True)
-    conn = duckdb.connect(args.db)
+    conn = get_db_conn()
 
     # Build temp CVE→package mapping table
     conn.execute("""

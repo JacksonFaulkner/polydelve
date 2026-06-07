@@ -38,7 +38,7 @@ DuckDB packages table
 Run order:
 ```bash
 make build-cve-history      # 1. fetch CVE data
-make enrich-packages        # 2. add metadata
+make refresh-downloads      # 2. refresh downloads + risk_score
 make enrich-sectors         # 3. heuristic sector tags
 make classify-sectors-llm   # 4. LLM sector tags (optional, slower)
 ```

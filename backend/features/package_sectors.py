@@ -152,10 +152,75 @@ _NAME_RULES: list[tuple[str, str]] = [
     ("pyyaml", "Serialization"), ("ruamel", "Serialization"), ("toml", "Serialization"),
     ("protobuf", "Serialization"), ("msgpack", "Serialization"), ("orjson", "Serialization"),
     ("ujson", "Serialization"), ("marshmallow", "Serialization"), ("pydantic", "Serialization"),
+    # TypeScript type definitions
+    ("@types/", "Build Tools"),
+    # GraphQL
+    ("apollo", "HTTP Client"), ("graphql", "HTTP Client"),
+    # JSON schema / validation
+    ("ajv", "Serialization"), ("json-schema", "Serialization"),
+    # Analytics / observability
+    ("amplitude", "Infrastructure"), ("analytics", "Infrastructure"),
+    ("segment", "Infrastructure"), ("mixpanel", "Infrastructure"),
+    ("sentry", "Infrastructure"), ("newrelic", "Infrastructure"),
+    ("datadog", "Infrastructure"), ("pagerduty", "Infrastructure"),
+    # Message queues
+    ("amqp", "Infrastructure"), ("rabbitmq", "Infrastructure"),
+    ("mqtt", "Infrastructure"), ("nats", "Infrastructure"),
+    # Frontend / UI (extended)
+    ("alpinejs", "Frontend / UI"), ("animate", "Frontend / UI"),
+    ("apexcharts", "Data Science"), ("apache-arrow", "Data Science"),
+    ("antlr", "Build Tools"),
+    # Crypto / security
+    ("apache-crypt", "Cryptography"), ("apache-md5", "Cryptography"),
     # Package managers
     ("poetry", "Package Manager"), ("pipenv", "Package Manager"), ("setuptools", "Package Manager"),
     ("twine", "Package Manager"), ("build", "Package Manager"), ("hatch", "Package Manager"),
     ("flit", "Package Manager"),
+    # Build tools (extended)
+    ("gulp", "Build Tools"), ("grunt", "Build Tools"), ("postcss", "Build Tools"),
+    ("tslint", "Build Tools"), ("jshint", "Build Tools"), ("less", "Build Tools"),
+    ("sass", "Build Tools"), ("stylelint", "Build Tools"), ("parcel", "Build Tools"),
+    ("brunch", "Build Tools"), ("browserify", "Build Tools"),
+    # Auth (extended)
+    ("passport", "Authentication"), ("oauth", "Authentication"), ("saml", "Authentication"),
+    ("keycloak", "Authentication"), ("auth0", "Authentication"),
+    # Database (extended)
+    ("pouchdb", "Database / ORM"), ("couchdb", "Database / ORM"), ("leveldb", "Database / ORM"),
+    ("nedb", "Database / ORM"), ("knex", "Database / ORM"), ("bookshelf", "Database / ORM"),
+    ("waterline", "Database / ORM"), ("aiosqlite", "Database / ORM"),
+    ("google-cloud-bigquery", "Database / ORM"), ("google-cloud-spanner", "Database / ORM"),
+    ("google-cloud-firestore", "Database / ORM"), ("pinotdb", "Database / ORM"),
+    ("pyiceberg", "Database / ORM"), ("delta-spark", "Database / ORM"),
+    # Infrastructure (extended)
+    ("docker", "Infrastructure"), ("grpc", "Infrastructure"), ("opentelemetry", "Infrastructure"),
+    ("ddtrace", "Infrastructure"), ("datadog", "Infrastructure"), ("posthog", "Infrastructure"),
+    ("apscheduler", "Infrastructure"), ("gevent", "Infrastructure"),
+    ("google-cloud-", "Infrastructure"), ("gcloud-", "Infrastructure"),
+    ("kube", "Infrastructure"), ("airflow", "Infrastructure"),
+    # Data Science (extended)
+    ("jupyterlab", "Data Science"), ("jupyter", "Data Science"), ("ipython", "Data Science"),
+    ("ipywidgets", "Data Science"), ("ipykernel", "Data Science"), ("xgboost", "Data Science"),
+    ("imageio", "Data Science"), ("pyarrow", "Data Science"), ("ml-dtypes", "Data Science"),
+    ("gspread", "Data Science"), ("tableauserverclient", "Data Science"),
+    ("bizcharts", "Data Science"),
+    # AI / ML (extended)
+    ("langgraph", "AI / ML"), ("opentelemetry-instrumentation", "Infrastructure"),
+    # HTTP Client (extended)
+    ("restler", "HTTP Client"), ("superagent", "HTTP Client"), ("node-fetch", "HTTP Client"),
+    ("sendgrid", "HTTP Client"), ("stripe", "HTTP Client"), ("twilio", "HTTP Client"),
+    # Serialization (extended)
+    ("xml2json", "Serialization"), ("json5", "Serialization"), ("cbor", "Serialization"),
+    ("ijson", "Serialization"), ("pdfplumber", "Serialization"), ("pypdf", "Serialization"),
+    ("markdown", "Serialization"), ("markdownify", "Serialization"),
+    # CLI (extended)
+    ("colorlog", "CLI / Utilities"), ("tabulate", "CLI / Utilities"),
+    ("semver", "CLI / Utilities"), ("appdirs", "CLI / Utilities"),
+    # Testing (extended)
+    ("karma", "Testing"), ("phantom", "Testing"), ("jest-environment", "Testing"),
+    ("freezegun", "Testing"), ("diskcache", "Testing"),
+    # Frontend / UI (extended)
+    ("bulma", "Frontend / UI"), ("polymer", "Frontend / UI"), ("angular", "Frontend / UI"),
+    ("phosphor", "Frontend / UI"),
 ]
 
 

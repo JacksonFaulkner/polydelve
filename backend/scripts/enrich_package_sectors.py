@@ -42,21 +42,16 @@ async def main() -> None:
             *[enrich_one(client, name, eco) for name, eco in rows]
         )
 
-    updated = 0
-    no_match = 0
-    for name, ecosystem, sectors in sorted(results, key=lambda r: (not r[2], r[0])):
-        if sectors:
-            conn.execute(
-                "UPDATE packages SET sectors = ? WHERE name = ? AND ecosystem = ?",
-                [sectors, name, ecosystem],
-            )
-            updated += 1
-            print(f"  {name[:40]:40} {ecosystem:6} {sectors}")
-        else:
-            no_match += 1
+    matched = [(sectors, name, ecosystem) for name, ecosystem, sectors in results if sectors]
+    no_match_rows = [([], name, ecosystem) for name, ecosystem, sectors in results if not sectors]
+
+    conn.executemany(
+        "UPDATE packages SET sectors = ? WHERE name = ? AND ecosystem = ?",
+        matched + no_match_rows,
+    )
 
     conn.close()
-    print(f"\nupdated {updated}, no match {no_match}/{len(rows)}")
+    print(f"\nupdated {len(matched)}, no match {len(no_match_rows)}/{len(rows)}")
 
 
 if __name__ == "__main__":
