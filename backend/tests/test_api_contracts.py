@@ -28,7 +28,6 @@ def test_contracts_me_requires_auth(unauth_client):
 
 def test_buy_contract_requires_auth(unauth_client):
     r = unauth_client.post("/contracts", json={
-        "user_id": "auth0|testuser123",
         "package_name": "requests",
         "ecosystem": "PyPI",
         "purchase_price": 100,
@@ -96,7 +95,6 @@ def test_quote_valid_returns_payout(client):
 
 def test_buy_deducts_schmeckles(client, db_with_data):
     r = client.post("/contracts", json={
-        "user_id": "auth0|testuser123",
         "package_name": "requests",
         "ecosystem": "PyPI",
         "purchase_price": 100,
@@ -114,7 +112,6 @@ def test_buy_insufficient_schmeckles(client, db_with_data):
         "UPDATE users SET schmeckles = 10 WHERE id = 'auth0|testuser123'"
     )
     r = client.post("/contracts", json={
-        "user_id": "auth0|testuser123",
         "package_name": "requests",
         "ecosystem": "PyPI",
         "purchase_price": 100,
@@ -123,9 +120,10 @@ def test_buy_insufficient_schmeckles(client, db_with_data):
     assert r.status_code == 409
 
 
-def test_buy_unknown_user_returns_404(client):
+def test_buy_user_not_in_db_returns_404(client, db_with_data):
+    # Authenticated user whose sub isn't in the users table
+    db_with_data.execute("DELETE FROM users WHERE id = 'auth0|testuser123'")
     r = client.post("/contracts", json={
-        "user_id": "auth0|ghost",
         "package_name": "requests",
         "ecosystem": "PyPI",
         "purchase_price": 100,
@@ -164,6 +162,12 @@ def test_sell_won_contract_rejected(client, db_with_data):
 def test_sell_nonexistent_contract(client):
     r = client.post("/contracts/does-not-exist/sell")
     assert r.status_code == 404
+
+
+def test_sell_other_users_contract_returns_404(client, db_with_data):
+    _seed_contract(db_with_data, "other-contract", user_id="auth0|otheruser")
+    r = client.post("/contracts/other-contract/sell")
+    assert r.status_code == 404  # not 409 — must not leak contract existence
 
 
 # ── List my contracts ─────────────────────────────────────────────────────────

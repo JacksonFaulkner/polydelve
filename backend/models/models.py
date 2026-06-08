@@ -114,9 +114,7 @@ class QuoteRequest(ContractBase):
 
 
 class BuyRequest(ContractBase):
-    user_id: str = Field(
-        description="Auth0 user ID of the buyer. Deducted from their Schmeckle balance."
-    )
+    pass
 
 
 class SimulateRequest(BaseModel):

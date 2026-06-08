@@ -25,7 +25,6 @@ class CreateMarketRequest(BaseModel):
 
 
 class PlaceBetRequest(BaseModel):
-    user_id: str
     market_id: str
 
 
@@ -232,8 +231,11 @@ def create_market(
 @router.post("/bets", status_code=201)
 def place_bet(
     req: PlaceBetRequest,
+    claims: dict = Depends(get_current_user),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> dict:
+    user_id = claims["sub"]
+
     market = conn.execute(
         "SELECT price, status FROM markets WHERE id = ?", [req.market_id]
     ).fetchone()
@@ -244,7 +246,7 @@ def place_bet(
 
     price = market[0]
     user = conn.execute(
-        "SELECT schmeckles FROM users WHERE id = ?", [req.user_id]
+        "SELECT schmeckles FROM users WHERE id = ?", [user_id]
     ).fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -252,16 +254,22 @@ def place_bet(
         raise HTTPException(status_code=409, detail="Insufficient schmeckles")
 
     bet_id = str(uuid.uuid4())
-    conn.execute(
-        "UPDATE users SET schmeckles = schmeckles - ? WHERE id = ?",
-        [price, req.user_id],
-    )
-    conn.execute(
-        "INSERT INTO bets (id, user_id, market_id, placed_at) VALUES (?, ?, ?, ?)",
-        [bet_id, req.user_id, req.market_id, datetime.now(timezone.utc)],
-    )
+    try:
+        conn.execute("BEGIN")
+        conn.execute(
+            "UPDATE users SET schmeckles = schmeckles - ? WHERE id = ? AND schmeckles >= ?",
+            [price, user_id, price],
+        )
+        conn.execute(
+            "INSERT INTO bets (id, user_id, market_id, placed_at) VALUES (?, ?, ?, ?)",
+            [bet_id, user_id, req.market_id, datetime.now(timezone.utc)],
+        )
+        conn.execute("COMMIT")
+    except Exception as e:
+        conn.execute("ROLLBACK")
+        raise HTTPException(500, "Failed to place bet") from e
 
-    return {"id": bet_id, "market_id": req.market_id, "user_id": req.user_id}
+    return {"id": bet_id, "market_id": req.market_id, "user_id": user_id}
 
 
 # --- Users ---

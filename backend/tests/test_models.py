@@ -79,11 +79,12 @@ def test_quote_valid_durations():
 
 # ── BuyRequest ────────────────────────────────────────────────────────────────
 
-def test_buy_request_requires_user_id():
-    with pytest.raises(ValidationError):
-        BuyRequest(
-            package_name="requests",
-            ecosystem="PyPI",
-            purchase_price=100,
-            duration_days=30,
-        )
+def test_buy_request_no_user_id_field():
+    # user_id removed from body — caller identity comes from Auth0 claims
+    req = BuyRequest(
+        package_name="requests",
+        ecosystem="PyPI",
+        purchase_price=100,
+        duration_days=30,
+    )
+    assert not hasattr(req, "user_id")
