@@ -14,7 +14,6 @@ const STATUS_STYLES: Record<string, string> = {
 
 const MARKET_LABEL: Record<string, string> = {
   new_cve: "New CVE",
-  kev_listing: "KEV List",
   epss_threshold: "EPSS Thresh",
 }
 

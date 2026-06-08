@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { Navbar } from "./components/Navbar";
+import { Navbar, pathToSector } from "./components/Navbar";
 import type { Sector } from "./components/Navbar";
 import { MarketSpotlight } from "./components/MarketSpotlight";
 import { MarketCard } from "./components/MarketCard";
@@ -25,7 +25,13 @@ const SPOTLIGHT_ID = baseSpotlight.id;
 export default function App() {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
   const { authFetch } = useApi();
-  const [activeSector, setActiveSector] = useState<Sector>("All");
+  const [activeSector, setActiveSector] = useState<Sector>(() => pathToSector(window.location.pathname));
+
+  useEffect(() => {
+    const onPop = () => setActiveSector(pathToSector(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [me, setMe] = useState<User | null>(null);
 
@@ -92,7 +98,7 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
 
   return (
     <div className="min-h-screen text-white" style={{ backgroundColor: "#15191D" }}>
-      <Navbar user={me ?? undefined} activeSector={activeSector} onSectorChange={setActiveSector} />
+      <Navbar user={me ?? undefined} activeSector={activeSector} />
 
       <main className="mx-auto max-w-7xl px-4 py-6">
         {activeSector === "Admin" ? (

@@ -9,7 +9,7 @@ CF_DIST_ID=$(terraform -chdir=terraform output -raw cloudfront_distribution_id)
 
 echo "==> Building frontend ..."
 cd frontend
-npm run build
+VITE_API_URL=https://polydelve.com/api npm run build
 cd ..
 
 echo "==> Syncing to s3://$S3_BUCKET ..."

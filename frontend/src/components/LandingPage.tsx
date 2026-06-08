@@ -17,7 +17,7 @@ export function LandingPage() {
           <span className="text-[#FDE832]">Earn schmeckles.</span>
         </h1>
         <p className="text-zinc-400 text-sm leading-relaxed">
-          Trade prediction contracts on CVEs, KEV listings, and EPSS scores for the top 500 open source packages.
+          Trade prediction contracts on CVEs and EPSS scores for the top 500 open source packages.
           Track exploits. Spot risk before it hits.
         </p>
       </div>
@@ -26,7 +26,6 @@ export function LandingPage() {
         {[
           "New CVE contracts",
           "EPSS threshold bets",
-          "KEV listing signals",
         ].map((f) => (
           <span
             key={f}

@@ -7,6 +7,24 @@ import type { User } from "@/types";
 export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Admin"] as const;
 export type Sector = (typeof SECTORS)[number];
 
+export const SECTOR_PATH: Record<Sector, string> = {
+  All: "/",
+  PyPI: "/pypi",
+  npm: "/npm",
+  News: "/news",
+  Predict: "/predict",
+  Leaderboard: "/leaderboard",
+  Dashboard: "/dashboard",
+  Admin: "/admin",
+};
+
+export function pathToSector(pathname: string): Sector {
+  const entry = (Object.entries(SECTOR_PATH) as [Sector, string][]).find(
+    ([, p]) => p === pathname || (p !== "/" && pathname.startsWith(p))
+  );
+  return entry ? entry[0] : "All";
+}
+
 const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   PyPI: <Package className="h-3.5 w-3.5" />,
   npm: <Boxes className="h-3.5 w-3.5" />,
@@ -24,23 +42,19 @@ const TAB_LABEL: Partial<Record<Sector, string>> = {
 interface NavbarProps {
   user?: User;
   activeSector: Sector;
-  onSectorChange: (s: Sector) => void;
   onSearch?: (query: string) => void;
 }
 
-function Tab({
-  s,
-  active,
-  onSectorChange,
-}: {
-  s: Sector;
-  active: boolean;
-  onSectorChange: (s: Sector) => void;
-}) {
+function Tab({ s, active }: { s: Sector; active: boolean }) {
   const isPredict = s === "Predict";
   return (
-    <button
-      onClick={() => onSectorChange(s)}
+    <a
+      href={SECTOR_PATH[s]}
+      onClick={(e) => {
+        e.preventDefault();
+        window.history.pushState({}, "", SECTOR_PATH[s]);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }}
       className={`flex shrink-0 items-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
         active
           ? isPredict
@@ -53,11 +67,11 @@ function Tab({
     >
       {TAB_ICON[s]}
       {TAB_LABEL[s] ?? s}
-    </button>
+    </a>
   );
 }
 
-export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarProps) {
+export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
   const { isAuthenticated, isLoading, loginWithRedirect, logout, user: auth0User } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -133,12 +147,12 @@ export function Navbar({ user, activeSector, onSectorChange, onSearch }: NavbarP
       <div className="overflow-x-auto scrollbar-none border-t border-zinc-800/60">
         <nav className="mx-auto flex max-w-7xl items-stretch px-4 min-w-max md:min-w-0">
           {visibleTabs.map((s) => (
-            <Tab key={s} s={s} active={activeSector === s} onSectorChange={onSectorChange} />
+            <Tab key={s} s={s} active={activeSector === s} />
           ))}
           {isAuthenticated && (
             <>
               <div className="mx-1 my-2.5 w-px bg-zinc-800 shrink-0" />
-              <Tab s="Admin" active={activeSector === "Admin"} onSectorChange={onSectorChange} />
+              <Tab s="Admin" active={activeSector === "Admin"} />
             </>
           )}
         </nav>
