@@ -47,15 +47,14 @@ logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 async def lifespan(app: FastAPI):
     if token := os.getenv("MOTHERDUCK_TOKEN"):
         os.environ.setdefault("motherduck_token", token)
-    conn = duckdb.connect(DB_PATH)
-    init_db(conn)
-    app.state.db = conn
+    bootstrap = duckdb.connect(DB_PATH)
+    init_db(bootstrap)
+    bootstrap.close()
     try:
         await _auth0().api_client._discover()
     except Exception:
         pass
     yield
-    conn.close()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])

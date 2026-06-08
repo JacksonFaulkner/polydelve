@@ -60,6 +60,16 @@ be-install: ## Install backend dependencies
 fe-install: ## Install frontend dependencies
 	$(NPM) npm install
 
+##@ Data pipeline — Resolution
+
+.PHONY: resolve-contracts
+resolve-contracts: ## Resolve open contracts (wins + expiries), credit schmeckles
+	$(UV) python scripts/resolve_contracts.py
+
+.PHONY: resolve-contracts-dry
+resolve-contracts-dry: ## Dry-run contract resolution (no writes)
+	$(UV) python scripts/resolve_contracts.py --dry-run
+
 ##@ Data pipeline — Onboarding (run once for new packages)
 
 .PHONY: seed-packages
@@ -121,6 +131,10 @@ docs: extract-models ## Serve docs locally (Next.js, port 3001)
 .PHONY: be-test
 be-test: ## Run backend tests
 	$(UV) pytest
+
+.PHONY: fe-test
+fe-test: ## Run frontend tests
+	$(NPM) npm test
 
 .PHONY: lint
 lint: be-lint fe-lint ## Lint backend and frontend

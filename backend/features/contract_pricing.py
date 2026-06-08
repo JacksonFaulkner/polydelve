@@ -216,19 +216,21 @@ def price_contract(
     epss_score, num_cves, has_mal_advisory = pkg
     num_cves = num_cves or 0
 
-    max_cvss = conn.execute(
+    max_cvss_row = conn.execute(
         "SELECT MAX(cvss_score) FROM cve_history WHERE name = ? AND ecosystem = ?",
         [package_name, ecosystem],
-    ).fetchone()[0]
+    ).fetchone()
+    max_cvss = max_cvss_row[0] if max_cvss_row else None
 
-    recent_cves = conn.execute(
+    recent_cves_row = conn.execute(
         """
         SELECT COUNT(*) FROM cve_history
         WHERE name = ? AND ecosystem = ?
-          AND published_date >= now() - interval 90 day
+          AND published_date >= now() - INTERVAL '90' DAY
         """,
         [package_name, ecosystem],
-    ).fetchone()[0]
+    ).fetchone()
+    recent_cves = recent_cves_row[0] if recent_cves_row else 0
 
     news_row = conn.execute(
         """

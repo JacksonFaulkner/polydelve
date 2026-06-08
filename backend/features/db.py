@@ -8,7 +8,11 @@ DB_PATH = os.getenv("DB_PATH", "polydelve.dev.duckdb")
 
 
 def get_db(request: Request) -> duckdb.DuckDBPyConnection:
-    return request.app.state.db
+    conn = duckdb.connect(DB_PATH)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def get_db_conn() -> duckdb.DuckDBPyConnection:
@@ -171,7 +175,8 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             status               VARCHAR NOT NULL DEFAULT 'open',  -- open | won | lost | sold
             resolved_at          TIMESTAMPTZ,
             sell_price           INTEGER,
-            created_at           TIMESTAMPTZ DEFAULT now()
+            created_at           TIMESTAMPTZ DEFAULT now(),
+            opening_epss         FLOAT
         )
     """)
     conn.execute("""
