@@ -1,8 +1,5 @@
 import { useState } from "react"
 import type { Market } from "@/types"
-import marketsData from "../../mocks/markets.json"
-
-const baseMarkets = marketsData as unknown as Market[]
 
 const STATUS_STYLES: Record<string, string> = {
   open: "bg-green-900/60 text-green-300",
@@ -31,7 +28,7 @@ const EMPTY_FORM = {
 }
 
 export function AdminPage() {
-  const [markets, setMarkets] = useState<Market[]>(baseMarkets)
+  const [markets, setMarkets] = useState<Market[]>([])
   const [editing, setEditing] = useState<string | null>(null)
   const [editStatus, setEditStatus] = useState<Market["status"]>("open")
   const [showCreate, setShowCreate] = useState(false)

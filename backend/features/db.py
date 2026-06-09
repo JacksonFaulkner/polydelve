@@ -1,4 +1,6 @@
 import os
+import threading
+from functools import lru_cache
 
 import duckdb
 from fastapi import Request
@@ -6,23 +8,36 @@ from fastapi import Request
 # Switch to "md:polydelve" for MotherDuck
 DB_PATH = os.getenv("DB_PATH", "polydelve.dev.duckdb")
 
-
-def get_db(request: Request) -> duckdb.DuckDBPyConnection:
-    conn = duckdb.connect(DB_PATH)
-    try:
-        yield conn
-    finally:
-        conn.close()
+_lock = threading.Lock()
 
 
-def get_db_conn() -> duckdb.DuckDBPyConnection:
-    """Direct connection for scripts (no FastAPI Request context)."""
-    conn = duckdb.connect(DB_PATH)
+@lru_cache(maxsize=1)
+def _get_shared_conn(path: str) -> duckdb.DuckDBPyConnection:
+    conn = duckdb.connect(path)
     init_db(conn)
     return conn
 
 
+def get_db(request: Request) -> duckdb.DuckDBPyConnection:  # noqa: ARG001
+    with _lock:
+        yield _get_shared_conn(DB_PATH)
+
+
+def get_db_conn() -> duckdb.DuckDBPyConnection:
+    """Direct connection for scripts (no FastAPI Request context)."""
+    return _get_shared_conn(DB_PATH)
+
+
 def init_db(conn: duckdb.DuckDBPyConnection) -> None:
+    def _safe(sql: str) -> None:
+        try:
+            conn.execute(sql)
+        except Exception:
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:
+                pass
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS companies (
             id      VARCHAR PRIMARY KEY,
@@ -82,10 +97,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     """)
     # Migrate existing DBs that predate summary/source_name/primary_company_id columns
     for col in ("summary VARCHAR", "source_name VARCHAR", "primary_company_id VARCHAR"):
-        try:
-            conn.execute(f"ALTER TABLE news ADD COLUMN {col}")
-        except Exception:
-            pass
+        _safe(f"ALTER TABLE news ADD COLUMN {col}")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS packages (
             name             VARCHAR NOT NULL,
@@ -104,15 +116,6 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     """)
 
     # Migrate existing DBs that predate new columns
-    def _safe(sql: str) -> None:
-        try:
-            conn.execute(sql)
-        except Exception:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-
     _safe("ALTER TABLE packages ADD COLUMN sectors VARCHAR[]")
     _safe("ALTER TABLE packages ADD COLUMN risk_score FLOAT")
     _safe("ALTER TABLE packages ADD COLUMN has_mal_advisory BOOLEAN DEFAULT false")
@@ -153,11 +156,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             PRIMARY KEY (osv_id, name, ecosystem)
         )
     """)
-    # Migrate cve_history to add cvss_score
-    try:
-        conn.execute("ALTER TABLE cve_history ADD COLUMN cvss_score FLOAT")
-    except Exception:
-        pass
+    _safe("ALTER TABLE cve_history ADD COLUMN cvss_score FLOAT")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS contracts (
             id                   VARCHAR PRIMARY KEY,
@@ -200,6 +199,14 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             PRIMARY KEY (osv_id, name, ecosystem)
         )
     """)
+
+    # Indexes on high-frequency lookup columns
+    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_user_id ON contracts (user_id)")
+    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts (status)")
+    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_expires_at ON contracts (expires_at)")
+    _safe("CREATE INDEX IF NOT EXISTS idx_packages_epss ON packages (epss_score)")
+    _safe("CREATE INDEX IF NOT EXISTS idx_news_published ON news (published_date)")
+    _safe("CREATE INDEX IF NOT EXISTS idx_epss_history_pkg ON epss_history (name, ecosystem)")
 
 
 _CDN = "https://cdn.simpleicons.org"

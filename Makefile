@@ -151,6 +151,18 @@ fe-lint: ## Lint frontend TypeScript
 fe-build: ## Build frontend for production
 	$(NPM) npm run build
 
+##@ Auth0
+
+A0 := a0deploy --config_file=auth0/config.json
+
+.PHONY: auth0-export
+auth0-export: ## Export Auth0 tenant config → auth0/
+	env -u AUTH0_DOMAIN -u AUTH0_CLIENT_ID -u AUTH0_CLIENT_SECRET -u AUTH0_AUDIENCE $(A0) export --format=yaml --output_folder=auth0/
+
+.PHONY: auth0-import
+auth0-import: ## Import Auth0 tenant config from auth0/tenant.yaml
+	env -u AUTH0_DOMAIN -u AUTH0_CLIENT_ID -u AUTH0_CLIENT_SECRET -u AUTH0_AUDIENCE $(A0) import --input_file=auth0/tenant.yaml
+
 ##@ Deploy
 
 .PHONY: deploy

@@ -1,0 +1,416 @@
+rules: []
+rulesConfigs: []
+pages: []
+resourceServers:
+  - name: Polydelve API
+    identifier: https://api.polydelve.com
+    allow_offline_access: true
+    enforce_policies: false
+    signing_alg: RS256
+    skip_consent_for_verifiable_first_party_clients: false
+    subject_type_authorization:
+      client:
+        policy: require_client_grant
+      user:
+        policy: allow_all
+    token_lifetime: 86400
+    token_lifetime_for_web: 7200
+clients:
+  - name: Default App
+    callbacks: []
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - authorization_code
+      - implicit
+      - refresh_token
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 2592000
+      idle_token_lifetime: 1296000
+      rotation_type: non-rotating
+    sso_disabled: false
+  - name: Deploy CLI
+    app_type: non_interactive
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 31557600
+      idle_token_lifetime: 2592000
+      rotation_type: non-rotating
+    sso_disabled: false
+    token_endpoint_auth_method: client_secret_post
+  - name: Polydelve
+    allowed_clients: []
+    allowed_logout_urls:
+      - http://localhost:5173
+      - https://www.polydelve.com
+      - https://www.polydelve.com/
+      - https://dx4jqtbvzvu8w.cloudfront.net/
+    allowed_origins:
+      - http://localhost:5173/
+    app_type: spa
+    callbacks:
+      - http://localhost:5173
+      - https://dx4jqtbvzvu8w.cloudfront.net/
+      - https://www.polydelve.com/
+    client_aliases: []
+    client_metadata: {}
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    description: ''
+    grant_types:
+      - implicit
+      - authorization_code
+      - refresh_token
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      secret_encoded: false
+    native_social_login:
+      apple:
+        enabled: false
+      facebook:
+        enabled: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: expiring
+      leeway: 0
+      token_lifetime: 2592000
+      idle_token_lifetime: 1296000
+      infinite_token_lifetime: false
+      infinite_idle_token_lifetime: false
+      rotation_type: rotating
+    sso: true
+    sso_disabled: false
+    token_endpoint_auth_method: none
+    web_origins:
+      - http://localhost:5173/
+  - name: polydelve
+    allowed_clients: []
+    allowed_origins:
+      - http://localhost:5173/
+    app_type: spa
+    callbacks:
+      - http://localhost:5173/
+      - https://dx4jqtbvzvu8w.cloudfront.net/
+    client_aliases: []
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - authorization_code
+      - implicit
+      - refresh_token
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    native_social_login:
+      apple:
+        enabled: false
+      facebook:
+        enabled: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: expiring
+      leeway: 0
+      token_lifetime: 2592000
+      idle_token_lifetime: 1296000
+      infinite_token_lifetime: false
+      infinite_idle_token_lifetime: false
+      rotation_type: rotating
+    sso: true
+    sso_disabled: false
+    token_endpoint_auth_method: none
+    web_origins:
+      - http://localhost:5173/
+databases:
+  - name: Username-Password-Authentication
+    strategy: auth0
+    authentication:
+      active: true
+    connected_accounts:
+      active: false
+    enabled_clients:
+      - Default App
+      - Deploy CLI
+      - Polydelve
+      - polydelve
+    is_domain_connection: false
+    options:
+      mfa:
+        active: true
+        return_enroll_settings: true
+      passwordPolicy: good
+      passkey_options:
+        challenge_ui: both
+        local_enrollment_enabled: true
+        progressive_enrollment_enabled: true
+      strategy_version: 2
+      authentication_methods:
+        passkey:
+          enabled: false
+        password:
+          enabled: true
+      brute_force_protection: true
+    realms:
+      - Username-Password-Authentication
+connections:
+  - name: google-oauth2
+    strategy: google-oauth2
+    authentication:
+      active: true
+    connected_accounts:
+      active: false
+    enabled_clients:
+      - Default App
+      - Deploy CLI
+      - Polydelve
+      - polydelve
+    is_domain_connection: false
+    options:
+      email: true
+      scope:
+        - email
+        - profile
+      profile: true
+tenant:
+  client_id_metadata_document_supported: false
+  enabled_locales:
+    - en
+  flags:
+    revoke_refresh_token_grant: false
+    disable_clickjack_protection_headers: false
+  oidc_logout:
+    rp_logout_end_session_endpoint_discovery: true
+  resource_parameter_profile: compatibility
+  sandbox_version: '22'
+emailProvider: {}
+emailTemplates: []
+clientGrants: []
+guardianFactors:
+  - name: duo
+    enabled: false
+  - name: email
+    enabled: false
+  - name: otp
+    enabled: false
+  - name: push-notification
+    enabled: false
+  - name: recovery-code
+    enabled: false
+  - name: sms
+    enabled: false
+  - name: webauthn-platform
+    enabled: false
+  - name: webauthn-roaming
+    enabled: false
+guardianPolicies:
+  policies: []
+guardianPhoneFactorMessageTypes:
+  message_types: []
+roles: []
+branding:
+  identifiers:
+    login_display: unified
+    otp_autocomplete: true
+    phone_display:
+      masking: mask_digits
+      formatting: international
+  templates: []
+phoneProviders: []
+phoneTemplates:
+  - content:
+      syntax: liquid
+      body:
+        text: >-
+          We detected suspicious activity on your account from the ip
+          {{user.source_ip}}{% if user.city %} from {{user.city}},
+          {{user.country}}{% elsif user.country %} from {{user.country}}{% endif
+          %}. Logins from this IP have been blocked on your account. If this is
+          your IP, please reset your password to unblock your account.
+          Otherwise, disregard this message.
+        voice: >-
+          We detected suspicious activity on your account from the ip
+          {{user.source_ip}}{% if user.city %} from {{user.city}},
+          {{user.country}}{% elsif user.country %} from {{user.country}}{% endif
+          %}. Logins from this IP have been blocked on your account. If this is
+          your IP, please reset your password to unblock your account.
+          Otherwise, disregard this message.
+      from: ''
+    disabled: false
+    type: blocked_account
+  - content:
+      syntax: liquid
+      body:
+        text: >-
+          {{ code | escape }} is your password change code for {{ friendly_name
+          | escape }}
+        voice: >-
+          Hello. Your password change code for {{ friendly_name | escape }} is
+          {{ pause }} {{ code | escape }}. I repeat, your password change code
+          is {{ pause }} {{ code | escape }}
+      from: ''
+    disabled: false
+    type: change_password
+  - content:
+      syntax: liquid
+      body:
+        text: >-
+          {{ code | escape }} is your verification code for {{ friendly_name |
+          escape }}. Please enter this code to verify your enrollment.
+        voice: >-
+          Hello. Your verification code for {{ friendly_name | escape }} is {{
+          pause }} {{ code | escape }}. I repeat, your verification code is {{
+          pause }} {{ code | escape }}
+      from: ''
+    disabled: false
+    type: otp_enroll
+  - content:
+      syntax: liquid
+      body:
+        text: >-
+          {{ code | escape }} is your verification code for {{ friendly_name |
+          escape }}
+        voice: >-
+          Hello. Your verification code for {{ friendly_name | escape }} is {{
+          pause }} {{ code | escape }}. I repeat, your verification code is {{
+          pause }} {{ code | escape }}
+      from: ''
+    disabled: false
+    type: otp_verify
+prompts:
+  customText: {}
+  partials: {}
+  screenRenderers: []
+  universal_login_experience: new
+actions:
+  - name: link-accounts-on-login
+    supported_triggers:
+      - id: post-login
+        version: v3
+    code: ./actions/link-accounts-on-login/code.js
+    runtime: node18
+    status: built
+    dependencies:
+      - name: auth0
+        version: latest
+    secrets:
+      - name: MANAGEMENT_API_DOMAIN
+      - name: MANAGEMENT_API_CLIENT_ID
+      - name: MANAGEMENT_API_CLIENT_SECRET
+triggers:
+  post-login:
+    - action_name: link-accounts-on-login
+      display_name: Link Accounts on Login
+organizations: []
+attackProtection:
+  botDetection:
+    challenge_password_policy: never
+    challenge_passwordless_policy: never
+    challenge_password_reset_policy: never
+    allowlist: []
+    bot_detection_level: medium
+    monitoring_mode_enabled: false
+  breachedPasswordDetection:
+    enabled: false
+    shields: []
+    admin_notification_frequency: []
+    method: standard
+    stage:
+      pre-user-registration:
+        shields: []
+      pre-change-password:
+        shields: []
+  bruteForceProtection:
+    enabled: true
+    shields:
+      - block
+      - user_notification
+    mode: count_per_identifier_and_ip
+    allowlist: []
+    max_attempts: 10
+  captcha:
+    active_provider_id: auth_challenge
+    simple_captcha: {}
+    auth_challenge:
+      fail_open: false
+    recaptcha_v2:
+      site_key: ''
+      secret: '##CAPTCHA_RECAPTCHA_V2_SECRET##'
+    recaptcha_enterprise:
+      site_key: ''
+      project_id: '##CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID##'
+      api_key: '##CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY##'
+    hcaptcha:
+      site_key: ''
+      secret: '##CAPTCHA_HCAPTCHA_SECRET##'
+    friendly_captcha:
+      site_key: ''
+      secret: '##CAPTCHA_FRIENDLY_CAPTCHA_SECRET##'
+    arkose:
+      site_key: ''
+      client_subdomain: client-api
+      verify_subdomain: verify-api
+      fail_open: false
+      secret: '##CAPTCHA_ARKOSE_SECRET##'
+  suspiciousIpThrottling:
+    enabled: true
+    shields:
+      - admin_notification
+      - block
+    allowlist: []
+    stage:
+      pre-login:
+        max_attempts: 100
+        rate: 864000
+      pre-user-registration:
+        max_attempts: 50
+        rate: 1200
+      pre-custom-token-exchange:
+        max_attempts: 10
+        rate: 600000
+riskAssessment:
+  new_device:
+    remember_for: 30
+  settings:
+    enabled: false
+logStreams: []
+customDomains: []
+themes: []
+forms: []
+flows: []
+flowVaultConnections: []
+selfServiceProfiles: []
+userAttributeProfiles: []
+connectionProfiles: []
+tokenExchangeProfiles: []
+supplementalSignals:
+  akamai_enabled: false

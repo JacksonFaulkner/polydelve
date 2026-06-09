@@ -14,13 +14,13 @@ Live at [polydelve.com](https://polydelve.com) · Docs at [docs.polydelve.com](h
 
 ## Stack
 
-| Layer | Tech |
-|---|---|
-| Frontend | React, Vite, TypeScript, Tailwind, Shadcn, Recharts |
-| Backend | FastAPI, Python 3.14, DuckDB |
-| Database | MotherDuck (serverless DuckDB cloud) |
-| Infra | AWS ECS Fargate, CloudFront, S3, Step Functions, EventBridge |
-| Auth | Auth0 |
+| Layer    | Tech                                                         |
+| -------- | ------------------------------------------------------------ |
+| Frontend | React, Vite, TypeScript, Tailwind, Shadcn, Recharts          |
+| Backend  | FastAPI, Python 3.14, DuckDB                                 |
+| Database | MotherDuck (serverless DuckDB cloud)                         |
+| Infra    | AWS ECS Fargate, CloudFront, S3, Step Functions, EventBridge |
+| Auth     | Auth0                                                        |
 
 ## Repo layout
 
@@ -80,7 +80,7 @@ Backend requires `backend/.env` — copy from `.env.example` and fill in MotherD
 **Package data**: `etl/jobs/packages.py` → fetches npm/PyPI metadata + OSV CVEs → MotherDuck  
 **EPSS scores**: `etl/jobs/epss.py` → BigQuery bulk export (never loop FIRST API) → MotherDuck  
 **Malicious advisories**: `etl/jobs/mal.py` → OSV malicious advisories → MotherDuck  
-**Prediction markets**: `api/routes/contracts.py` + `prediction_market.py` → DuckDB ACID via MotherDuck  
+**Prediction markets**: `api/routes/contracts.py` + `prediction_market.py` → DuckDB ACID via MotherDuck
 
 ## Auth
 
@@ -103,10 +103,6 @@ make ci         # both
 ```
 
 106 tests total. Backend tests use a separate `polydelve.test.duckdb` fixture, not MotherDuck.
-
-## License
-
-GPL-3.0
 
 ---
 

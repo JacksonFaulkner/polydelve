@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.auth import get_current_user, get_optional_user
 from api.cache import cache_get, cache_set, ttl_for
@@ -18,18 +18,14 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class CreateMarketRequest(BaseModel):
     company_id: str
-    title: str
-    description: str
-    duration_days: int
-    price: int
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=1000)
+    duration_days: int = Field(ge=1, le=31)
+    price: int = Field(ge=10)
 
 
 class PlaceBetRequest(BaseModel):
     market_id: str
-
-
-class CreateUserRequest(BaseModel):
-    username: str
 
 
 # --- News ---
@@ -277,24 +273,14 @@ def place_bet(
 @router.get("/users/{user_id}")
 def get_user(
     user_id: str,
+    claims: dict = Depends(get_current_user),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> dict:
+    if claims["sub"] != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
     row = conn.execute(
         "SELECT id, username, schmeckles FROM users WHERE id = ?", [user_id]
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     return {"id": row[0], "username": row[1], "schmeckles": row[2]}
-
-
-@router.post("/users", status_code=201)
-def create_user(
-    req: CreateUserRequest,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
-) -> dict:
-    user_id = str(uuid.uuid4())
-    conn.execute(
-        "INSERT INTO users (id, username, schmeckles) VALUES (?, ?, 1000)",
-        [user_id, req.username],
-    )
-    return {"id": user_id, "username": req.username, "schmeckles": 1000}

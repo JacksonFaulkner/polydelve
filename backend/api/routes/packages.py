@@ -5,6 +5,7 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.auth import get_current_user
+from api.cache import cache_get, cache_set
 from features.db import get_db
 
 router = APIRouter(prefix="/packages", dependencies=[Depends(get_current_user)])
@@ -21,6 +22,9 @@ def list_packages(
     page_size: int = Query(50, ge=1, le=500),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> dict:
+    cache_key = f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{sort}:{page}:{page_size}"
+    if cached := cache_get(cache_key):
+        return cached
     filters = ["p.ecosystem IN ('PyPI', 'npm')"]
     params: list = []
 
@@ -88,7 +92,7 @@ def list_packages(
         params + [page_size, offset],
     ).fetchall()
 
-    return {
+    result = {
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -111,6 +115,8 @@ def list_packages(
             for r in rows
         ],
     }
+    cache_set(cache_key, result, 60.0)
+    return result
 
 
 @router.get("/{ecosystem}/{name}")
@@ -119,6 +125,10 @@ def get_package(
     name: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> dict:
+    cache_key = f"pkg:{ecosystem}:{name}"
+    if cached := cache_get(cache_key):
+        return cached
+
     row = conn.execute(
         """
         SELECT
@@ -176,7 +186,7 @@ def get_package(
         [name, ecosystem],
     ).fetchall()
 
-    return {
+    result = {
         "name": row[0],
         "ecosystem": row[1],
         "weekly_downloads": row[2],
@@ -220,3 +230,5 @@ def get_package(
             for n in news_rows
         ],
     }
+    cache_set(cache_key, result, 120.0)
+    return result

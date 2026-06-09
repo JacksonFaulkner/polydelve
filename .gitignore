@@ -32,3 +32,5 @@ terraform/.terraform/
 terraform/.env
 frontend/dist/
 docs-new/
+auth0/config.json
+*.db

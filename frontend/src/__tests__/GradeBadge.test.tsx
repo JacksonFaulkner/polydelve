@@ -24,6 +24,6 @@ describe("GradeBadge", () => {
   it("grade A and F have different styles", () => {
     const { container: aContainer } = render(<GradeBadge grade="A" />)
     const { container: fContainer } = render(<GradeBadge grade="F" />)
-    expect(aContainer.firstChild?.className).not.toBe(fContainer.firstChild?.className)
+    expect((aContainer.firstChild as HTMLElement)?.className).not.toBe((fContainer.firstChild as HTMLElement)?.className)
   })
 })

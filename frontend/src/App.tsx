@@ -12,15 +12,8 @@ import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
 import { DashboardPage } from "./components/DashboardPage";
-import marketsData from "../mocks/markets.json";
-import spotlightData from "../mocks/market_spotlight.json";
 import type { Market, NewsItem, SpotlightMarket, User } from "./types";
 import { useApi } from "@/lib/api";
-
-const baseMarkets = marketsData as unknown as Market[];
-const baseSpotlight = spotlightData as unknown as SpotlightMarket;
-
-const SPOTLIGHT_ID = baseSpotlight.id;
 
 export default function App() {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
@@ -34,9 +27,20 @@ export default function App() {
   }, []);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [me, setMe] = useState<User | null>(null);
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [spotlight, setSpotlight] = useState<SpotlightMarket | null>(null);
 
-  const markets = baseMarkets;
-  const spotlight = baseSpotlight;
+  useEffect(() => {
+    authFetch("/markets?status=open")
+      .then((r) => r.json())
+      .then((data: Market[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSpotlight(data[0] as unknown as SpotlightMarket);
+          setMarkets(data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch markets:", err));
+  }, []);
 
   useEffect(() => {
     authFetch(`/news?page=1&page_size=10`)
@@ -61,7 +65,7 @@ export default function App() {
     );
   }
 
-const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
+const gridMarkets = markets.filter((m) => m.id !== spotlight?.id);
 
   async function handleBet(market: Market | SpotlightMarket) {
     if (!isAuthenticated) {
@@ -116,7 +120,7 @@ const gridMarkets = markets.filter((m) => m.id !== SPOTLIGHT_ID);
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
             <div className="space-y-6">
-              <MarketSpotlight market={spotlight} onBet={handleBet} />
+              {spotlight && <MarketSpotlight market={spotlight} onBet={handleBet} />}
               <div>
                 <h2 className="mb-4 text-sm font-semibold text-zinc-400">All markets</h2>
                 <div className="grid gap-3 sm:grid-cols-2">

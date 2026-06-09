@@ -19,5 +19,9 @@ def cache_set(key: str, value: Any, ttl: float) -> None:
     _store[key] = (value, time.time() + ttl)
 
 
+def cache_invalidate(key: str) -> None:
+    _store.pop(key, None)
+
+
 def ttl_for(user: dict | None) -> float:
     return AUTHED_TTL if user else UNAUTHED_TTL

@@ -95,14 +95,19 @@ class ContractBase(BaseModel):
     ecosystem: Ecosystem = Field(description="Registry the package belongs to.")
     cvss_threshold: float | None = Field(
         default=None,
+        ge=0,
+        le=10,
         description="CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition.",
     )
     epss_threshold: float | None = Field(
         default=None,
+        ge=0,
+        le=1,
         description="EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition.",
     )
     purchase_price: int = Field(
-        description="Schmeckles paid upfront to open the contract."
+        ge=10,
+        description="Schmeckles paid upfront to open the contract.",
     )
     duration_days: ContractDuration = Field(
         default=30, description="Contract lifetime in days. One of 7, 14, or 30."
@@ -130,6 +135,7 @@ class SimulateRequest(BaseModel):
     )
     epss_drift: float = Field(
         default=1.0,
+        ge=0,
         description="Multiplier applied to current EPSS to model future drift. 1.0 = no change.",
     )
 

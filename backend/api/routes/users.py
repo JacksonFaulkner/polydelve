@@ -30,7 +30,7 @@ def get_me(
 
     if not row:
         conn.execute(
-            "INSERT INTO users (id, email, username, schmeckles) VALUES (?, ?, ?, 1000)",
+            "INSERT OR IGNORE INTO users (id, email, username, schmeckles) VALUES (?, ?, ?, 1000)",
             [sub, email, email or sub],
         )
         return User(id=sub, email=email, schmeckles=1000)
@@ -149,19 +149,26 @@ def get_schmeckle_timeline(
 
     events.sort(key=lambda e: e[0])
 
-    balance = 1000
+    today = dt.today().isoformat()
+    try:
+        current = int(user_row[0])
+    except (ValueError, TypeError):
+        current = 1000
+
+    # Derive starting balance from actual DB balance so chart always anchors correctly.
+    total_delta = sum(delta for _, delta, _ in events)
+    starting_balance = current - total_delta
+
     points: list[SchmecklePoint] = (
-        [SchmecklePoint(date=events[0][0], balance=balance, event=None)] if events else []
+        [SchmecklePoint(date=events[0][0], balance=starting_balance, event=None)] if events else []
     )
+    balance = starting_balance
     for event_date, delta, label in events:
         balance += delta
         points.append(SchmecklePoint(date=event_date, balance=balance, event=label))  # type: ignore[arg-type]
 
-    today = dt.today().isoformat()
-    current = int(user_row[0])
-    if points and points[-1].date != today:
-        points.append(SchmecklePoint(date=today, balance=current, event=None))
-    elif not points:
+    # Always end at today with the real DB balance so the chart's final value is authoritative.
+    if not points or points[-1].date != today or points[-1].event is not None:
         points.append(SchmecklePoint(date=today, balance=current, event=None))
 
     return SchmeckleTimeline(user_id=user_id, points=points)

@@ -5,6 +5,7 @@ import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import get_current_user
+from api.cache import cache_get, cache_invalidate, cache_set
 from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
 from features.db import get_db
 from models.models import (
@@ -29,8 +30,8 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
         )
-    except ValueError as e:
-        raise HTTPException(404, str(e))
+    except ValueError:
+        raise HTTPException(404, "Package not found or insufficient data")
 
     price = req.purchase_price
     dur = req.duration_days
@@ -93,8 +94,8 @@ def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
         )
-    except ValueError as e:
-        raise HTTPException(404, str(e))
+    except ValueError:
+        raise HTTPException(404, "Package not found or insufficient data")
 
     expires_at = date.today() + timedelta(days=req.duration_days)
     return QuoteResponse(
@@ -137,8 +138,8 @@ def buy_contract(
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
         )
-    except ValueError as e:
-        raise HTTPException(404, str(e))
+    except ValueError:
+        raise HTTPException(404, "Package not found or insufficient data")
 
     contract_id = str(uuid.uuid4())
     expires_at = date.today() + timedelta(days=req.duration_days)
@@ -180,6 +181,7 @@ def buy_contract(
         conn.execute("ROLLBACK")
         raise HTTPException(500, "Failed to create contract") from e
 
+    cache_invalidate(f"contracts:me:{user_id}")
     return BuyResponse(
         id=contract_id,
         max_payout=terms.max_payout,
@@ -196,7 +198,12 @@ def list_my_contracts(
     claims: dict = Depends(get_current_user),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> list[ContractDetail]:
-    return _list_contracts(claims["sub"], conn)
+    cache_key = f"contracts:me:{claims['sub']}"
+    if cached := cache_get(cache_key):
+        return cached
+    result = _list_contracts(claims["sub"], conn)
+    cache_set(cache_key, result, 15.0)
+    return result
 
 
 @router.get("/user/{user_id}", response_model=list[ContractDetail])
@@ -309,4 +316,5 @@ def sell_contract(
         conn.execute("ROLLBACK")
         raise HTTPException(500, "Failed to sell contract") from e
 
+    cache_invalidate(f"contracts:me:{caller_id}")
     return SellResponse(sell_price=sell_val, status="sold")
