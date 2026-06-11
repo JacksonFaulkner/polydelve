@@ -10,25 +10,26 @@ flowchart TD
   Users --> CF
 
   subgraph AWS
-    CF["CloudFront CDN"]
-    S3["S3\nReact SPA"]
-    ECS["ECS Fargate\nFastAPI"]
+    CF["CloudFront CDN\npolydelve.com"]
+    CFF["CF Function\nstrips /api prefix"]
+    S3["S3\nReact SPA (private)"]
+    ECS["ECS Express Gateway\nFastAPI · 512c/1GB · 1-5 tasks"]
     ECR["ECR\ncontainer image"]
-    SM["Secrets Manager\nMD token, Auth0"]
+    SM["Secrets Manager\nMD token, OpenAI, Exa, Auth0, GCP"]
   end
 
   MD["MotherDuck\nmd:polydelve"]
 
-  CF --"static assets"--> S3
-  CF --"API /v1/*"--> ECS
+  CF --"/*"--> S3
+  CF --"/api/*"--> CFF --> ECS
   ECS --"pull image"--> ECR
-  ECS --"inject env"--> SM
+  ECS --"inject secrets"--> SM
   ECS --"DuckDB HTTPS"--> MD
 ```
 
 ## Auth
 
-All write endpoints require an Auth0 JWT in the `Authorization: Bearer <token>` header. Read endpoints are public.
+All write endpoints and `/packages` require an Auth0 JWT in the `Authorization: Bearer <token>` header. Public endpoints: `/news`, `/featured-contracts`, `/users/leaderboard`, `/companies`, `/markets`.
 
 ---
 
@@ -44,13 +45,17 @@ Top npm and PyPI packages with CVE history and EPSS data.
 | `sector` | — | Filter by sector label |
 | `limit` | `50` | Max results |
 
-### `GET /packages/{name}/epss`
-
-EPSS time-series for all CVEs associated with a package.
-
 ---
 
 ## Contracts
+
+### `POST /contracts/simulate`
+
+Preview payout curve for a contract configuration without buying. Returns probability, payout, and a simulated sell-value curve.
+
+### `POST /contracts/quote`
+
+Get a price quote for a contract configuration. Returns `purchase_price`, `max_payout`, and `opening_probability`.
 
 ### `POST /contracts`
 
@@ -73,17 +78,21 @@ Response includes `max_payout` and `multiplier`.
 
 All contracts for the authenticated user, with resolution status.
 
+### `GET /contracts/user/{user_id}`
+
+All contracts for a specific user (public).
+
+### `POST /contracts/{contract_id}/sell`
+
+Sell an open contract early at the current time-decayed value.
+
 ---
 
-## Markets
+## Featured Contracts
 
-### `GET /markets`
+### `GET /featured-contracts`
 
-Curated markets with package and contract data.
-
-### `GET /markets/{id}`
-
-Single market by ID.
+Auto-generated featured markets ranked by `relevancy_score`. These are the contracts surfaced on the home feed.
 
 ---
 
@@ -91,12 +100,14 @@ Single market by ID.
 
 ### `GET /news`
 
-Security news feed.
+Security news feed. Results ordered by `published_date DESC, relevancy_score DESC` — higher-signal articles appear first within each day.
 
 | Param | Default | Description |
 |-------|---------|-------------|
 | `page` | `1` | Page number |
 | `page_size` | `20` | Items per page |
+| `severity` | — | Filter by severity (e.g. `HIGH`, `CRITICAL`) |
+| `exploit_status` | — | Filter by exploit status |
 
 ---
 
@@ -106,14 +117,16 @@ Security news feed.
 
 Authenticated user's profile, Schmeckle balance, and contract count.
 
-### `POST /users`
-
-Create account (called automatically on first Auth0 login). Grants 1000 Schmeckles.
+Calling `GET /users/me` with a valid Auth0 JWT automatically creates the account on first login and grants 1000 Schmeckles.
 
 ---
 
 ## Leaderboard
 
-### `GET /leaderboard`
+### `GET /users/leaderboard`
 
 Top users by prediction accuracy score.
+
+### `GET /users/leaderboard/{user_id}/timeline`
+
+Schmeckle balance history for a specific user.

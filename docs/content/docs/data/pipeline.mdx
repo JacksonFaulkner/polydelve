@@ -5,21 +5,18 @@ description: "How package, CVE, EPSS, and news data flows into Polydelve."
 
 ## Architecture
 
+ETL runs via `python -m etl <job>` (see `backend/etl/run.py`). Jobs are triggered manually or via an external scheduler (cron, CI, etc.) — there is no AWS EventBridge or Step Functions orchestration.
+
 ```mermaid
 flowchart TD
-  EB["EventBridge\ncron 04:00 UTC"] --> SF["Step Functions\nstate machine"]
+  Cron["External scheduler / manual"] --> CLI["python -m etl"]
 
-  SF --> T1["1. refresh-epss\nEPSS delta from FIRST"]
-  T1 --> T2["2. ingest-epss-history\nbulk EPSS from BigQuery"]
-  T2 --> T3["3. ingest-mal\nMAL advisories via OSV"]
-  T3 --> T4["4. refresh-downloads\nweekly_downloads + risk_score"]
-  T4 --> T5["5. enrich-sectors\nheuristic classification"]
-  T5 --> T6["6. news-update\nExa fetch + Gemini tag"]
+  CLI --> T1["epss\nEPSS bulk load from BigQuery"]
+  CLI --> T2["mal\nMAL advisories via OSV"]
+  CLI --> T3["packages\nweekly_downloads + risk_score"]
+  CLI --> T4["news\nExa fetch + GPT tag + featured contracts"]
 
-  T1 --"cache CSV"--> S3["S3\nEPSS CSV cache"]
-  T2 --"reads"--> S3
-
-  T1 & T2 & T3 & T4 & T5 & T6 --"upsert"--> MD["MotherDuck\nmd:polydelve"]
+  T1 & T2 & T3 & T4 --"upsert"--> MD["MotherDuck\nmd:polydelve"]
 ```
 
 ## Sources
@@ -28,9 +25,9 @@ flowchart TD
 |--------|-----------------|
 | npm / PyPI APIs | Top packages by weekly downloads |
 | OSV API | CVE advisories per package |
-| FIRST.org EPSS | Daily exploitation probability scores |
+| BigQuery (FIRST/EPSS) | Daily exploitation probability scores via bulk export |
 | Exa | Security news articles |
-| Gemini | News tagging — extracts package names, sector labels, company mentions |
+| GPT (gpt-5.4-mini) | News analysis — extracts packages, sector labels, company mentions, relevancy score |
 
 ## Package universe
 
@@ -53,7 +50,7 @@ make build-cve-history      # OSV CVE data for all packages
 make enrich-packages        # download stats + descriptions
 make enrich-sectors         # heuristic sector classification
 make classify-sectors-llm   # LLM sector classification (optional, slower)
-make news-update            # pull latest security news
+make etl-news               # fetch security news + generate featured contracts
 ```
 
 ## News pipeline
@@ -61,16 +58,18 @@ make news-update            # pull latest security news
 ```
 Exa search (security queries)
     ↓
-Gemini extraction
-    → company_labels, sector_labels, packages[]
+GPT structured extraction (GptAnalysis)
+    → company_labels, sector_labels, affected_packages[], relevancy_score
     ↓
-news table (deduped by URL)
+news table (deduped by URL + semantic similarity)
     ↓
-GET /news → frontend
+featured_contracts generated + reranked by relevancy_score
+    ↓
+GET /news + GET /featured-contracts → frontend
 ```
 
-`make news-update` runs the full fetch + extract + store cycle. Run on a cron or manually before demos.
+`make etl-news` runs the full fetch + extract + store + featured-contracts cycle. Run daily via an external cron or manually before demos.
 
 ## Contract resolution
 
-EPSS refresh (`make refresh-epss`) also checks open contracts against new OSV data. Any contract whose package has a qualifying new CVE (CVSS ≥ threshold, within duration) is resolved YES automatically.
+EPSS refresh (`make etl-epss`) checks open contracts against new OSV data. Any contract whose package has a qualifying new CVE (CVSS ≥ threshold, within duration) is resolved YES automatically.
