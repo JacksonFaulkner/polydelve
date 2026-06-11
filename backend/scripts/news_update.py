@@ -8,6 +8,7 @@ import duckdb
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from features.db import DB_PATH, init_db
+from features.featured_contracts import generate_featured_contracts, rerank_featured_contracts
 from features.news_repository import ingest_many
 from features.recent_news import fetch_news_gpt_structured
 
@@ -33,6 +34,10 @@ async def main() -> None:
             totals[k] += v
 
         print(f"inserted={counts['inserted']} url_dup={counts['url_duplicate']} sem_dup={counts['semantic_duplicate']}")
+
+    featured = generate_featured_contracts(conn)
+    reranked = await rerank_featured_contracts(conn)
+    print(f"featured={featured} reranked={reranked}")
 
     conn.close()
     print(f"\ntotals: {totals}")

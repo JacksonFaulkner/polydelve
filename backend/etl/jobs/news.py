@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import duckdb
 
 from etl.fetch.news import fetch_news_gpt_structured
+from features.featured_contracts import generate_featured_contracts, rerank_featured_contracts
 from features.news_repository import ingest_many
 
 
@@ -32,4 +33,6 @@ async def run(conn: duckdb.DuckDBPyConnection, days_back: int = 1) -> None:
             flush=True,
         )
 
-    print(f"\n[news] done. totals={totals}", flush=True)
+    featured = generate_featured_contracts(conn)
+    reranked = await rerank_featured_contracts(conn)
+    print(f"\n[news] done. totals={totals} featured={featured} reranked={reranked}", flush=True)
