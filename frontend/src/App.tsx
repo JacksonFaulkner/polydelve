@@ -3,8 +3,6 @@ import { useAuth } from "@/lib/auth";
 import { Navbar, pathToSector } from "./components/Navbar";
 import type { Sector } from "./components/Navbar";
 import { MarketSpotlight } from "./components/MarketSpotlight";
-import { MarketCard } from "./components/MarketCard";
-import { HotMarketsSidebar } from "./components/HotMarketsSidebar";
 import { RecentNews } from "./components/RecentNews";
 import { PackagesTable } from "./components/PackagesTable";
 import { LeaderboardTable } from "./components/LeaderboardTable";
@@ -12,7 +10,7 @@ import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
 import { DashboardPage } from "./components/DashboardPage";
-import type { Market, NewsItem, SpotlightMarket, User } from "./types";
+import type { Market, NewsItem, User } from "./types";
 import { useApi } from "@/lib/api";
 
 export default function App() {
@@ -28,18 +26,22 @@ export default function App() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [me, setMe] = useState<User | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [spotlight, setSpotlight] = useState<SpotlightMarket | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 639px)").matches);
 
   useEffect(() => {
-    authFetch("/markets?status=open")
+    const mq = window.matchMedia("(max-width: 639px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    authFetch("/featured-contracts")
       .then((r) => r.json())
       .then((data: Market[]) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setSpotlight(data[0] as unknown as SpotlightMarket);
-          setMarkets(data);
-        }
+        if (Array.isArray(data)) setMarkets(data);
       })
-      .catch((err) => console.error("Failed to fetch markets:", err));
+      .catch((err) => console.error("Failed to fetch featured contracts:", err));
   }, []);
 
   useEffect(() => {
@@ -65,9 +67,7 @@ export default function App() {
     );
   }
 
-const gridMarkets = markets.filter((m) => m.id !== spotlight?.id);
-
-  async function handleBet(market: Market | SpotlightMarket) {
+  async function handleBet(market: Market) {
     if (!isAuthenticated) {
       loginWithRedirect();
       return;
@@ -100,11 +100,16 @@ const gridMarkets = markets.filter((m) => m.id !== spotlight?.id);
     }
   }
 
+  const isHome = !["Admin", "News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm"].includes(activeSector);
+
   return (
-    <div className="min-h-screen text-white" style={{ backgroundColor: "#15191D" }}>
+    <div
+      className={isHome ? "flex h-dvh flex-col overflow-hidden text-white" : "min-h-screen text-white"}
+      style={{ backgroundColor: "#15191D" }}
+    >
       <Navbar user={me ?? undefined} activeSector={activeSector} />
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className={isHome ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
         {activeSector === "Admin" ? (
           <AdminPage />
         ) : activeSector === "News" ? (
@@ -118,20 +123,26 @@ const gridMarkets = markets.filter((m) => m.id !== spotlight?.id);
         ) : activeSector === "PyPI" || activeSector === "npm" ? (
           <PackagesTable ecosystem={activeSector} />
         ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-            <div className="space-y-6">
-              {spotlight && <MarketSpotlight market={spotlight} onBet={handleBet} />}
-              <div>
-                <h2 className="mb-4 text-sm font-semibold text-zinc-400">All markets</h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {gridMarkets.map((m) => (
-                    <MarketCard key={m.id} market={m} onBet={handleBet} />
-                  ))}
+          <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:grid-cols-[1fr_320px] lg:grid-rows-1">
+            <div className="min-h-0 overflow-y-auto">
+              {isMobile ? (
+                markets.length > 0 && <MarketSpotlight markets={markets} onBet={handleBet} />
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {[0, 1, 2].map((tier) => {
+                    const size = Math.ceil(markets.length / 3);
+                    const group = markets.slice(tier * size, (tier + 1) * size);
+                    if (group.length === 0) return null;
+                    return (
+                      <div key={tier} className={tier === 0 ? "col-span-2" : ""}>
+                        <MarketSpotlight markets={group} onBet={handleBet} showTitle={tier === 0} />
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
             </div>
-            <div className="space-y-4">
-              <HotMarketsSidebar markets={gridMarkets} onSelect={() => {}} />
+            <div className="flex min-h-0 flex-col">
               <RecentNews items={news} />
             </div>
           </div>
