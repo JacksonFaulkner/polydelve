@@ -4,8 +4,8 @@
 .DEFAULT_GOAL := help
 
 ifneq (,$(wildcard backend/.env))
-  include backend/.env
-  export
+	include backend/.env
+	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN
 endif
 
 UV  := cd backend && uv run
@@ -85,18 +85,27 @@ classify-sectors-llm: ## LLM sector classification — slow + costs money, run f
 	$(UV) python scripts/classify_package_sectors_llm.py
 
 ##@ Data pipeline — Scheduled (daily/frequent)
+# Target DB comes from DB_PATH in backend/.env. Override per-run for prod:
+#   make etl DB_PATH=md:polydelve
 
-.PHONY: refresh-epss
-refresh-epss: ## Refresh EPSS scores from FIRST API (safe to run frequently)
-	$(UV) python scripts/refresh_epss.py
+.PHONY: etl
+etl: etl-news etl-epss etl-mal ## Run all daily ETL jobs (news + epss + mal)
 
-.PHONY: ingest-mal
-ingest-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (daily)
-	$(UV) python scripts/ingest_mal_advisories.py
+.PHONY: etl-news
+etl-news: ## Fetch news, generate + rerank featured contracts (daily)
+	$(UV) python -m etl.run news
 
-.PHONY: news-update
-news-update: ## Fetch + ingest structured security news via GPT (daily, 7-day window)
-	$(UV) python scripts/news_update.py
+.PHONY: etl-epss
+etl-epss: ## Refresh EPSS scores from daily bulk file (daily)
+	$(UV) python -m etl.run epss
+
+.PHONY: etl-mal
+etl-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (daily)
+	$(UV) python -m etl.run mal
+
+.PHONY: etl-packages
+etl-packages: ## Refresh package metadata (weekly)
+	$(UV) python -m etl.run packages
 
 .PHONY: refresh-downloads
 refresh-downloads: ## Refresh weekly_downloads + recompute risk_score (daily)
