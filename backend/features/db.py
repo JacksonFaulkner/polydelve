@@ -96,8 +96,9 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
         )
     """)
     # Migrate existing DBs that predate summary/source_name/primary_company_id columns
-    for col in ("summary VARCHAR", "source_name VARCHAR", "primary_company_id VARCHAR"):
+    for col in ("summary VARCHAR", "source_name VARCHAR", "primary_company_id VARCHAR", "relevancy_score FLOAT"):
         _safe(f"ALTER TABLE news ADD COLUMN {col}")
+    _safe("UPDATE news SET relevancy_score = 0.5 WHERE relevancy_score IS NULL")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS packages (
             name             VARCHAR NOT NULL,
@@ -187,6 +188,27 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             PRIMARY KEY (candidate_url, matched_news_id)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS featured_contracts (
+            id                  VARCHAR PRIMARY KEY,
+            package_name        VARCHAR NOT NULL,
+            package_ecosystem   VARCHAR NOT NULL,
+            cvss_threshold      FLOAT,
+            epss_threshold      FLOAT,
+            purchase_price      INTEGER NOT NULL DEFAULT 100,
+            duration_days       INTEGER NOT NULL,
+            max_payout          INTEGER NOT NULL,
+            opening_probability FLOAT NOT NULL,
+            package_grade       FLOAT NOT NULL,
+            expires_at          DATE NOT NULL,
+            status              VARCHAR NOT NULL DEFAULT 'open',
+            created_at          TIMESTAMPTZ DEFAULT now(),
+            news_id             VARCHAR,
+            relevancy_score     FLOAT NOT NULL DEFAULT 0.5
+        )
+    """)
+    _safe("ALTER TABLE featured_contracts ADD COLUMN relevancy_score FLOAT")
+    _safe("UPDATE featured_contracts SET relevancy_score = 0.5 WHERE relevancy_score IS NULL")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS mal_advisories (
             osv_id       VARCHAR NOT NULL,
