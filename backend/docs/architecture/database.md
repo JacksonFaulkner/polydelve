@@ -1,6 +1,6 @@
 # Database
 
-DuckDB single-file database at `backend/action_odds.duckdb`.
+DuckDB single-file database at `backend/polydelve.dev.duckdb`.
 
 ## Schema
 

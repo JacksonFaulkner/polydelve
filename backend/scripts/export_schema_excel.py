@@ -17,7 +17,7 @@ from openpyxl.styles import (
 from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).parent.parent
-DB_PATH = ROOT / "action_odds.duckdb"
+DB_PATH = ROOT / "polydelve.dev.duckdb"
 OUTPUT_DIR = ROOT / "outputs"
 
 # ── palette ──────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ def build_cover_sheet(wb: Workbook, tables_meta: list[dict]):
     # title block
     ws.merge_cells("A1:F1")
     c = ws["A1"]
-    c.value = "Action Odds — DuckDB Schema Overview"
+    c.value = "Polydelve — DuckDB Schema Overview"
     c.font = _font(bold=True, color=HEADER_FG, size=16)
     c.fill = _fill(DARK_BG)
     c.alignment = _center()
