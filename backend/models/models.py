@@ -364,7 +364,10 @@ class PackageRisk(BaseModel):
     )
 
 
-class NewsAnalysis(BaseModel):
+class GptAnalysis(BaseModel):
+    """Structured LLM extraction from an article body. Used directly as the
+    OpenAI structured-output response schema."""
+
     description: str = Field(
         description="2-sentence factual summary of the security event."
     )
@@ -385,6 +388,41 @@ class NewsAnalysis(BaseModel):
     )
     severity: Severity | None = Field(
         description="Severity level: critical, high, medium, or low. Null if not stated."
+    )
+    relevancy_score: float = Field(
+        ge=0,
+        le=1,
+        description=(
+            "How useful this article is to a software supply-chain risk app that "
+            "tracks CVEs and exploits in npm/PyPI packages. "
+            "0.9-1.0 = specific vulnerability, exploit, or malicious-package incident with named packages or CVEs. "
+            "0.6-0.8 = concrete security incident or advisory affecting open-source software, packages inferable. "
+            "0.3-0.5 = general supply-chain security reporting with no specific vulnerability. "
+            "0.0-0.2 = listicles ('Top 10 ...'), vendor marketing, webinars, conference promos, product announcements."
+        ),
+    )
+
+
+class ExaAnalysis(BaseModel):
+    """Article metadata as returned by Exa search — no LLM involved."""
+
+    title: str = Field(description="Article headline.")
+    description: str = Field(description="Raw article description or lede.")
+    source_name: str | None = Field(
+        default=None, description="Publisher name, e.g. 'Bleeping Computer'."
+    )
+    published_date: datetime | None = Field(
+        description="Publication timestamp from the source."
+    )
+    source_url: str = Field(description="Canonical URL of the article.")
+
+
+class NewsAnalysis(BaseModel):
+    """Combined view of an article: Exa source metadata + GPT extraction."""
+
+    exa: ExaAnalysis = Field(description="Source metadata from Exa search.")
+    gpt: GptAnalysis = Field(
+        description="Structured LLM extraction: packages, sectors, threat actor, severity."
     )
 
 
@@ -482,21 +520,13 @@ class PackageRow(BaseModel):
 
 class RecentNews(BaseModel):
     id: str = Field(description="URL hash used as a stable dedup key.")
-    title: str = Field(description="Article headline.")
-    description: str = Field(description="Raw article description or lede.")
-    summary: str | None = Field(
-        default=None, description="2-sentence factual summary from NewsAnalysis."
-    )
-    source_name: str | None = Field(
-        default=None, description="Publisher name, e.g. 'Bleeping Computer'."
-    )
-    published_date: datetime | None = Field(
-        description="Publication timestamp from the source."
-    )
-    source_url: str = Field(description="Canonical URL of the article.")
     embeddings: NewsEmbeddings = Field(
         description="Vector embeddings for title, description, and source (excluded from serialization)."
     )
     analysis: NewsAnalysis = Field(
-        description="Structured LLM extraction: packages, sectors, threat actor, severity."
+        description="Exa source metadata + structured LLM extraction."
     )
+
+    @property
+    def summary(self) -> str:
+        return self.analysis.gpt.description
