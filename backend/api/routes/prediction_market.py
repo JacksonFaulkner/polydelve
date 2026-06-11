@@ -70,8 +70,8 @@ def list_news(
         GROUP BY
             n.id, n.title, n.summary, n.source_url, n.source_name,
             n.published_date, n.sector_labels, n.company_labels,
-            n.threat_actor, n.exploit_status, n.severity
-        ORDER BY n.published_date DESC
+            n.threat_actor, n.exploit_status, n.severity, n.relevancy_score
+        ORDER BY n.published_date::DATE DESC, coalesce(n.relevancy_score, 0.5) DESC, n.published_date DESC
         LIMIT ? OFFSET ?
         """,
         params + [page_size, offset],

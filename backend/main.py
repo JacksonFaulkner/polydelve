@@ -18,6 +18,7 @@ from api.routes.prediction_market import public_router as pm_public_router
 from api.routes.prediction_market import router as pm_router
 from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
+from api.routes.featured import router as featured_router
 from api.auth import _auth0
 from features.db import DB_PATH, init_db
 
@@ -59,7 +60,7 @@ async def lifespan(app: FastAPI):
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
-app = FastAPI(title="Action Odds", lifespan=lifespan)
+app = FastAPI(title="Polydelve", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -71,6 +72,7 @@ app.include_router(pm_public_router)
 app.include_router(pm_router)
 app.include_router(packages_router)
 app.include_router(contracts_router)
+app.include_router(featured_router)
 
 
 def dev() -> None:
