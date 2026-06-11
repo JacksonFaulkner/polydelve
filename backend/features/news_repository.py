@@ -61,31 +61,33 @@ def _resolve_company_id(
 
 
 def _insert_news(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> None:
-    primary_company_id = _resolve_company_id(conn, article.analysis.company_labels)
+    exa, gpt = article.analysis.exa, article.analysis.gpt
+    primary_company_id = _resolve_company_id(conn, gpt.company_labels)
     conn.execute(
         """
         INSERT INTO news (
             id, title, description, summary, source_name,
             primary_company_id, published_date, source_url,
-            threat_actor, exploit_status, severity,
+            threat_actor, exploit_status, severity, relevancy_score,
             company_labels, sector_labels,
             embed_title, embed_description, embed_source
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             article.id,
-            article.title,
-            article.description,
+            exa.title,
+            exa.description,
             article.summary,
-            article.source_name,
+            exa.source_name,
             primary_company_id,
-            article.published_date,
-            article.source_url,
-            article.analysis.threat_actor,
-            article.analysis.exploit_status,
-            article.analysis.severity,
-            article.analysis.company_labels,
-            article.analysis.sector_labels,
+            exa.published_date,
+            exa.source_url,
+            gpt.threat_actor,
+            gpt.exploit_status,
+            gpt.severity,
+            gpt.relevancy_score,
+            gpt.company_labels,
+            gpt.sector_labels,
             article.embeddings.title,
             article.embeddings.description,
             article.embeddings.source,
@@ -135,11 +137,11 @@ async def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
     duplicate = _find_semantic_duplicate(conn, article.embeddings.description)
     if duplicate:
         matched_id, score = duplicate
-        _log_duplicate(conn, article.source_url, matched_id, score)
+        _log_duplicate(conn, article.analysis.exa.source_url, matched_id, score)
         return "semantic_duplicate"
 
     _insert_news(conn, article)
-    await _insert_packages(conn, article.id, article.analysis.affected_packages)
+    await _insert_packages(conn, article.id, article.analysis.gpt.affected_packages)
     return "inserted"
 
 

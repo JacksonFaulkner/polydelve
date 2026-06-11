@@ -208,7 +208,7 @@ async def classify_sectors_llm(
 
     openai = get_openai_client()
     response = await openai.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         messages=[
             {
                 "role": "system",

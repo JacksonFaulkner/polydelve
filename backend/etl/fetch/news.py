@@ -1,22 +1,27 @@
 """Fetch structured security news from Exa + GPT."""
+
 import asyncio
 import hashlib
-import json
 import time
 from datetime import datetime
 from urllib.parse import urlparse
 
 from config import get_exa_client, get_openai_client
 from etl.fetch.embedding import embed_document
-from models.models import NewsAnalysis, NewsEmbeddings, PackageRisk, RecentNews
+from models.models import (
+    ExaAnalysis,
+    GptAnalysis,
+    NewsAnalysis,
+    NewsEmbeddings,
+    RecentNews,
+)
 
 _QUERY = "software supply chain security breach vulnerability attack"
-_GPT_MODEL = "gpt-4o-mini"
+_GPT_MODEL = "gpt-5.4-mini"
 
 _SYSTEM_PROMPT = (
-    "You analyze tech security news. Return a JSON object that strictly follows this schema. "
-    "Pay close attention to the field descriptions — they define exact formatting rules.\n\n"
-    + json.dumps(NewsAnalysis.model_json_schema(), indent=2)
+    "You analyze tech security news. "
+    "Follow the field descriptions in the response schema exactly — they define the formatting rules."
 )
 
 
@@ -54,13 +59,18 @@ async def fetch_news_gpt_structured(
 
     openai = get_openai_client()
 
-    async def call_gpt(messages: list) -> dict:
-        response = await openai.chat.completions.create(
+    async def call_gpt(messages: list) -> GptAnalysis:
+        response = await openai.beta.chat.completions.parse(
             model=_GPT_MODEL,
             messages=messages,
-            response_format={"type": "json_object"},
+            response_format=GptAnalysis,
         )
-        return json.loads(response.choices[0].message.content)
+        parsed = response.choices[0].message.parsed
+        if parsed is None:
+            raise ValueError(
+                "GPT returned no parsed GptAnalysis (refusal or truncation)"
+            )
+        return parsed
 
     async def enrich(result) -> RecentNews:
         title = result.title or ""
@@ -79,50 +89,34 @@ async def fetch_news_gpt_structured(
             embed_document(body[:8000]),
         )
 
-        done, pending = await asyncio.wait(gpt_tasks, return_when=asyncio.FIRST_COMPLETED)
+        done, pending = await asyncio.wait(
+            gpt_tasks, return_when=asyncio.FIRST_COMPLETED
+        )
         for t in pending:
             t.cancel()
-        data = done.pop().result()
+        gpt = done.pop().result()
 
         title_vec, source_vec = await embed_tasks
-        desc_vec = await embed_document(data.get("description", ""))
+        desc_vec = await embed_document(gpt.description)
 
         print(f"[{time.perf_counter() - t0:.2f}s] {title[:60]}", flush=True)
 
-        packages = [
-            PackageRisk(
-                name=p.get("name", "") if isinstance(p, dict) else str(p),
-                ecosystem=p.get("ecosystem", "other") if isinstance(p, dict) else "other",
-                weekly_downloads=None,
-                cve_ids=[],
-                epss_score=None,
-            )
-            for p in data.get("affected_packages", [])
-        ]
-
-        gpt_summary = data.get("description", "")
-
         return RecentNews(
             id=_article_id(url),
-            title=title,
-            description=body[:500],
-            summary=gpt_summary,
-            source_name=parse_source_name(url),
-            published_date=getattr(result, "published_date", None),
-            source_url=url,
             embeddings=NewsEmbeddings(
                 title=title_vec,
                 description=desc_vec,
                 source=source_vec,
             ),
             analysis=NewsAnalysis(
-                description=gpt_summary,
-                company_labels=data.get("company_labels", []),
-                sector_labels=data.get("sector_labels", []),
-                affected_packages=packages,
-                threat_actor=data.get("threat_actor"),
-                exploit_status=data.get("exploit_status"),
-                severity=data.get("severity"),
+                exa=ExaAnalysis(
+                    title=title,
+                    description=body[:500],
+                    source_name=parse_source_name(url),
+                    published_date=getattr(result, "published_date", None),
+                    source_url=url,
+                ),
+                gpt=gpt,
             ),
         )
 
