@@ -20,6 +20,8 @@ dependencies = [
     "auth0-fastapi-api>=1.0.0b7",
     "pytz>=2026.2",
     "slowapi>=0.1.9",
+    "boto3>=1.38.0",
+    "botocore[crt]>=1.38.0",
 ]
 
 [project.scripts]

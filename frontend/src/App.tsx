@@ -6,10 +6,11 @@ import { MarketSpotlight } from "./components/MarketSpotlight";
 import { RecentNews } from "./components/RecentNews";
 import { PackagesTable } from "./components/PackagesTable";
 import { LeaderboardTable } from "./components/LeaderboardTable";
-import { AdminPage } from "./components/AdminPage";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
 import { DashboardPage } from "./components/DashboardPage";
+import { SettingsPage } from "./components/SettingsPage";
+import { UsernameModal } from "./components/UsernameModal";
 import type { Market, NewsItem, User } from "./types";
 import { useApi } from "@/lib/api";
 
@@ -59,6 +60,9 @@ export default function App() {
       .catch((err) => console.error("Failed to fetch user:", err));
   }, [isAuthenticated]);
 
+  const isValidUsername = (u: string | null | undefined) => !!u && /^[a-zA-Z0-9_]{3,20}$/.test(u);
+  const needsUsername = isAuthenticated && me !== null && !isValidUsername(me.username);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: "#15191D" }}>
@@ -100,7 +104,7 @@ export default function App() {
     }
   }
 
-  const isHome = !["Admin", "News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm"].includes(activeSector);
+  const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings"].includes(activeSector);
 
   return (
     <div
@@ -109,9 +113,10 @@ export default function App() {
     >
       <Navbar user={me ?? undefined} activeSector={activeSector} />
 
+      {needsUsername && <UsernameModal onComplete={(user) => setMe(user)} />}
       <main className={isHome ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
-        {activeSector === "Admin" ? (
-          <AdminPage />
+        {activeSector === "Settings" ? (
+          <SettingsPage user={me} onUsernameChange={(u) => setMe(u)} />
         ) : activeSector === "News" ? (
           <NewsPage />
         ) : activeSector === "Dashboard" ? (

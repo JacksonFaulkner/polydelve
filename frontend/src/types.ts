@@ -83,6 +83,7 @@ export interface User {
   username: string
   schmeckles: number
   schmeckle_history: BalancePoint[]
+  avatar_url: string | null
 }
 
 export interface CveRecord {

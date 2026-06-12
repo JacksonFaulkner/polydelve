@@ -12,6 +12,7 @@ def add_cors(app: FastAPI) -> None:
             "https://www.polydelve.com",
             "https://dx4jqtbvzvu8w.cloudfront.net",
         ],
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -1,16 +1,38 @@
+import os
+import re
+import uuid
 from collections import defaultdict
 from datetime import date as dt
 
+import boto3
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, field_validator
 
 from api.auth import get_current_user, get_optional_user
-from api.cache import cache_get, cache_set, ttl_for
+from api.cache import cache_get, cache_set, cache_invalidate, ttl_for
 from features.db import get_db
 from models.models import (
     LeaderboardContract, LeaderboardResponse, LeaderboardUser,
     SchmecklePoint, SchmeckleTimeline, User,
 )
+
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
+_AVATARS_BUCKET = os.getenv("AVATARS_BUCKET", "")
+_AVATARS_REGION = os.getenv("AVATARS_REGION", "us-east-1")
+_ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+class UserUpdate(BaseModel):
+    username: str | None = None
+    avatar_url: str | None = None
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str | None) -> str | None:
+        if v is not None and not _USERNAME_RE.match(v):
+            raise ValueError("Username must be 3–20 characters: letters, numbers, underscores only.")
+        return v
 
 public_router = APIRouter(prefix="/users")
 router = APIRouter(prefix="/users", dependencies=[Depends(get_current_user)])
@@ -25,17 +47,72 @@ def get_me(
     email = claims.get("email")
 
     row = conn.execute(
-        "SELECT id, email, username, schmeckles FROM users WHERE id = ?", [sub]
+        "SELECT id, email, username, schmeckles, avatar_url FROM users WHERE id = ?", [sub]
     ).fetchone()
 
     if not row:
         conn.execute(
-            "INSERT OR IGNORE INTO users (id, email, username, schmeckles) VALUES (?, ?, ?, 1000)",
-            [sub, email, email or sub],
+            "INSERT OR IGNORE INTO users (id, email, username, schmeckles) VALUES (?, ?, NULL, 1000)",
+            [sub, email],
         )
-        return User(id=sub, email=email, schmeckles=1000)
+        return User(id=sub, email=email, username=None, schmeckles=1000)
 
-    return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3])
+    return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
+
+
+@router.get("/me/avatar-upload-url")
+def get_avatar_upload_url(
+    content_type: str = Query(...),
+    claims: dict = Depends(get_current_user),
+) -> dict:
+    if content_type not in _ALLOWED_CONTENT_TYPES:
+        raise HTTPException(400, f"content_type must be one of {sorted(_ALLOWED_CONTENT_TYPES)}")
+    if not _AVATARS_BUCKET:
+        raise HTTPException(503, "Avatar uploads not configured.")
+
+    ext = content_type.split("/")[1].replace("jpeg", "jpg")
+    key = f"avatars/{claims['sub']}/{uuid.uuid4()}.{ext}"
+    public_url = f"https://{_AVATARS_BUCKET}.s3.{_AVATARS_REGION}.amazonaws.com/{key}"
+
+    s3 = boto3.client("s3", region_name=_AVATARS_REGION)
+    upload_url = s3.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": _AVATARS_BUCKET, "Key": key, "ContentType": content_type},
+        ExpiresIn=300,
+    )
+    return {"upload_url": upload_url, "public_url": public_url}
+
+
+@router.patch("/me", response_model=User)
+def update_me(
+    body: UserUpdate,
+    claims: dict = Depends(get_current_user),
+    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+) -> User:
+    sub = claims["sub"]
+
+    if body.username is not None:
+        taken = conn.execute(
+            "SELECT id FROM users WHERE username = ? AND id != ?", [body.username, sub]
+        ).fetchone()
+        if taken:
+            raise HTTPException(409, "Username already taken.")
+        conn.execute("UPDATE users SET username = ? WHERE id = ?", [body.username, sub])
+        # Invalidate leaderboard cache so new username appears immediately.
+        for p in range(1, 6):
+            for ps in [50, 100]:
+                cache_invalidate(f"leaderboard:{p}:{ps}")
+
+    if body.avatar_url is not None:
+        conn.execute("UPDATE users SET avatar_url = ? WHERE id = ?", [body.avatar_url, sub])
+
+    row = conn.execute(
+        "SELECT id, email, username, schmeckles, avatar_url FROM users WHERE id = ?", [sub]
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found.")
+
+    return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
 
 
 @public_router.get("/leaderboard", response_model=LeaderboardResponse)

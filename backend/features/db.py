@@ -126,6 +126,9 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
     _safe("ALTER TABLE contracts ADD COLUMN opening_epss FLOAT")
     _safe("ALTER TABLE users ADD COLUMN email VARCHAR")
     _safe("ALTER TABLE users ALTER COLUMN username DROP NOT NULL")
+    _safe("ALTER TABLE users ADD COLUMN avatar_url VARCHAR")
+    # Null out legacy usernames that are Auth0 sub IDs or email addresses (contain | or @)
+    _safe("UPDATE users SET username = NULL WHERE username LIKE '%|%' OR username LIKE '%@%'")
     # epss_history: daily snapshot per package for drift tracking
     conn.execute("""
         CREATE TABLE IF NOT EXISTS epss_history (

@@ -11,6 +11,7 @@ resource "aws_ecs_express_gateway_service" "backend" {
   service_name            = "${var.app_name}-backend-v2"
   cluster                 = aws_ecs_cluster.main.name
   execution_role_arn      = aws_iam_role.execution.arn
+  task_role_arn           = aws_iam_role.task.arn
   infrastructure_role_arn = aws_iam_role.infrastructure.arn
   cpu                     = 512
   memory                  = 1024
@@ -29,6 +30,16 @@ resource "aws_ecs_express_gateway_service" "backend" {
     environment {
       name  = "DB_PATH"
       value = "md:polydelve"
+    }
+
+    environment {
+      name  = "AVATARS_BUCKET"
+      value = aws_s3_bucket.avatars.bucket
+    }
+
+    environment {
+      name  = "AVATARS_REGION"
+      value = var.aws_region
     }
 
     secret {

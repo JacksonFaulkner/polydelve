@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { SchmeckleIcon } from "./SchmeckleIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Admin"] as const;
+export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Settings"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const SECTOR_PATH: Record<Sector, string> = {
@@ -15,7 +15,7 @@ export const SECTOR_PATH: Record<Sector, string> = {
   Predict: "/predict",
   Leaderboard: "/leaderboard",
   Dashboard: "/dashboard",
-  Admin: "/admin",
+  Settings: "/settings",
 };
 
 export function pathToSector(pathname: string): Sector {
@@ -72,7 +72,7 @@ function Tab({ s, active }: { s: Sector; active: boolean }) {
 }
 
 export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
-  const { isAuthenticated, isLoading, loginWithRedirect, logout, user: auth0User } = useAuth();
+  const { isAuthenticated, isLoading, loginWithRedirect, user: auth0User } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const publicTabs: Sector[] = ["All", "News", "Leaderboard"];
@@ -121,17 +121,21 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
 
           {/* Auth */}
           {isLoading ? null : isAuthenticated ? (
-            <div className="flex items-center gap-2">
-              {auth0User?.picture && (
-                <img src={auth0User.picture} alt="" className="h-7 w-7 rounded-full object-cover" />
+            <a
+              href={SECTOR_PATH["Settings"]}
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, "", SECTOR_PATH["Settings"]);
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="flex items-center"
+            >
+              {(user?.avatar_url ?? (auth0User as { picture?: string })?.picture) ? (
+                <img src={user?.avatar_url ?? (auth0User as { picture?: string })?.picture!} alt="Settings" className="h-7 w-7 rounded-full object-cover ring-2 ring-transparent hover:ring-[#FDE832] transition-all" />
+              ) : (
+                <div className="h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 transition-colors" />
               )}
-              <button
-                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                className="hidden sm:block text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                Sign out
-              </button>
-            </div>
+            </a>
           ) : (
             <button
               onClick={() => loginWithRedirect()}
@@ -149,12 +153,6 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
           {visibleTabs.map((s) => (
             <Tab key={s} s={s} active={activeSector === s} />
           ))}
-          {isAuthenticated && (
-            <>
-              <div className="mx-1 my-2.5 w-px bg-zinc-800 shrink-0" />
-              <Tab s="Admin" active={activeSector === "Admin"} />
-            </>
-          )}
         </nav>
       </div>
     </header>

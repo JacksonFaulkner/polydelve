@@ -85,6 +85,9 @@ class User(BaseModel):
     schmeckles: int = Field(
         default=1000, description="In-game currency balance. New users start with 1000."
     )
+    avatar_url: str | None = Field(
+        default=None, description="Public URL of user's avatar image."
+    )
 
 
 # ── Contracts ─────────────────────────────────────────────────────────────────
