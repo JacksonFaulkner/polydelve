@@ -46,7 +46,7 @@ def test_grade_in_range():
 
 def test_epss_prob_none_input():
     p = compute_epss_probability(None)
-    assert 0.001 <= p <= 0.95
+    assert 0.001 <= p <= 0.75
 
 
 def test_epss_prob_zero():
@@ -54,15 +54,43 @@ def test_epss_prob_zero():
     assert p == 0.01
 
 
-def test_epss_prob_max_clamped():
+def test_epss_prob_no_threshold_max_clamped_at_075():
+    # Without threshold: high EPSS should NOT hit 0.95 (keeps payouts attractive)
     p = compute_epss_probability(1.0)
-    assert p == 0.95
+    assert p <= 0.75
 
 
 def test_epss_prob_monotonic():
     scores = [0.0, 0.1, 0.2, 0.5, 1.0]
     probs = [compute_epss_probability(s) for s in scores]
     assert probs == sorted(probs)
+
+
+def test_epss_prob_already_above_threshold_near_certain():
+    # EPSS 0.5, threshold 0.3 → already above → near-certain win next refresh
+    p = compute_epss_probability(0.5, epss_threshold=0.3)
+    assert p >= 0.90
+
+
+def test_epss_prob_far_below_threshold_low():
+    # EPSS 0.01, threshold 0.5 → very unlikely to spike 50x
+    p = compute_epss_probability(0.01, epss_threshold=0.5)
+    assert p < 0.15
+
+
+def test_epss_prob_threshold_monotonic_with_ratio():
+    # As current EPSS approaches threshold, probability should increase
+    threshold = 0.5
+    probs = [compute_epss_probability(epss, threshold) for epss in [0.05, 0.1, 0.2, 0.4, 0.5, 0.6]]
+    assert probs == sorted(probs)
+
+
+def test_epss_prob_threshold_gives_better_payout_for_high_epss():
+    # With threshold, high-EPSS packages can have varied payouts based on gap
+    # A package at EPSS=0.8 with threshold=0.9 should have lower prob than threshold=0.5
+    p_above = compute_epss_probability(0.8, epss_threshold=0.5)   # already above
+    p_below = compute_epss_probability(0.8, epss_threshold=0.9)   # still below
+    assert p_above > p_below
 
 
 # ── compute_cvss_probability ──────────────────────────────────────────────────
@@ -82,6 +110,22 @@ def test_cvss_prob_high_threshold_lower_than_low():
 def test_cvss_prob_zero_cves_no_crash():
     p = compute_cvss_probability(0, 0, None, 7.0)
     assert p >= 0.001
+
+
+def test_cvss_prob_absolute_activity_matters():
+    # 5 recent CVEs out of 100 total should NOT be rated as safer than
+    # 5 recent CVEs out of 5 total — absolute activity still contributes
+    p_large_history = compute_cvss_probability(5, 100, 9.0, 7.0)
+    p_small_history = compute_cvss_probability(5, 5,   9.0, 7.0)
+    # small history is still riskier (higher relative velocity), but gap shouldn't be 4x+
+    assert p_small_history / p_large_history < 3.0
+
+
+def test_cvss_prob_high_absolute_recent_beats_zero():
+    # A package with 10 recent CVEs should have meaningfully higher prob than 0 recent
+    p_zero = compute_cvss_probability(0, 50, 7.0, 5.0)
+    p_ten  = compute_cvss_probability(10, 50, 7.0, 5.0)
+    assert p_ten > p_zero * 2
 
 
 # ── compute_mal_probability ───────────────────────────────────────────────────

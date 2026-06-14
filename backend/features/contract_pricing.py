@@ -54,11 +54,27 @@ def compute_grade(
     return round(_clamp(grade, 0.0, 10.0), 2)
 
 
-def compute_epss_probability(epss_score: float | None) -> float:
-    """P(EPSS spike event): driven purely by current EPSS score."""
+def compute_epss_probability(epss_score: float | None, epss_threshold: float | None = None) -> float:
+    """P(EPSS crosses threshold during contract duration).
+
+    If threshold is set: probability scales with how close current EPSS is to the threshold.
+      - Already above threshold → near-certain (0.92), wins on next daily refresh.
+      - At 80% of threshold → 0.65.
+      - At 50% of threshold → 0.35.
+      - At 0% of threshold → 0.05 floor.
+    If no threshold set: use current EPSS as proxy for general exploitation risk.
+    """
     epss = epss_score or 0.0
-    # Higher baseline EPSS = more likely to stay elevated or spike further
-    return round(_clamp(epss * 2.5 + 0.01, 0.001, 0.95), 4)
+    if epss_threshold is not None and epss_threshold > 0:
+        ratio = epss / epss_threshold  # how close current EPSS is to threshold
+        if ratio >= 1.0:
+            return 0.92  # already above — wins at next EPSS refresh
+        # Smooth curve: 0 at ratio=0, approaches 0.92 as ratio→1
+        p = 0.05 + 0.87 * (ratio ** 0.6)
+        return round(_clamp(p, 0.001, 0.92), 4)
+    # No threshold: use raw EPSS as rough exploitation probability, capped at 0.75
+    # (avoids making high-EPSS contracts worthless — 0.75 still gives ~1.3x fair odds)
+    return round(_clamp(epss * 1.5 + 0.01, 0.001, 0.75), 4)
 
 
 def compute_cvss_probability(
@@ -67,8 +83,17 @@ def compute_cvss_probability(
     max_cvss: float | None,
     cvss_threshold: float,
 ) -> float:
-    """P(new CVE >= threshold published): driven by CVE velocity and historical severity."""
-    velocity = _clamp(num_recent_cves / max(total_cves, 1), 0.0, 1.0)
+    """P(new CVE >= threshold published): driven by CVE velocity and historical severity.
+
+    Velocity blends absolute recent activity and historical rate:
+      - absolute: log-scaled recent CVE count (5 recent CVEs always matters regardless of total)
+      - relative: recent/total fraction (high churn packages are riskier)
+    """
+    # Absolute: log-scale recent CVEs so 1→0.30, 3→0.48, 5→0.57, 10→0.67
+    abs_velocity = math.log10(num_recent_cves + 1) / math.log10(11)  # normalised 0→1 at 10 CVEs
+    # Relative: recent as fraction of total — catches packages with high churn rate
+    rel_velocity = _clamp(num_recent_cves / max(total_cves, 1), 0.0, 1.0)
+    velocity = 0.6 * abs_velocity + 0.4 * rel_velocity
     historical = (max_cvss or 0.0) / 10.0
     p = 0.55 * velocity + 0.15 * historical + 0.02
     penalty = (cvss_threshold / 10.0) ** 1.5
@@ -246,7 +271,7 @@ def price_contract(
 
     grade = compute_grade(num_cves, epss_score, bool(has_mal_advisory), max_cvss)
 
-    epss_prob = compute_epss_probability(epss_score)
+    epss_prob = compute_epss_probability(epss_score, epss_threshold)
     cvss_prob = compute_cvss_probability(recent_cves, max(num_cves, 1), max_cvss, cvss_threshold or 7.0)
     mal_prob  = compute_mal_probability(bool(has_mal_advisory), exploit_in_news)
 
