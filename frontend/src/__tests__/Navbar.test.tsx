@@ -25,7 +25,7 @@ vi.mock("@auth0/auth0-react", () => ({
 describe("Navbar — unauthenticated", () => {
   it("renders public tabs", () => {
     render(<Navbar activeSector="All" />)
-    expect(screen.getByText("All")).toBeInTheDocument()
+    // "All" is no longer a tab — the logo links home instead.
     expect(screen.getByText("News")).toBeInTheDocument()
     expect(screen.getByText("Leaderboard")).toBeInTheDocument()
   })

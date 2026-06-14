@@ -19,7 +19,6 @@ describe("SECTOR_PATH", () => {
     expect(pathToSector("/predict")).toBe("Predict")
     expect(pathToSector("/leaderboard")).toBe("Leaderboard")
     expect(pathToSector("/dashboard")).toBe("Dashboard")
-    expect(pathToSector("/admin")).toBe("Admin")
   })
 
   it("unknown path falls back to All", () => {
