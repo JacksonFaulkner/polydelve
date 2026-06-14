@@ -81,7 +81,7 @@
         "description": "Timestamp when the bet was placed."
       }
     ],
-    "lineno": 50
+    "lineno": 58
   },
   {
     "name": "Company",
@@ -111,7 +111,7 @@
         "description": "Security risk grade. A = lowest risk, F = highest."
       }
     ],
-    "lineno": 57
+    "lineno": 65
   },
   {
     "name": "User",
@@ -139,9 +139,15 @@
         "type": "int",
         "default": "Field(default=1000, description='In-game currency balance. New users start with 1000.')",
         "description": "In-game currency balance. New users start with 1000."
+      },
+      {
+        "name": "avatar_url",
+        "type": "str | None",
+        "default": "Field(default=None, description=\"Public URL of user's avatar image.\")",
+        "description": "Public URL of user's avatar image."
       }
     ],
-    "lineno": 66
+    "lineno": 77
   },
   {
     "name": "ContractBase",
@@ -161,19 +167,19 @@
       {
         "name": "cvss_threshold",
         "type": "float | None",
-        "default": "Field(default=None, description='CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition.')",
+        "default": "Field(default=None, ge=0, le=10, description='CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition.')",
         "description": "CVSS score a new CVE must meet or exceed to trigger a win. Null means CVSS is not a win condition."
       },
       {
         "name": "epss_threshold",
         "type": "float | None",
-        "default": "Field(default=None, description='EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition.')",
+        "default": "Field(default=None, ge=0, le=1, description='EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition.')",
         "description": "EPSS probability a CVE must reach to trigger a win. Null means EPSS is not a win condition."
       },
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(description='Schmeckles paid upfront to open the contract.')",
+        "default": "Field(ge=10, description='Schmeckles paid upfront to open the contract.')",
         "description": "Schmeckles paid upfront to open the contract."
       },
       {
@@ -183,24 +189,17 @@
         "description": "Contract lifetime in days. One of 7, 14, or 30."
       }
     ],
-    "lineno": 75
+    "lineno": 96
   },
   {
     "name": "QuoteRequest",
     "fields": [],
-    "lineno": 84
+    "lineno": 120
   },
   {
     "name": "BuyRequest",
-    "fields": [
-      {
-        "name": "user_id",
-        "type": "str",
-        "default": "Field(description='Auth0 user ID of the buyer. Deducted from their Schmeckle balance.')",
-        "description": "Auth0 user ID of the buyer. Deducted from their Schmeckle balance."
-      }
-    ],
-    "lineno": 88
+    "fields": [],
+    "lineno": 124
   },
   {
     "name": "SimulateRequest",
@@ -238,11 +237,11 @@
       {
         "name": "epss_drift",
         "type": "float",
-        "default": "Field(default=1.0, description='Multiplier applied to current EPSS to model future drift. 1.0 = no change.')",
+        "default": "Field(default=1.0, ge=0, description='Multiplier applied to current EPSS to model future drift. 1.0 = no change.')",
         "description": "Multiplier applied to current EPSS to model future drift. 1.0 = no change."
       }
     ],
-    "lineno": 92
+    "lineno": 128
   },
   {
     "name": "SimCurvePoint",
@@ -278,7 +277,7 @@
         "description": "Schmeckle payout if the MAL advisory win condition triggers at this point."
       }
     ],
-    "lineno": 101
+    "lineno": 146
   },
   {
     "name": "SimulateResponse",
@@ -350,7 +349,7 @@
         "description": "Series of payout curve points for charting expected value over time."
       }
     ],
-    "lineno": 109
+    "lineno": 164
   },
   {
     "name": "QuoteResponse",
@@ -428,7 +427,7 @@
         "description": "Payout multiplier applied based on risk and duration."
       }
     ],
-    "lineno": 123
+    "lineno": 186
   },
   {
     "name": "BuyResponse",
@@ -476,7 +475,7 @@
         "description": "Human-readable summary of the contract terms."
       }
     ],
-    "lineno": 138
+    "lineno": 213
   },
   {
     "name": "ContractDetail",
@@ -584,7 +583,7 @@
         "description": "Payout multiplier applied at purchase based on risk and duration."
       }
     ],
-    "lineno": 148
+    "lineno": 229
   },
   {
     "name": "SellResponse",
@@ -602,7 +601,7 @@
         "description": "Contract status after the sell, always 'sold'."
       }
     ],
-    "lineno": 168
+    "lineno": 273
   },
   {
     "name": "LeaderboardContract",
@@ -668,7 +667,7 @@
         "description": "ISO datetime when the contract was purchased."
       }
     ],
-    "lineno": 175
+    "lineno": 285
   },
   {
     "name": "LeaderboardUser",
@@ -722,7 +721,7 @@
         "description": "Recent contracts for display on the leaderboard."
       }
     ],
-    "lineno": 188
+    "lineno": 302
   },
   {
     "name": "LeaderboardResponse",
@@ -752,7 +751,7 @@
         "description": "Paginated list of leaderboard users."
       }
     ],
-    "lineno": 199
+    "lineno": 319
   },
   {
     "name": "SchmecklePoint",
@@ -776,7 +775,7 @@
         "description": "Event that caused the balance change, if any."
       }
     ],
-    "lineno": 208
+    "lineno": 331
   },
   {
     "name": "SchmeckleTimeline",
@@ -794,7 +793,7 @@
         "description": "Chronological list of balance snapshots."
       }
     ],
-    "lineno": 214
+    "lineno": 339
   },
   {
     "name": "PackageRisk",
@@ -836,10 +835,10 @@
         "description": "True if a MAL advisory exists for this package."
       }
     ],
-    "lineno": 221
+    "lineno": 349
   },
   {
-    "name": "NewsAnalysis",
+    "name": "GptAnalysis",
     "fields": [
       {
         "name": "description",
@@ -882,9 +881,69 @@
         "type": "Severity | None",
         "default": "Field(description='Severity level: critical, high, medium, or low. Null if not stated.')",
         "description": "Severity level: critical, high, medium, or low. Null if not stated."
+      },
+      {
+        "name": "relevancy_score",
+        "type": "float",
+        "default": "Field(ge=0, le=1, description=\"How useful this article is to a software supply-chain risk app that tracks CVEs and exploits in npm/PyPI packages. 0.9-1.0 = specific vulnerability, exploit, or malicious-package incident with named packages or CVEs. 0.6-0.8 = concrete security incident or advisory affecting open-source software, packages inferable. 0.3-0.5 = general supply-chain security reporting with no specific vulnerability. 0.0-0.2 = listicles ('Top 10 ...'), vendor marketing, webinars, conference promos, product announcements.\")",
+        "description": "How useful this article is to a software supply-chain risk app that tracks CVEs and exploits in npm/PyPI packages. 0.9-1.0 = specific vulnerability, exploit, or malicious-package incident with named packages or CVEs. 0.6-0.8 = concrete security incident or advisory affecting open-source software, packages inferable. 0.3-0.5 = general supply-chain security reporting with no specific vulnerability. 0.0-0.2 = listicles ('Top 10 ...'), vendor marketing, webinars, conference promos, product announcements."
       }
     ],
-    "lineno": 230
+    "lineno": 370
+  },
+  {
+    "name": "ExaAnalysis",
+    "fields": [
+      {
+        "name": "title",
+        "type": "str",
+        "default": "Field(description='Article headline.')",
+        "description": "Article headline."
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "default": "Field(description='Raw article description or lede.')",
+        "description": "Raw article description or lede."
+      },
+      {
+        "name": "source_name",
+        "type": "str | None",
+        "default": "Field(default=None, description=\"Publisher name, e.g. 'Bleeping Computer'.\")",
+        "description": "Publisher name, e.g. 'Bleeping Computer'."
+      },
+      {
+        "name": "published_date",
+        "type": "datetime | None",
+        "default": "Field(description='Publication timestamp from the source.')",
+        "description": "Publication timestamp from the source."
+      },
+      {
+        "name": "source_url",
+        "type": "str",
+        "default": "Field(description='Canonical URL of the article.')",
+        "description": "Canonical URL of the article."
+      }
+    ],
+    "lineno": 409
+  },
+  {
+    "name": "NewsAnalysis",
+    "fields": [
+      {
+        "name": "exa",
+        "type": "ExaAnalysis",
+        "default": "Field(description='Source metadata from Exa search.')",
+        "description": "Source metadata from Exa search."
+      },
+      {
+        "name": "gpt",
+        "type": "GptAnalysis",
+        "default": "Field(description='Structured LLM extraction: packages, sectors, threat actor, severity.')",
+        "description": "Structured LLM extraction: packages, sectors, threat actor, severity."
+      }
+    ],
+    "lineno": 423
   },
   {
     "name": "NewsEmbeddings",
@@ -908,7 +967,7 @@
         "description": "Embedding vector for the source URL domain. Excluded from API serialization."
       }
     ],
-    "lineno": 240
+    "lineno": 432
   },
   {
     "name": "EpssHistoryRow",
@@ -938,7 +997,7 @@
         "description": "Date the score snapshot was taken."
       }
     ],
-    "lineno": 248
+    "lineno": 450
   },
   {
     "name": "MalAdvisoryRow",
@@ -986,7 +1045,7 @@
         "description": "Short human-readable description of the vulnerability."
       }
     ],
-    "lineno": 255
+    "lineno": 463
   },
   {
     "name": "PackageRow",
@@ -1064,7 +1123,7 @@
         "description": "Sector labels assigned via heuristic or LLM classification."
       }
     ],
-    "lineno": 265
+    "lineno": 484
   },
   {
     "name": "RecentNews",
@@ -1076,42 +1135,6 @@
         "description": "URL hash used as a stable dedup key."
       },
       {
-        "name": "title",
-        "type": "str",
-        "default": "Field(description='Article headline.')",
-        "description": "Article headline."
-      },
-      {
-        "name": "description",
-        "type": "str",
-        "default": "Field(description='Raw article description or lede.')",
-        "description": "Raw article description or lede."
-      },
-      {
-        "name": "summary",
-        "type": "str | None",
-        "default": "Field(default=None, description='2-sentence factual summary from NewsAnalysis.')",
-        "description": "2-sentence factual summary from NewsAnalysis."
-      },
-      {
-        "name": "source_name",
-        "type": "str | None",
-        "default": "Field(default=None, description=\"Publisher name, e.g. 'Bleeping Computer'.\")",
-        "description": "Publisher name, e.g. 'Bleeping Computer'."
-      },
-      {
-        "name": "published_date",
-        "type": "datetime | None",
-        "default": "Field(description='Publication timestamp from the source.')",
-        "description": "Publication timestamp from the source."
-      },
-      {
-        "name": "source_url",
-        "type": "str",
-        "default": "Field(description='Canonical URL of the article.')",
-        "description": "Canonical URL of the article."
-      },
-      {
         "name": "embeddings",
         "type": "NewsEmbeddings",
         "default": "Field(description='Vector embeddings for title, description, and source (excluded from serialization).')",
@@ -1120,10 +1143,10 @@
       {
         "name": "analysis",
         "type": "NewsAnalysis",
-        "default": "Field(description='Structured LLM extraction: packages, sectors, threat actor, severity.')",
-        "description": "Structured LLM extraction: packages, sectors, threat actor, severity."
+        "default": "Field(description='Exa source metadata + structured LLM extraction.')",
+        "description": "Exa source metadata + structured LLM extraction."
       }
     ],
-    "lineno": 280
+    "lineno": 524
   }
 ]
