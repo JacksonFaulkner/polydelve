@@ -34,3 +34,5 @@ frontend/dist/
 docs-new/
 auth0/config.json
 *.db
+
+assets/thumbs/
