@@ -135,13 +135,8 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
   const avatarSrc = avatarPreview ?? user?.avatar_url ?? (auth0User as { picture?: string })?.picture
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 py-8">
-      <h1 className="text-2xl font-bold text-white">Settings</h1>
-
-      {/* Profile */}
+    <div className="mx-auto max-w-lg py-8">
       <div className="rounded-xl border border-zinc-800 bg-[#1C2128] p-6 space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Profile</h2>
-
         <div className="flex items-center gap-4">
           {/* Avatar with upload overlay */}
           <div className="relative group shrink-0">
@@ -229,11 +224,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
             {saved ? "Username updated ✓" : "Change username"}
           </button>
         )}
-      </div>
 
-      {/* Account */}
-      <div className="rounded-xl border border-zinc-800 bg-[#1C2128] p-6 space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Account</h2>
         <button
           onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
           className="w-full rounded-lg border border-red-800/60 bg-red-950/30 px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:border-red-700 hover:bg-red-950/50 hover:text-red-300"
