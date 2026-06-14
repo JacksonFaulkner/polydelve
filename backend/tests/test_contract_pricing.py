@@ -156,6 +156,21 @@ def test_payout_higher_grade_higher_payout():
     assert p_high > p_low
 
 
+def test_payout_soft_cap_monotonic_for_high_grade():
+    # High-grade package, dragging prob down (rarer event) must keep raising the
+    # payout even deep in the capped region — no flat pinning (the pandas bug).
+    payouts = [compute_payout(100, p, 9.5, 30) for p in (0.10, 0.05, 0.02, 0.01)]
+    assert payouts == sorted(payouts)
+    assert payouts[0] < payouts[-1]
+
+
+def test_payout_never_exceeds_ceiling():
+    # Even at extreme odds the multiplier stays under MAX_MULTIPLIER.
+    from features.contract_pricing import MAX_MULTIPLIER
+    p = compute_payout(100, 0.001, 10.0, 7)
+    assert p <= 100 * MAX_MULTIPLIER
+
+
 def test_payout_shorter_duration_higher_payout():
     p_7 = compute_payout(100, 0.1, 5.0, 7)
     p_30 = compute_payout(100, 0.1, 5.0, 30)

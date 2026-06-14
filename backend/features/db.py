@@ -167,7 +167,7 @@ def init_db(conn: duckdb.DuckDBPyConnection) -> None:
             user_id              VARCHAR NOT NULL,
             package_name         VARCHAR NOT NULL,
             package_ecosystem    VARCHAR NOT NULL,
-            market_type          VARCHAR NOT NULL,  -- new_cve | kev_listing | epss_threshold
+            market_type          VARCHAR NOT NULL,  -- new_cve | epss_threshold | all
             cvss_threshold       FLOAT,             -- for new_cve type
             epss_threshold       FLOAT,             -- for epss_threshold type
             purchase_price       INTEGER NOT NULL,

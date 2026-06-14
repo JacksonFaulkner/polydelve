@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from features.db import get_db_conn
 
-MARKET_TYPES = ["new_cve", "kev_listing", "epss_threshold"]
+MARKET_TYPES = ["new_cve", "epss_threshold"]
 STATUSES = ["open", "won", "lost", "sold"]
 STATUS_WEIGHTS = [0.6, 0.15, 0.2, 0.05]
 

@@ -17,16 +17,49 @@ from models.models import (
 router = APIRouter(prefix="/contracts", dependencies=[Depends(get_current_user)])
 
 
+def _reject_backward_epss(
+    conn: duckdb.DuckDBPyConnection,
+    package_name: str,
+    ecosystem: str,
+    epss_threshold: float | None,
+) -> None:
+    """A contract can only bet EPSS rises. Reject a target below current EPSS
+    (i.e. betting the package gets safer), even if the client edited the payload."""
+    if epss_threshold is None:
+        return
+    row = conn.execute(
+        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
+        [package_name, ecosystem],
+    ).fetchone()
+    current = (row[0] if row else None) or 0.0
+    if epss_threshold < current:
+        raise HTTPException(
+            422,
+            f"epss_threshold {epss_threshold:.4f} is below current EPSS {current:.4f}; "
+            "contracts cannot bet on EPSS decreasing",
+        )
+
+
 @router.post("/simulate", response_model=SimulateResponse)
 def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> SimulateResponse:
     """Return sell-value curve + three stacked win areas for the predict page chart."""
+    # The EPSS slider sets a target = current_epss * drift. Price through the real
+    # logit model so the payout actually moves as the user drags (higher target =
+    # harder to reach = lower prob = bigger payout), instead of a clamped multiply.
+    epss_row = conn.execute(
+        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
+        [req.package_name, req.ecosystem],
+    ).fetchone()
+    current_epss = (epss_row[0] if epss_row else None) or 0.0
+    epss_target = min(current_epss * max(req.epss_drift, 1.0), 1.0) or None
+
     try:
         terms = price_contract(
             conn=conn,
             package_name=req.package_name,
             ecosystem=req.ecosystem,
             cvss_threshold=req.cvss_threshold,
-            epss_threshold=None,
+            epss_threshold=epss_target,
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
         )
@@ -36,7 +69,7 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
     price = req.purchase_price
     dur = req.duration_days
 
-    epss_payout = min(terms.max_payout, round(terms.epss_payout * max(req.epss_drift, 1.0)))
+    epss_payout = terms.epss_payout
     epss_win = epss_payout - price
     cvss_win = terms.cvss_payout - price
     mal_win  = terms.mal_payout  - price
@@ -84,6 +117,7 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
 def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> QuoteResponse:
     if req.purchase_price < 10:
         raise HTTPException(422, "minimum purchase_price is 10 schmeckles")
+    _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
     try:
         terms = price_contract(
             conn=conn,
@@ -127,6 +161,8 @@ def buy_contract(
         raise HTTPException(404, "User not found")
     if user[0] < req.purchase_price:
         raise HTTPException(409, "Insufficient schmeckles")
+
+    _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
 
     try:
         terms = price_contract(

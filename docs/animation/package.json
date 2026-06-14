@@ -13,7 +13,11 @@
   "type": "module",
   "dependencies": {
     "@remotion/cli": "^4.0.476",
+    "@remotion/google-fonts": "4.0.476",
+    "@remotion/paths": "4.0.476",
     "@remotion/player": "^4.0.476",
+    "@remotion/shapes": "4.0.476",
+    "@remotion/transitions": "4.0.476",
     "remotion": "^4.0.476"
   },
   "devDependencies": {

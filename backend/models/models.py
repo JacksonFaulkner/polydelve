@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 Ecosystem = Literal["PyPI", "npm", "composer", "other"]
 ContractStatus = Literal["open", "won", "sold", "expired", "lost"]
-MarketType = Literal["all", "epss_threshold", "new_cve", "kev_listing"]
+MarketType = Literal["all", "epss_threshold", "new_cve"]
 ContractDuration = Literal[7, 14, 30]
 ExploitStatus = Literal["poc_available", "actively_exploited", "patched", "unpatched"]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -231,7 +231,7 @@ class ContractDetail(BaseModel):
     package_name: str = Field(description="Package the contract is written against.")
     ecosystem: Ecosystem = Field(description="Registry the package belongs to.")
     market_type: MarketType = Field(
-        description="Win condition type: all, epss_threshold, new_cve, or kev_listing."
+        description="Win condition type: all, epss_threshold, or new_cve."
     )
     cvss_threshold: float | None = Field(
         description="CVSS threshold for a win. Null if not applicable."

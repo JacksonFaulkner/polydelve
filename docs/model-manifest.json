@@ -501,8 +501,8 @@
       {
         "name": "market_type",
         "type": "MarketType",
-        "default": "Field(description='Win condition type: all, epss_threshold, new_cve, or kev_listing.')",
-        "description": "Win condition type: all, epss_threshold, new_cve, or kev_listing."
+        "default": "Field(description='Win condition type: all, epss_threshold, or new_cve.')",
+        "description": "Win condition type: all, epss_threshold, or new_cve."
       },
       {
         "name": "cvss_threshold",

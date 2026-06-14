@@ -91,6 +91,42 @@ def test_quote_valid_returns_payout(client):
     assert body["multiplier"] > 1.0
 
 
+# ── Simulate ──────────────────────────────────────────────────────────────────
+
+def _simulate(client, drift):
+    return client.post("/contracts/simulate", json={
+        "package_name": "requests",
+        "ecosystem": "PyPI",
+        "cvss_threshold": 7.0,
+        "purchase_price": 100,
+        "duration_days": 30,
+        "epss_drift": drift,
+    })
+
+
+def test_simulate_epss_payout_increases_with_drift(client):
+    # Higher drift = higher EPSS target = harder to reach = bigger payout.
+    # Regression lock: the route used to clamp epss_payout to max_payout, so
+    # dragging the slider did nothing.
+    payouts = []
+    for drift in (1.0, 2.0, 5.0):
+        r = _simulate(client, drift)
+        assert r.status_code == 200, r.text
+        payouts.append(r.json()["epss_payout"])
+    assert payouts[0] < payouts[1] < payouts[2], payouts
+
+
+def test_simulate_returns_full_curve(client):
+    r = _simulate(client, 2.0)
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["curve"]) == 31  # day 0..30 inclusive
+    assert body["curve"][0]["label"] == "Now"
+    assert body["curve"][-1]["label"] == "EXP"
+    assert body["max_loss"] == -100
+    assert body["epss_payout"] > 100
+
+
 # ── Buy ───────────────────────────────────────────────────────────────────────
 
 def test_buy_deducts_schmeckles(client, db_with_data):

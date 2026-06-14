@@ -37,6 +37,36 @@ def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
 
+def _logit(p: float) -> float:
+    """Log-odds of a probability. EPSS moves ~linearly here, so spike size is
+    comparable across the whole 0–1 range (multiplicative near 0, capped near 1)."""
+    p = _clamp(p, 1e-4, 1.0 - 1e-4)
+    return math.log(p / (1.0 - p))
+
+
+def _sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-x))
+
+
+# EPSS spike model tuning (logit units).
+# HAZARD_30D = expected upward logit drift over a 30-day contract from a
+# weaponization event. SPIKE_SCALE = softness of the prob curve around the gap.
+HAZARD_30D = -3.5    # calibrated to ~8–11% actual 2x-spike rate over 30d (backtest)
+SPIKE_SCALE = 1.8    # softness of the prob curve; wider = smoother band transitions
+MAX_MULTIPLIER = 50.0  # ceiling the payout odds asymptote toward — no 100x tails
+SOFT_KNEE = 15.0       # below this, odds are 1:1 real; above, compressed toward ceiling
+
+
+def _soft_cap(mult: float) -> float:
+    """Strictly-increasing cap. Linear up to SOFT_KNEE, then compresses smoothly
+    toward MAX_MULTIPLIER so high-grade packages still react to the sliders
+    instead of pinning flat at a hard ceiling."""
+    if mult <= SOFT_KNEE:
+        return mult
+    span = MAX_MULTIPLIER - SOFT_KNEE
+    return SOFT_KNEE + span * (1.0 - math.exp(-(mult - SOFT_KNEE) / span))
+
+
 def compute_grade(
     num_cves: int,
     epss_score: float | None,
@@ -54,24 +84,33 @@ def compute_grade(
     return round(_clamp(grade, 0.0, 10.0), 2)
 
 
-def compute_epss_probability(epss_score: float | None, epss_threshold: float | None = None) -> float:
-    """P(EPSS crosses threshold during contract duration).
+def compute_epss_probability(
+    epss_score: float | None,
+    epss_threshold: float | None = None,
+    duration_days: int = 30,
+) -> float:
+    """P(EPSS reaches an absolute target band during the contract).
 
-    If threshold is set: probability scales with how close current EPSS is to the threshold.
-      - Already above threshold → near-certain (0.92), wins on next daily refresh.
-      - At 80% of threshold → 0.65.
-      - At 50% of threshold → 0.35.
-      - At 0% of threshold → 0.05 floor.
-    If no threshold set: use current EPSS as proxy for general exploitation risk.
+    Works in logit (log-odds) space. The win condition is "EPSS climbs to the
+    target", and the distance to climb is measured as a logit gap. This makes
+    spike size comparable everywhere:
+      - Near 0 (0–0.01): the whole band has a similar large gap to a high
+        target, so odds stay sane and roughly flat instead of blowing up to 60x+.
+      - Near the ceiling (0.8→0.9): the gap is tiny, so prob is high and the
+        payout is small — a near-certain small move is not rewarded.
+
+    If no threshold set: fall back to current EPSS as a rough exploitation proxy.
     """
-    epss = epss_score or 0.0
+    epss = _clamp(epss_score or 0.0, 0.0, 1.0)
     if epss_threshold is not None and epss_threshold > 0:
-        ratio = epss / epss_threshold  # how close current EPSS is to threshold
-        if ratio >= 1.0:
+        target = _clamp(epss_threshold, 1e-4, 0.999)
+        if epss >= target:
             return 0.92  # already above — wins at next EPSS refresh
-        # Smooth curve: 0 at ratio=0, approaches 0.92 as ratio→1
-        p = 0.05 + 0.87 * (ratio ** 0.6)
-        return round(_clamp(p, 0.001, 0.92), 4)
+        gap = _logit(target) - _logit(epss)  # >0, logit distance still to climb
+        # Expected upward drift over the contract; shorter window → less drift.
+        hazard = HAZARD_30D * (max(duration_days, 1) / 30.0) ** 0.5
+        p = _sigmoid((hazard - gap) / SPIKE_SCALE)
+        return round(_clamp(p, 0.01, 0.92), 4)
     # No threshold: use raw EPSS as rough exploitation probability, capped at 0.75
     # (avoids making high-EPSS contracts worthless — 0.75 still gives ~1.3x fair odds)
     return round(_clamp(epss * 1.5 + 0.01, 0.001, 0.75), 4)
@@ -138,7 +177,8 @@ def compute_payout(purchase_price: int, probability: float, grade: float, durati
     fair_odds = 1.0 / probability
     grade_mult = 1.0 + (grade / 10.0) * 4.0  # 1x–5x
     duration_mult = math.sqrt(30 / max(duration_days, 1))  # 7d→2.07x  14d→1.46x  30d→1.0x
-    return max(int(purchase_price * fair_odds * grade_mult * duration_mult), purchase_price + 1)
+    mult = _soft_cap(fair_odds * grade_mult * duration_mult)
+    return max(int(purchase_price * mult), purchase_price + 1)
 
 
 def sell_value_at_day(
@@ -167,10 +207,10 @@ def sell_value_at_day(
     if drift > 1.0 and max_payout:
         drift_frac = math.log10(drift)  # 2x→0.301, 4x→0.602, 10x→1.0
         boosted = round(purchase_price + (max_payout - purchase_price) * drift_frac)
-    elif drift > 1.0:
-        boosted = round(purchase_price * drift)
     else:
-        boosted = purchase_price
+        # drift <= 1 means EPSS fell (package safer) — scale value down by drift.
+        # An EPSS-rise bet must lose value when EPSS drops, never hold at baseline.
+        boosted = round(purchase_price * drift)
 
     value = floor_value + (boosted - floor_value) * time_factor
     return max(round(value), 0)
@@ -215,6 +255,10 @@ def current_sell_value(
     #   2x → CVSS 3 (~26% recovery)   4x → CVSS 5 (~51%)   10x → CVSS 9.99 (~85%)
     floor = 0.0 if drift <= 1.0 else min(0.85, 0.85 * math.log10(drift))
     value = floor + (1.0 - floor) * time_factor
+    # drift < 1 means EPSS fell (package safer) — scale value down so an
+    # EPSS-rise bet loses value, never holds at the baseline time decay.
+    if drift < 1.0:
+        value *= drift
     # Use round() not int() to avoid rounding small prices to 0
     return max(round(purchase_price * value), 0)
 
@@ -271,7 +315,7 @@ def price_contract(
 
     grade = compute_grade(num_cves, epss_score, bool(has_mal_advisory), max_cvss)
 
-    epss_prob = compute_epss_probability(epss_score, epss_threshold)
+    epss_prob = compute_epss_probability(epss_score, epss_threshold, duration_days)
     cvss_prob = compute_cvss_probability(recent_cves, max(num_cves, 1), max_cvss, cvss_threshold or 7.0)
     mal_prob  = compute_mal_probability(bool(has_mal_advisory), exploit_in_news)
 
