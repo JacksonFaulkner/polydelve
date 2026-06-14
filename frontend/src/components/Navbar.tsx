@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Boxes, LayoutDashboard, Newspaper, Package, Search, Settings, TrendingUp, Trophy } from "lucide-react";
+import { Boxes, BookOpen, LayoutDashboard, Newspaper, Package, Search, Settings, TrendingUp, Trophy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { SchmeckleIcon } from "./SchmeckleIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Settings"] as const;
+export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Settings", "How"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const SECTOR_PATH: Record<Sector, string> = {
@@ -16,6 +16,7 @@ export const SECTOR_PATH: Record<Sector, string> = {
   Leaderboard: "/leaderboard",
   Dashboard: "/dashboard",
   Settings: "/settings",
+  How: "/how-it-works",
 };
 
 export function pathToSector(pathname: string): Sector {
@@ -32,6 +33,7 @@ const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   Predict: <TrendingUp className="h-3.5 w-3.5" />,
   Leaderboard: <Trophy className="h-3.5 w-3.5" />,
   Dashboard: <LayoutDashboard className="h-3.5 w-3.5" />,
+  How: <BookOpen className="h-3.5 w-3.5" />,
 };
 
 const TAB_LABEL: Partial<Record<Sector, string>> = {
@@ -62,7 +64,7 @@ function Tab({ s, active }: { s: Sector; active: boolean }) {
             : "border-[#FDE832] text-white"
           : isPredict
             ? "border-transparent text-[#FDE832]/60 hover:text-[#FDE832]"
-            : "border-transparent text-zinc-500 hover:text-zinc-300"
+            : "border-transparent text-zinc-400 hover:text-zinc-200"
       }`}
     >
       {TAB_ICON[s]}
@@ -82,7 +84,7 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const publicTabs: Sector[] = ["News", "Leaderboard"];
+  const publicTabs: Sector[] = ["News", "Leaderboard", "How"];
   const authTabs: Sector[] = ["PyPI", "npm", "Predict"];
   const visibleTabs = isAuthenticated ? [...publicTabs, ...authTabs] : publicTabs;
 
@@ -118,7 +120,8 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+              aria-label="Search markets"
+              className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
             >
               <Search className="h-4 w-4" />
             </button>

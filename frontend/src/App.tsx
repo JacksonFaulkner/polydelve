@@ -10,6 +10,7 @@ import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { SettingsPage } from "./components/SettingsPage";
+import { HowItWorksPage } from "./components/HowItWorksPage";
 import { UsernameModal } from "./components/UsernameModal";
 import type { Market, NewsItem, User } from "./types";
 import { useApi } from "@/lib/api";
@@ -104,7 +105,7 @@ export default function App() {
     }
   }
 
-  const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings"].includes(activeSector);
+  const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
 
   return (
     <div
@@ -123,6 +124,8 @@ export default function App() {
           <DashboardPage />
         ) : activeSector === "Predict" ? (
           <PredictPage onBuy={() => authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {})} />
+        ) : activeSector === "How" ? (
+          <HowItWorksPage />
         ) : activeSector === "Leaderboard" ? (
           <LeaderboardTable />
         ) : activeSector === "PyPI" || activeSector === "npm" ? (

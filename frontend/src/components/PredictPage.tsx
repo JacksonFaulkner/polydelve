@@ -39,13 +39,14 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const [cvssThreshold, setCvssThreshold] = useState(7.0)
   const [price, setPrice] = useState(100)
   const [duration, setDuration] = useState(30)
-  const [epssSliderPos, setEpssSliderPos] = useState(0.5) // log-scale position 0–1
+  const [epssSliderPos, setEpssSliderPos] = useState(0.5)
 
   const EPSS_MIN = 0.001
   const EPSS_MAX = 1.0
   const posToEpss = (pos: number) => EPSS_MIN * Math.pow(EPSS_MAX / EPSS_MIN, pos)
   const epssToPos = (v: number) => Math.log(v / EPSS_MIN) / Math.log(EPSS_MAX / EPSS_MIN)
   const currentEpss = selectedPkg?.epss_score ?? 0.01
+  const minPos = Math.max(0, Math.min(1, epssToPos(Math.max(currentEpss, EPSS_MIN))))
   const epssTarget = posToEpss(epssSliderPos)
   const epssDrift = epssTarget / Math.max(currentEpss, 0.001)
 
@@ -119,7 +120,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           package_name: selectedPkg.name,
           ecosystem: selectedPkg.ecosystem,
           cvss_threshold: cvssThreshold,
-          epss_threshold: null,
+          epss_threshold: epssTarget,
           purchase_price: price,
           duration_days: duration,
         }),
@@ -132,11 +133,17 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     }
   }
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
+  const WIN_CONFIGS = [
+    { label: "EPSS spike",   key: "epss_win", color: "text-emerald-400", dot: "bg-emerald-400", border: "border-emerald-400/20" },
+    { label: "CVSS event",   key: "cvss_win", color: "text-[#FDE832]",   dot: "bg-[#FDE832]",  border: "border-[#FDE832]/20" },
+    { label: "MAL advisory", key: "mal_win",  color: "text-rose-400",    dot: "bg-rose-400",   border: "border-rose-400/20" },
+  ]
 
-      {/* Header */}
-      <div className="flex items-end justify-between">
+  return (
+    <div className="w-full">
+
+      {/* Page header */}
+      <div className="flex items-end justify-between mb-6">
         <div>
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#FDE832]">
             Build a Contract
@@ -152,322 +159,454 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
         )}
       </div>
 
-      {/* Step 1: pick package */}
-      <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          1 — Package
-        </label>
-        <input
-          type="text"
-          placeholder="Search packages…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            if (selectedPkg && e.target.value !== selectedPkg.name) setSelectedPkg(null)
-          }}
-          className="w-full rounded-lg border border-zinc-700 bg-[#1C2229] px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-500"
-        />
-        {search && !selectedPkg && (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800 max-h-52 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-zinc-600">
-                {packages.length === 0 ? "Loading packages…" : "No results"}
-              </p>
-            ) : filtered.map((p) => (
-              <button
-                key={`${p.ecosystem}:${p.name}`}
-                onClick={() => { setSelectedPkg(p); setSearch(p.name) }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/50"
-              >
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${p.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"}`}>
-                  {p.ecosystem}
+      {/* Desktop two-column layout */}
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+
+        {/* ── LEFT PANEL: config ── */}
+        <div className="w-full lg:w-[360px] lg:flex-shrink-0 space-y-4">
+
+          {/* Package search */}
+          <div className={`rounded-xl border bg-[#181D21] p-4 space-y-3 transition-all duration-200 ${
+            selectedPkg
+              ? "border-zinc-800"
+              : "border-[#FDE832]/50 shadow-[0_0_0_1px_rgba(253,232,50,0.12),0_0_24px_rgba(253,232,50,0.06)]"
+          }`}>
+            <label className={`text-[10px] font-semibold uppercase tracking-wide ${selectedPkg ? "text-zinc-500" : "text-[#FDE832]"}`}>
+              1 — Package
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. pandas, lodash, requests…"
+                value={search}
+                autoFocus={!selectedPkg}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  if (selectedPkg && e.target.value !== selectedPkg.name) setSelectedPkg(null)
+                }}
+                className={`w-full rounded-lg border bg-[#1C2229] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none transition-colors ${
+                  selectedPkg
+                    ? "border-zinc-700 focus:border-zinc-500"
+                    : "border-[#FDE832]/40 focus:border-[#FDE832]"
+                }`}
+              />
+              {!selectedPkg && !search && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 pointer-events-none">
+                  ↑ type to search
                 </span>
-                <span className="font-mono text-sm text-zinc-200">{p.name}</span>
-                {p.epss_score != null && (
-                  <span className="ml-auto text-xs text-zinc-500">EPSS {Math.round(p.epss_score * 100)}%</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-        {selectedPkg && (
-          <div className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800/40 px-3 py-2">
-            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${selectedPkg.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"}`}>
-              {selectedPkg.ecosystem}
-            </span>
-            <span className="font-mono text-sm text-zinc-100">{selectedPkg.name}</span>
-            <span className="ml-auto text-xs text-zinc-500">
-              {selectedPkg.num_cves} CVEs · EPSS {selectedPkg.epss_score != null ? Math.round(selectedPkg.epss_score * 100) + "%" : "—"}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Combined contract card — stake, duration, sliders, chart all in one */}
-      <AnimatePresence>
-        {selectedPkg && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: simLoading && !sim ? 0.4 : 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="rounded-xl border border-zinc-800 bg-[#181D21] overflow-hidden"
-          >
-            {/* Win summary header */}
-            <div className="px-5 pt-5 pb-3">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-semibold uppercase tracking-wide">
-                Simulated Returns
-                <svg className="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.5}>
-                  <circle cx="8" cy="8" r="7" /><path d="M8 7v4M8 5.5v.5" strokeLinecap="round" />
-                </svg>
-                <span className="ml-auto text-[10px] text-zinc-700 font-normal normal-case tracking-normal">estimate</span>
-              </div>
-
-              {/* Three win amounts in a row */}
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  { label: "EPSS spike",  key: "epss_win", color: "text-emerald-400", dot: "bg-emerald-400" },
-                  { label: "CVSS event",  key: "cvss_win", color: "text-[#FDE832]",   dot: "bg-[#FDE832]" },
-                  { label: "MAL advisory",key: "mal_win",  color: "text-rose-400",    dot: "bg-rose-400" },
-                ] .map(({ label, key, color, dot }) => (
-                  <div key={key} className="rounded-lg bg-zinc-800/50 px-3 py-2.5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`w-2 h-2 rounded-full ${dot}`} />
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
-                    </div>
-                    <p className={`text-lg font-bold tabular-nums ${color}`}>
-                      {sim ? `+${(sim[key as keyof SimResult] as number).toLocaleString()}` : "—"}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">
-                      {sim ? `${(price > 0 ? ((sim[key as keyof SimResult] as number) / price + 1).toFixed(1) : "—")}× if YES` : "calculating…"}
-                    </p>
-                  </div>
+              )}
+            </div>
+            {search && !selectedPkg && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800 max-h-52 overflow-y-auto">
+                {filtered.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-zinc-600">
+                    {packages.length === 0 ? "Loading packages…" : "No results"}
+                  </p>
+                ) : filtered.map((p) => (
+                  <button
+                    key={`${p.ecosystem}:${p.name}`}
+                    onClick={() => { setSelectedPkg(p); setSearch(p.name) }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/50"
+                  >
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${p.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"}`}>
+                      {p.ecosystem}
+                    </span>
+                    <span className="font-mono text-sm text-zinc-200">{p.name}</span>
+                    {p.epss_score != null && (
+                      <span className="ml-auto text-xs text-zinc-500">EPSS {Math.round(p.epss_score * 100)}%</span>
+                    )}
+                  </button>
                 ))}
               </div>
-            </div>
-
-            {/* Stake + Duration row */}
-            <div className="px-5 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-800/60">
-              <div className="space-y-1.5 pt-3">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Stake (schmeckles)
-                </label>
-                <input
-                  type="number" min={10} max={schmeckles ?? 9999} step={10}
-                  value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  className="w-full rounded-lg border border-zinc-700 bg-[#1C2229] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-zinc-500"
-                />
-              </div>
-              <div className="space-y-1.5 pt-3">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Duration
-                </label>
-                <div className="flex gap-2">
-                  {DURATION_OPTIONS.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDuration(d)}
-                      className={`flex-1 rounded-lg border py-2 text-xs font-medium transition-colors ${
-                        duration === d
-                          ? "border-[#FDE832] bg-[#FDE832]/10 text-zinc-100"
-                          : "border-zinc-700 text-zinc-500 hover:border-zinc-500"
-                      }`}
-                    >
-                      {d}d
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* CVSS threshold slider */}
-            <div className="px-5 pb-3 space-y-2 border-t border-zinc-800/60 pt-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  CVSS Threshold
-                  <span className="ml-2 text-zinc-300">≥ {cvssThreshold.toFixed(1)}</span>
-                </label>
-              </div>
-              <input
-                type="range" min={1} max={10} step={0.1}
-                value={cvssThreshold}
-                onChange={(e) => setCvssThreshold(Number(e.target.value))}
-                className="w-full accent-[#FDE832]"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-600">
-                <span>1.0</span><span>Low</span><span>Med</span><span>High</span><span>10.0 Critical</span>
-              </div>
-            </div>
-
-            {/* EPSS scenario slider */}
-            <div className="px-5 pb-3 space-y-2 border-t border-zinc-800/60 pt-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  EPSS Scenario
-                  {selectedPkg.epss_score != null && (
-                    <span className="ml-2 normal-case tracking-normal text-zinc-400">
-                      now {(selectedPkg.epss_score * 100).toFixed(2)}%
-                    </span>
-                  )}
-                </label>
-                <span className={`text-xs font-semibold tabular-nums ${
-                  epssDrift > 1.5 ? "text-green-400" : epssDrift < 0.75 ? "text-red-400" : "text-zinc-400"
-                }`}>
-                  {epssDrift >= 0.99 && epssDrift <= 1.01 ? "baseline"
-                    : epssDrift > 1.0
-                      ? `${epssDrift.toFixed(1)}× spike`
-                      : `${epssDrift.toFixed(2)}× drop`
-                  }
-                  <span className="ml-1.5 text-zinc-200">
-                    → {(epssTarget * 100).toFixed(2)}%
-                  </span>
+            )}
+            {selectedPkg && (
+              <div className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800/40 px-3 py-2">
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${selectedPkg.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"}`}>
+                  {selectedPkg.ecosystem}
+                </span>
+                <span className="font-mono text-sm text-zinc-100">{selectedPkg.name}</span>
+                <span className="ml-auto text-xs text-zinc-500">
+                  {selectedPkg.num_cves} CVEs · EPSS {selectedPkg.epss_score != null ? Math.round(selectedPkg.epss_score * 100) + "%" : "—"}
                 </span>
               </div>
-              <input
-                type="range" min={0} max={1} step={0.001}
-                value={epssSliderPos}
-                onChange={(e) => setEpssSliderPos(Number(e.target.value))}
-                className="w-full accent-emerald-400"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-600">
-                <span>0.1%</span>
-                <span>1%</span>
-                <span>10%</span>
-                <span>100%</span>
-              </div>
-            </div>
+            )}
+          </div>
 
-            {/* Stacked area chart */}
-            {sim && sim.curve.length > 0 && (
-              <div className="px-2 pb-1 border-t border-zinc-800/60">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={sim.curve} margin={{ top: 16, right: 56, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="epssGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#34d399" stopOpacity={0.1} />
-                      </linearGradient>
-                      <linearGradient id="cvssGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FDE832" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#FDE832" stopOpacity={0.1} />
-                      </linearGradient>
-                      <linearGradient id="malGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#fb7185" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#fb7185" stopOpacity={0.1} />
-                      </linearGradient>
-                      <linearGradient id="sellGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f87171" stopOpacity={0.04} />
-                        <stop offset="100%" stopColor="#f87171" stopOpacity={0.2} />
-                      </linearGradient>
-                    </defs>
-
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "#52525b", fontSize: 10 }}
-                      axisLine={false} tickLine={false}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      orientation="right"
-                      tick={{ fill: "#52525b", fontSize: 10 }}
-                      axisLine={false} tickLine={false}
-                      tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${(v / 1000).toFixed(0)}k`}
-                      domain={[sim.y_min, sim.y_max]}
-                      allowDataOverflow={false}
-                      width={52}
-                    />
-
-                    <ReferenceLine y={0} stroke="#3f3f46" strokeWidth={1} />
-                    <ReferenceLine
-                      y={sim.max_loss}
-                      stroke="#f87171" strokeDasharray="4 3" strokeWidth={1}
-                      label={{ value: "MAX LOSS", position: "insideBottomRight", fill: "#f87171", fontSize: 9, fontWeight: 700 }}
-                    />
-
-                    <ReTooltip
-                      cursor={{ stroke: "#71717a", strokeWidth: 1, strokeDasharray: "3 3" }}
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null
-                        const get = (key: string) => payload.find((p) => p.dataKey === key)?.value as number | undefined
-                        const sell = get("sell_pnl")
-                        const epss = get("epss_win")
-                        const cvss = get("cvss_win")
-                        const mal  = get("mal_win")
-                        return (
-                          <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-1">
-                            <p className="text-zinc-400 font-medium">{label}</p>
-                            {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} sch</p>}
-                            {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} sch</p>}
-                            {mal  != null && <p className="text-rose-400">MAL advisory → +{mal.toLocaleString()} sch</p>}
-                            {sell != null && (
-                              <p className={`font-medium border-t border-zinc-800 pt-1 mt-1 ${sell >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                Sell now → {sell >= 0 ? "+" : ""}{sell.toLocaleString()} sch
-                              </p>
-                            )}
-                          </div>
-                        )
-                      }}
-                    />
-
-                    {/* Stacked win areas: MAL (bottom), CVSS, EPSS (top) */}
-                    <Area stackId="win" type="monotone" dataKey="mal_win"
-                      stroke="#fb7185" strokeWidth={1}
-                      fill="url(#malGrad)" dot={false}
-                      activeDot={{ r: 3, fill: "#fb7185", stroke: "none" }}
-                    />
-                    <Area stackId="win" type="monotone" dataKey="cvss_win"
-                      stroke="#FDE832" strokeWidth={1}
-                      fill="url(#cvssGrad)" dot={false}
-                      activeDot={{ r: 3, fill: "#FDE832", stroke: "none" }}
-                    />
-                    <Area stackId="win" type="monotone" dataKey="epss_win"
-                      stroke="#34d399" strokeWidth={1}
-                      fill="url(#epssGrad)" dot={false}
-                      activeDot={{ r: 3, fill: "#34d399", stroke: "none" }}
-                    />
-
-                    {/* Sell decay — not stacked */}
-                    <Area type="monotone" dataKey="sell_pnl"
-                      stroke="#f87171" strokeWidth={2}
-                      fill="url(#sellGrad)" dot={false}
-                      activeDot={{ r: 4, fill: "#e4e4e7", stroke: "none" }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-
-                {/* Legend */}
-                <div className="flex items-center gap-4 px-3 pt-1 pb-2 text-[10px] flex-wrap">
-                  <span className="flex items-center gap-1 text-emerald-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/60" /> EPSS spike
-                  </span>
-                  <span className="flex items-center gap-1 text-[#FDE832]">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#FDE832]/60" /> CVSS event
-                  </span>
-                  <span className="flex items-center gap-1 text-purple-400">
-                  </span>
-                  <span className="flex items-center gap-1 text-rose-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-400/60" /> MAL advisory
-                  </span>
-                  <span className="flex items-center gap-1 text-red-400">
-                    <span className="inline-block h-px w-4 bg-red-400" /> Sell value
-                  </span>
+          {/* Left skeleton when no package */}
+          {!selectedPkg && (
+            <div className="space-y-4 pointer-events-none select-none">
+              {/* Stake + Duration skeleton */}
+              <div className="rounded-xl border border-zinc-700/60 bg-[#181D21] p-4 space-y-4">
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-24 rounded bg-zinc-700 animate-pulse" />
+                  <div className="h-9 w-full rounded-lg bg-zinc-700/80 animate-pulse" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-16 rounded bg-zinc-700 animate-pulse" />
+                  <div className="flex gap-2">
+                    {[1,2,3].map(i => <div key={i} className="flex-1 h-9 rounded-lg bg-zinc-700/80 animate-pulse" />)}
+                  </div>
                 </div>
               </div>
-            )}
-
-            {/* Buy button */}
-            <div className="px-5 pt-2 pb-5">
-              <button
-                onClick={buyContract}
-                disabled={buying || !selectedPkg || (schmeckles != null && schmeckles < price)}
-                className="w-full rounded-lg bg-[#FDE832] py-3 text-sm font-bold text-zinc-900 transition-opacity hover:opacity-90 disabled:opacity-40"
-              >
-                {buying ? "Buying…" : `Buy for ${price} schmeckles`}
-              </button>
+              {/* CVSS slider skeleton */}
+              <div className="rounded-xl border border-zinc-700/60 bg-[#181D21] p-4 space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-2.5 w-28 rounded bg-zinc-700 animate-pulse" />
+                  <div className="h-2.5 w-8 rounded bg-zinc-700 animate-pulse" />
+                </div>
+                <div className="h-2 w-full rounded-full bg-zinc-700/80 animate-pulse" />
+                <div className="flex justify-between gap-2">
+                  {[1,2,3,4,5].map(i => <div key={i} className="h-2 w-6 rounded bg-zinc-700/60 animate-pulse" />)}
+                </div>
+              </div>
+              {/* EPSS slider skeleton */}
+              <div className="rounded-xl border border-zinc-700/60 bg-[#181D21] p-4 space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-2.5 w-28 rounded bg-zinc-700 animate-pulse" />
+                  <div className="h-2.5 w-16 rounded bg-zinc-700 animate-pulse" />
+                </div>
+                <div className="h-2 w-full rounded-full bg-zinc-700/80 animate-pulse" />
+                <div className="flex justify-between gap-2">
+                  {[1,2,3,4].map(i => <div key={i} className="h-2 w-6 rounded bg-zinc-700/60 animate-pulse" />)}
+                </div>
+              </div>
+              {/* Buy button skeleton */}
+              <div className="h-12 w-full rounded-xl bg-zinc-700/60 animate-pulse" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+
+          <AnimatePresence>
+            {selectedPkg && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                className="space-y-4"
+              >
+                {/* Stake + Duration */}
+                <div className="rounded-xl border border-zinc-800 bg-[#181D21] p-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Stake (schmeckles)
+                    </label>
+                    <input
+                      type="number" min={10} max={schmeckles ?? 9999} step={10}
+                      value={price}
+                      onChange={(e) => setPrice(Number(e.target.value))}
+                      className="w-full rounded-lg border border-zinc-700 bg-[#1C2229] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Duration
+                    </label>
+                    <div className="flex gap-2">
+                      {DURATION_OPTIONS.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setDuration(d)}
+                          className={`flex-1 rounded-lg border py-2 text-xs font-medium transition-colors ${
+                            duration === d
+                              ? "border-[#FDE832] bg-[#FDE832]/10 text-zinc-100"
+                              : "border-zinc-700 text-zinc-500 hover:border-zinc-500"
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* CVSS threshold slider */}
+                <div className="rounded-xl border border-zinc-800 bg-[#181D21] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      CVSS Threshold
+                    </label>
+                    <span className="text-xs font-semibold text-zinc-300">≥ {cvssThreshold.toFixed(1)}</span>
+                  </div>
+                  <input
+                    type="range" min={1} max={10} step={0.1}
+                    value={cvssThreshold}
+                    onChange={(e) => setCvssThreshold(Number(e.target.value))}
+                    className="w-full accent-[#FDE832]"
+                  />
+                  <div className="flex justify-between text-[10px] text-zinc-600">
+                    <span>1.0</span><span>Low</span><span>Med</span><span>High</span><span>10.0 Critical</span>
+                  </div>
+                </div>
+
+                {/* EPSS scenario slider */}
+                <div className="rounded-xl border border-zinc-800 bg-[#181D21] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      EPSS Scenario
+                      {selectedPkg.epss_score != null && (
+                        <span className="ml-2 normal-case tracking-normal text-zinc-400 font-normal">
+                          now {(selectedPkg.epss_score * 100).toFixed(2)}%
+                        </span>
+                      )}
+                    </label>
+                    <span className={`text-xs font-semibold tabular-nums ${epssDrift > 1.5 ? "text-green-400" : "text-zinc-400"}`}>
+                      {epssDrift >= 0.99 && epssDrift <= 1.01 ? "baseline" : `${epssDrift.toFixed(1)}× spike`}
+                      <span className="ml-1.5 text-zinc-200">→ {(epssTarget * 100).toFixed(2)}%</span>
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={minPos} max={1} step={0.001}
+                    value={epssSliderPos}
+                    onChange={(e) => setEpssSliderPos(Math.max(minPos, Number(e.target.value)))}
+                    className="w-full accent-emerald-400"
+                  />
+                  <div className="flex justify-between text-[10px] text-zinc-600">
+                    <span>0.1%</span><span>1%</span><span>10%</span><span>100%</span>
+                  </div>
+                </div>
+
+                {/* Buy button */}
+                <button
+                  onClick={buyContract}
+                  disabled={buying || !selectedPkg || (schmeckles != null && schmeckles < price)}
+                  className="w-full rounded-xl bg-[#FDE832] py-3.5 text-sm font-bold text-zinc-900 transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  {buying ? "Buying…" : `Buy for ${price} schmeckles`}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── RIGHT PANEL: returns + chart ── */}
+        <div className="flex-1 min-w-0">
+          <AnimatePresence mode="wait">
+            {!selectedPkg ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="rounded-xl border border-zinc-700/60 bg-[#181D21] overflow-hidden flex flex-col h-full"
+              >
+                {/* Returns header skeleton */}
+                <div className="px-5 pt-5 pb-4 border-b border-zinc-800/60">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-2.5 w-32 rounded bg-zinc-700 animate-pulse" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-zinc-700/60 animate-pulse" />
+                    <div className="ml-auto h-2 w-10 rounded bg-zinc-700/40 animate-pulse" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { border: "border-emerald-400/20", dot: "bg-emerald-400/40" },
+                      { border: "border-[#FDE832]/20",   dot: "bg-[#FDE832]/40" },
+                      { border: "border-rose-400/20",    dot: "bg-rose-400/40" },
+                    ].map(({ border, dot }, i) => (
+                      <div key={i} className={`rounded-xl border ${border} bg-zinc-900/60 px-4 py-3 space-y-2`}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <div className={`w-2 h-2 rounded-full ${dot}`} />
+                          <div className="h-2 w-16 rounded bg-zinc-700 animate-pulse" />
+                        </div>
+                        <div className="h-8 w-20 rounded bg-zinc-700/80 animate-pulse" />
+                        <div className="h-2.5 w-14 rounded bg-zinc-700/60 animate-pulse mt-1" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Chart skeleton */}
+                <div className="flex-1 px-2 pt-2 pb-1 flex flex-col">
+                  <div className="flex-1 relative overflow-hidden rounded-lg">
+                    {/* Muted filled areas mimicking the real stacked chart */}
+                    <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <path d="M0,95 Q25,70 50,55 T100,48 L100,100 L0,100 Z" fill="#fb7185" fillOpacity="0.25" stroke="#fb7185" strokeWidth="0.5" />
+                      <path d="M0,85 Q25,55 50,35 T100,28 L100,100 L0,100 Z" fill="#FDE832" fillOpacity="0.2" stroke="#FDE832" strokeWidth="0.5" />
+                      <path d="M0,70 Q25,38 50,18 T100,10 L100,100 L0,100 Z" fill="#34d399" fillOpacity="0.2" stroke="#34d399" strokeWidth="0.5" />
+                      <line x1="0" y1="97" x2="100" y2="97" stroke="#f87171" strokeWidth="0.6" strokeDasharray="2 1" />
+                    </svg>
+                    {/* Axis tick skeletons */}
+                    <div className="absolute right-0 top-0 bottom-0 w-12 flex flex-col justify-between py-4">
+                      {[1,2,3,4].map(i => <div key={i} className="h-2 w-8 ml-2 rounded bg-zinc-700/40 animate-pulse" />)}
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-12 flex justify-between px-2 pb-1">
+                      {[1,2,3,4,5].map(i => <div key={i} className="h-2 w-6 rounded bg-zinc-700/40 animate-pulse" />)}
+                    </div>
+                  </div>
+                  {/* Legend skeleton — matches real legend exactly */}
+                  <div className="flex items-center gap-4 px-3 pt-1 pb-3">
+                    {[
+                      { swatch: "bg-emerald-400/60", w: "w-14" },
+                      { swatch: "bg-[#FDE832]/60",   w: "w-16" },
+                      { swatch: "bg-rose-400/60",     w: "w-20" },
+                      { swatch: "bg-red-400/60 h-px", w: "w-14" },
+                    ].map(({ swatch, w }, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className={`w-2.5 h-2.5 rounded-sm ${swatch}`} />
+                        <div className={`h-2 ${w} rounded bg-zinc-700/60 animate-pulse`} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sim"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: simLoading && !sim ? 0.5 : 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-xl border border-zinc-800 bg-[#181D21] overflow-hidden flex flex-col h-full"
+              >
+                {/* Returns header */}
+                <div className="px-5 pt-5 pb-4 border-b border-zinc-800/60">
+                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wide mb-4">
+                    Simulated Returns
+                    <svg className="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.5}>
+                      <circle cx="8" cy="8" r="7" /><path d="M8 7v4M8 5.5v.5" strokeLinecap="round" />
+                    </svg>
+                    <span className="ml-auto text-[10px] text-zinc-700 font-normal normal-case tracking-normal">estimate</span>
+                  </div>
+
+                  {/* Three win cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {WIN_CONFIGS.map(({ label, key, color, dot, border }) => (
+                      <div key={key} className={`rounded-xl border ${border} bg-zinc-900/60 px-4 py-3`}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className={`w-2 h-2 rounded-full ${dot}`} />
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
+                        </div>
+                        <p className={`text-2xl font-bold tabular-nums ${color}`}>
+                          {sim ? `+${(sim[key as keyof SimResult] as number).toLocaleString()}` : "—"}
+                        </p>
+                        <p className="text-[11px] text-zinc-600 mt-1">
+                          {sim ? `${(price > 0 ? ((sim[key as keyof SimResult] as number) / price + 1).toFixed(1) : "—")}× if YES` : "calculating…"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Chart */}
+                {sim && sim.curve.length > 0 && (
+                  <div className="px-2 pt-2 pb-1 flex-1 flex flex-col">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+                      <AreaChart data={sim.curve} margin={{ top: 16, right: 56, bottom: 0, left: 0 }}>
+                        <defs>
+                          <linearGradient id="epssGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#34d399" stopOpacity={0.5} />
+                            <stop offset="100%" stopColor="#34d399" stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="cvssGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#FDE832" stopOpacity={0.5} />
+                            <stop offset="100%" stopColor="#FDE832" stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="malGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fb7185" stopOpacity={0.5} />
+                            <stop offset="100%" stopColor="#fb7185" stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="sellGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f87171" stopOpacity={0.04} />
+                            <stop offset="100%" stopColor="#f87171" stopOpacity={0.2} />
+                          </linearGradient>
+                        </defs>
+
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fill: "#52525b", fontSize: 10 }}
+                          axisLine={false} tickLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          orientation="right"
+                          tick={{ fill: "#52525b", fontSize: 10 }}
+                          axisLine={false} tickLine={false}
+                          tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${(v / 1000).toFixed(0)}k`}
+                          domain={[sim.y_min, sim.y_max]}
+                          allowDataOverflow={false}
+                          width={52}
+                        />
+
+                        <ReferenceLine y={0} stroke="#3f3f46" strokeWidth={1} />
+                        <ReferenceLine
+                          y={sim.max_loss}
+                          stroke="#f87171" strokeDasharray="4 3" strokeWidth={1}
+                          label={{ value: "MAX LOSS", position: "insideBottomRight", fill: "#f87171", fontSize: 9, fontWeight: 700 }}
+                        />
+
+                        <ReTooltip
+                          cursor={{ stroke: "#71717a", strokeWidth: 1, strokeDasharray: "3 3" }}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null
+                            const get = (key: string) => payload.find((p) => p.dataKey === key)?.value as number | undefined
+                            const sell = get("sell_pnl")
+                            const epss = get("epss_win")
+                            const cvss = get("cvss_win")
+                            const mal  = get("mal_win")
+                            return (
+                              <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-1">
+                                <p className="text-zinc-400 font-medium">{label}</p>
+                                {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} sch</p>}
+                                {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} sch</p>}
+                                {mal  != null && <p className="text-rose-400">MAL advisory → +{mal.toLocaleString()} sch</p>}
+                                {sell != null && (
+                                  <p className={`font-medium border-t border-zinc-800 pt-1 mt-1 ${sell >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                    Sell now → {sell >= 0 ? "+" : ""}{sell.toLocaleString()} sch
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          }}
+                        />
+
+                        <Area stackId="win" type="monotone" dataKey="mal_win"
+                          stroke="#fb7185" strokeWidth={1}
+                          fill="url(#malGrad)" dot={false}
+                          activeDot={{ r: 3, fill: "#fb7185", stroke: "none" }}
+                        />
+                        <Area stackId="win" type="monotone" dataKey="cvss_win"
+                          stroke="#FDE832" strokeWidth={1}
+                          fill="url(#cvssGrad)" dot={false}
+                          activeDot={{ r: 3, fill: "#FDE832", stroke: "none" }}
+                        />
+                        <Area stackId="win" type="monotone" dataKey="epss_win"
+                          stroke="#34d399" strokeWidth={1}
+                          fill="url(#epssGrad)" dot={false}
+                          activeDot={{ r: 3, fill: "#34d399", stroke: "none" }}
+                        />
+                        <Area type="monotone" dataKey="sell_pnl"
+                          stroke="#f87171" strokeWidth={2}
+                          fill="url(#sellGrad)" dot={false}
+                          activeDot={{ r: 4, fill: "#e4e4e7", stroke: "none" }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-4 px-3 pt-1 pb-3 text-[10px] flex-wrap">
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/60" /> EPSS spike
+                      </span>
+                      <span className="flex items-center gap-1 text-[#FDE832]">
+                        <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#FDE832]/60" /> CVSS event
+                      </span>
+                      <span className="flex items-center gap-1 text-rose-400">
+                        <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-400/60" /> MAL advisory
+                      </span>
+                      <span className="flex items-center gap-1 text-red-400">
+                        <span className="inline-block h-px w-4 bg-red-400" /> Sell value
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading state when no sim yet */}
+                {simLoading && !sim && (
+                  <div className="flex items-center justify-center h-64 text-zinc-600 text-sm">
+                    Calculating…
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   )
 }
