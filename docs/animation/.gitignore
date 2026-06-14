@@ -1,0 +1,9 @@
+# Remotion / Node
+node_modules/
+out/
+.remotion/
+
+# Curated render inputs live in public/ — keep them tracked even though the
+# root .gitignore globs *.mov (which is meant for raw recordings in assets/).
+!public/
+!public/*.mov

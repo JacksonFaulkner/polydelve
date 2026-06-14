@@ -8,8 +8,9 @@ ifneq (,$(wildcard backend/.env))
 	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN
 endif
 
-UV  := cd backend && uv run
-NPM := cd frontend &&
+UV   := cd backend && uv run
+NPM  := cd frontend &&
+ANIM := cd docs/animation &&
 
 ##@ Help
 
@@ -44,6 +45,21 @@ be: ## Start backend dev server
 .PHONY: fe
 fe: ## Start frontend dev server
 	$(NPM) npm run dev
+
+##@ Animation (Remotion intro)
+
+.PHONY: anim
+anim: ## Open Remotion studio (live preview of the intro)
+	$(ANIM) npm run studio
+
+.PHONY: anim-render
+anim-render: ## Render intro → docs/animation/out/intro.mp4
+	$(ANIM) npm run render
+
+.PHONY: anim-docs
+anim-docs: ## Render intro mp4 + poster stills into docs/public/
+	$(ANIM) npx remotion render src/index.ts PolydelveIntro ../public/intro.mp4
+	$(ANIM) npx remotion still src/index.ts PolydelveIntro ../public/intro-poster.png --frame=250
 
 ##@ Setup
 
