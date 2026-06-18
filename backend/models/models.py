@@ -262,6 +262,9 @@ class ContractDetail(BaseModel):
         description="Schmeckles received if the contract was sold early. Null otherwise."
     )
     created_at: str = Field(description="ISO datetime when the contract was purchased.")
+    opening_epss: float | None = Field(
+        default=None, description="EPSS score of the package at time of purchase."
+    )
     current_sell_value: int | None = Field(
         description="Current early-exit sell value in Schmeckles. Null if not open."
     )
