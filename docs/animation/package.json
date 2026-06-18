@@ -18,11 +18,13 @@
     "@remotion/player": "^4.0.476",
     "@remotion/shapes": "4.0.476",
     "@remotion/transitions": "4.0.476",
+    "lucide-react": "^1.18.0",
     "remotion": "^4.0.476"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "copy-webpack-plugin": "^14.0.0",
     "typescript": "^6.0.3"
   }
 }
