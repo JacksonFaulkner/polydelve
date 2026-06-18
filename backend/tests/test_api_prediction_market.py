@@ -5,17 +5,21 @@ sys.path.insert(0, ".")
 
 
 def _seed_company(db):
-    db.execute("""
-        INSERT OR IGNORE INTO companies (id, title, logo, grade) VALUES ('google', 'Google', '', 'A')
-    """)
+    db.cursor().execute(
+        "INSERT INTO companies (id, title, logo, grade) VALUES ('google', 'Google', '', 'A') ON CONFLICT (id) DO NOTHING"
+    )
 
 
 def _seed_market(db, market_id="mkt-1", status="open", price=100):
     _seed_company(db)
-    db.execute(f"""
+    db.cursor().execute(
+        """
         INSERT INTO markets (id, company_id, title, description, grade, price, payout, end_date, status)
-        VALUES ('{market_id}', 'google', 'Test Market', 'Desc', 'A', {price}, 300, now() + INTERVAL '7' DAY, '{status}')
-    """)
+        VALUES (%s, 'google', 'Test Market', 'Desc', 'A', %s, 300, now() + INTERVAL '7 days', %s)
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, price = EXCLUDED.price
+        """,
+        (market_id, price, status),
+    )
 
 
 # ── Markets (public) ──────────────────────────────────────────────────────────
@@ -101,9 +105,9 @@ def test_place_bet_deducts_schmeckles(client, db_with_data):
     _seed_market(db_with_data, price=100)
     r = client.post("/bets", json={"market_id": "mkt-1"})
     assert r.status_code == 201
-    bal = db_with_data.execute(
-        "SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'"
-    ).fetchone()[0]
+    cur = db_with_data.cursor()
+    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    bal = cur.fetchone()[0]
     assert bal == 900
 
 

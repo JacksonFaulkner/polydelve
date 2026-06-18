@@ -1,8 +1,9 @@
-import duckdb
+from typing import Any
 
 
-def list_featured_contracts(conn: duckdb.DuckDBPyConnection) -> list[tuple]:
-    return conn.execute(
+def list_featured_contracts(conn: Any) -> list[tuple]:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT
             fc.id,
@@ -28,4 +29,5 @@ def list_featured_contracts(conn: duckdb.DuckDBPyConnection) -> list[tuple]:
         ORDER BY fc.relevancy_score DESC, fc.opening_probability DESC
         LIMIT 12
         """
-    ).fetchall()
+    )
+    return cur.fetchall()

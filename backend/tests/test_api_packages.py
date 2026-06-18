@@ -93,9 +93,9 @@ def test_package_detail_max_cvss_computed(client):
 
 
 def test_package_with_no_cves_returns_empty_list(client, db_with_data):
-    db_with_data.execute("""
-        INSERT INTO packages (name, ecosystem, epss_score, has_mal_advisory, cve_ids)
-        VALUES ('clean-pkg', 'PyPI', 0.0, false, [])
-    """)
+    db_with_data.cursor().execute(
+        "INSERT INTO packages (name, ecosystem, epss_score, has_mal_advisory, cve_ids) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (name, ecosystem) DO NOTHING",
+        ("clean-pkg", "PyPI", 0.0, False, []),
+    )
     r = client.get("/packages/PyPI/clean-pkg")
     assert r.json()["cve_history"] == []

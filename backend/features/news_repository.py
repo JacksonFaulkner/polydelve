@@ -1,4 +1,5 @@
-import duckdb
+import math
+from typing import Any
 
 from features.package_enrichment import validate_packages
 from models.models import PackageRisk, RecentNews
@@ -6,64 +7,72 @@ from models.models import PackageRisk, RecentNews
 _SIMILARITY_THRESHOLD = 0.92
 
 
-def _exists(conn: duckdb.DuckDBPyConnection, news_id: str) -> bool:
-    row = conn.execute("SELECT 1 FROM news WHERE id = ?", [news_id]).fetchone()
-    return row is not None
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def _exists(conn: Any, news_id: str) -> bool:
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM news WHERE id = %s", [news_id])
+    return cur.fetchone() is not None
 
 
 def _find_semantic_duplicate(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     embedding: list[float],
 ) -> tuple[str, float] | None:
-    """Returns (matched_news_id, score) if a duplicate is found, else None."""
-    row = conn.execute(
-        """
-        SELECT id, list_cosine_similarity(embed_description, ?::FLOAT[3072]) AS score
-        FROM news
-        ORDER BY score DESC
-        LIMIT 1
-        """,
-        [embedding],
-    ).fetchone()
-    if row and row[1] is not None and row[1] >= _SIMILARITY_THRESHOLD:
-        return (row[0], row[1])
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, embed_description FROM news WHERE embed_description IS NOT NULL ORDER BY ingested_at DESC LIMIT 200"
+    )
+    rows = cur.fetchall()
+    best_id, best_score = None, 0.0
+    for nid, emb in rows:
+        if emb is None:
+            continue
+        score = _cosine(embedding, emb)
+        if score > best_score:
+            best_id, best_score = nid, score
+    if best_id and best_score >= _SIMILARITY_THRESHOLD:
+        return (best_id, best_score)
     return None
 
 
 def _log_duplicate(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     candidate_url: str,
     matched_news_id: str,
     score: float,
 ) -> None:
-    conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         INSERT INTO news_duplicates (candidate_url, matched_news_id, similarity_score)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
         ON CONFLICT (candidate_url, matched_news_id) DO NOTHING
         """,
         [candidate_url, matched_news_id, score],
     )
 
 
-def _resolve_company_id(
-    conn: duckdb.DuckDBPyConnection,
-    company_labels: list[str],
-) -> str | None:
-    """Match first company_label to a known company id."""
+def _resolve_company_id(conn: Any, company_labels: list[str]) -> str | None:
+    cur = conn.cursor()
     for label in company_labels:
-        row = conn.execute(
-            "SELECT id FROM companies WHERE title = ?", [label]
-        ).fetchone()
+        cur.execute("SELECT id FROM companies WHERE title = %s", [label])
+        row = cur.fetchone()
         if row:
             return row[0]
     return None
 
 
-def _insert_news(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> None:
+def _insert_news(conn: Any, article: RecentNews) -> None:
     exa, gpt = article.analysis.exa, article.analysis.gpt
     primary_company_id = _resolve_company_id(conn, gpt.company_labels)
-    conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         INSERT INTO news (
             id, title, description, summary, source_name,
@@ -71,7 +80,7 @@ def _insert_news(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> None:
             threat_actor, exploit_status, severity, relevancy_score,
             company_labels, sector_labels,
             embed_title, embed_description, embed_source
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         [
             article.id,
@@ -96,40 +105,38 @@ def _insert_news(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> None:
 
 
 async def _insert_packages(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     news_id: str,
     packages: list[PackageRisk],
 ) -> None:
     if not packages:
         return
-    # only insert packages that actually exist on their registry
     candidates = [(p.name, p.ecosystem) for p in packages if p.ecosystem in ("npm", "PyPI")]
     valid = await validate_packages(candidates) if candidates else set()
     verified = [p for p in packages if (p.name, p.ecosystem) in valid]
     if not verified:
         return
-    # upsert canonical package record
-    conn.executemany(
+    cur = conn.cursor()
+    cur.executemany(
         """
         INSERT INTO packages (name, ecosystem, weekly_downloads, cve_ids, epss_score)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
         ON CONFLICT (name, ecosystem) DO NOTHING
         """,
         [(p.name, p.ecosystem, p.weekly_downloads, p.cve_ids, p.epss_score)
          for p in verified],
     )
-    # insert join rows
-    conn.executemany(
+    cur.executemany(
         """
         INSERT INTO news_packages (news_id, name, ecosystem)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
         ON CONFLICT (news_id, name) DO NOTHING
         """,
         [(news_id, p.name, p.ecosystem) for p in verified],
     )
 
 
-async def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
+async def ingest(conn: Any, article: RecentNews) -> str:
     """Insert article if not already stored. Returns 'inserted', 'url_duplicate', or 'semantic_duplicate'."""
     if _exists(conn, article.id):
         return "url_duplicate"
@@ -145,7 +152,7 @@ async def ingest(conn: duckdb.DuckDBPyConnection, article: RecentNews) -> str:
     return "inserted"
 
 
-async def ingest_many(conn: duckdb.DuckDBPyConnection, articles: list[RecentNews]) -> dict[str, int]:
+async def ingest_many(conn: Any, articles: list[RecentNews]) -> dict[str, int]:
     counts: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0}
     for article in articles:
         result = await ingest(conn, article)

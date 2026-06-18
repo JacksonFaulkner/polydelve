@@ -38,22 +38,22 @@ def list_packages(
     params: list = []
 
     if ecosystem:
-        filters.append("p.ecosystem = ?")
+        filters.append("p.ecosystem = %s")
         params.append(ecosystem)
     if sector:
-        filters.append("list_contains(p.sectors, ?)")
+        filters.append("%s = ANY(p.sectors)")
         params.append(sector)
     if has_cves is True:
-        filters.append("len(p.cve_ids) > 0")
+        filters.append("cardinality(p.cve_ids) > 0")
     elif has_cves is False:
-        filters.append("(p.cve_ids IS NULL OR len(p.cve_ids) = 0)")
+        filters.append("(p.cve_ids IS NULL OR cardinality(p.cve_ids) = 0)")
     if search:
-        filters.append("p.name ILIKE ?")
+        filters.append("p.name ILIKE %s")
         params.append(f"%{search}%")
     if latest_cve_days is not None:
         cutoff = (date.today() - timedelta(days=latest_cve_days)).isoformat()
         filters.append(
-            "EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem AND ch.published_date >= ?)"
+            "EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem AND ch.published_date >= %s)"
         )
         params.append(cutoff)
 
@@ -63,7 +63,7 @@ def list_packages(
         "risk_score": "p.risk_score",
         "weekly_downloads": "p.weekly_downloads",
         "epss_score": "p.epss_score",
-        "num_cves": "len(p.cve_ids)",
+        "num_cves": "cardinality(p.cve_ids)",
     }[sort]
 
     offset = (page - 1) * page_size

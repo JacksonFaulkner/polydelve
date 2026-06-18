@@ -21,7 +21,8 @@ def test_me_returns_user(client):
 
 def test_me_auto_creates_user_if_missing(db):
     """A valid JWT whose sub doesn't exist in users table should be auto-created."""
-    from conftest import _make_client
+    from conftest import _make_client, FAKE_USER
+    db.cursor().execute("DELETE FROM users WHERE id = %s", (FAKE_USER["sub"],))
     client = _make_client(db, authenticated=True)
     r = client.get("/users/me")
     assert r.status_code == 200

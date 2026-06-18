@@ -1,21 +1,25 @@
-import duckdb
+from typing import Any
 
 
-def get_package_epss(conn: duckdb.DuckDBPyConnection, name: str, ecosystem: str) -> float | None:
-    row = conn.execute(
-        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
+def get_package_epss(conn: Any, name: str, ecosystem: str) -> float | None:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT epss_score FROM packages WHERE name = %s AND ecosystem = %s",
         [name, ecosystem],
-    ).fetchone()
+    )
+    row = cur.fetchone()
     return row[0] if row else None
 
 
-def get_user_schmeckles(conn: duckdb.DuckDBPyConnection, user_id: str) -> int | None:
-    row = conn.execute("SELECT schmeckles FROM users WHERE id = ?", [user_id]).fetchone()
+def get_user_schmeckles(conn: Any, user_id: str) -> int | None:
+    cur = conn.cursor()
+    cur.execute("SELECT schmeckles FROM users WHERE id = %s", [user_id])
+    row = cur.fetchone()
     return row[0] if row else None
 
 
 def buy_contract(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     contract_id: str,
     user_id: str,
     name: str,
@@ -30,30 +34,31 @@ def buy_contract(
     expires_at,
     opening_epss: float | None,
 ) -> None:
-    conn.execute("BEGIN")
-    conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         INSERT INTO contracts (
             id, user_id, package_name, package_ecosystem, market_type,
             cvss_threshold, epss_threshold, purchase_price, max_payout,
             opening_probability, package_grade, expires_at, opening_epss
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         [contract_id, user_id, name, ecosystem, market_type,
          cvss_t, epss_t, price, max_payout, open_prob, grade, expires_at, opening_epss],
     )
-    result = conn.execute(
-        "UPDATE users SET schmeckles = schmeckles - ? WHERE id = ? AND schmeckles >= ?",
+    cur.execute(
+        "UPDATE users SET schmeckles = schmeckles - %s WHERE id = %s AND schmeckles >= %s",
         [price, user_id, price],
     )
-    if result.rowcount == 0:
-        conn.execute("ROLLBACK")
+    if cur.rowcount == 0:
+        conn.rollback()
         raise ValueError("insufficient_schmeckles")
-    conn.execute("COMMIT")
+    conn.commit()
 
 
-def list_contracts(conn: duckdb.DuckDBPyConnection, user_id: str) -> list[tuple]:
-    return conn.execute(
+def list_contracts(conn: Any, user_id: str) -> list[tuple]:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT c.id, c.package_name, c.package_ecosystem, c.market_type,
                c.cvss_threshold, c.epss_threshold, c.purchase_price, c.max_payout,
@@ -62,39 +67,38 @@ def list_contracts(conn: duckdb.DuckDBPyConnection, user_id: str) -> list[tuple]
                c.opening_epss, p.epss_score AS current_epss
         FROM contracts c
         LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
-        WHERE c.user_id = ?
+        WHERE c.user_id = %s
         ORDER BY c.created_at DESC
         """,
         [user_id],
-    ).fetchall()
+    )
+    return cur.fetchall()
 
 
-def get_contract_for_sell(
-    conn: duckdb.DuckDBPyConnection, contract_id: str, user_id: str
-) -> tuple | None:
-    return conn.execute(
+def get_contract_for_sell(conn: Any, contract_id: str, user_id: str) -> tuple | None:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT c.user_id, c.purchase_price,
                c.expires_at, c.status, c.created_at,
                c.opening_epss, p.epss_score AS current_epss
         FROM contracts c
         LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
-        WHERE c.id = ? AND c.user_id = ?
+        WHERE c.id = %s AND c.user_id = %s
         """,
         [contract_id, user_id],
-    ).fetchone()
+    )
+    return cur.fetchone()
 
 
-def sell_contract(
-    conn: duckdb.DuckDBPyConnection, contract_id: str, user_id: str, sell_val: int
-) -> None:
-    conn.execute("BEGIN")
-    conn.execute(
-        "UPDATE contracts SET status = 'sold', sell_price = ?, resolved_at = now() WHERE id = ?",
+def sell_contract(conn: Any, contract_id: str, user_id: str, sell_val: int) -> None:
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE contracts SET status = 'sold', sell_price = %s, resolved_at = now() WHERE id = %s",
         [sell_val, contract_id],
     )
-    conn.execute(
-        "UPDATE users SET schmeckles = schmeckles + ? WHERE id = ?",
+    cur.execute(
+        "UPDATE users SET schmeckles = schmeckles + %s WHERE id = %s",
         [sell_val, user_id],
     )
-    conn.execute("COMMIT")
+    conn.commit()

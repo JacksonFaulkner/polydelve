@@ -3,7 +3,6 @@ import logging
 import os
 from pathlib import Path
 
-import duckdb
 import uvicorn
 from fastapi import FastAPI
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -20,7 +19,7 @@ from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
 from api.routes.featured import router as featured_router
 from api.auth import _auth0
-from features.db import DB_PATH, init_db
+from features.db import seed_companies, get_db_conn
 
 
 def _load_env() -> None:
@@ -46,11 +45,9 @@ logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if token := os.getenv("MOTHERDUCK_TOKEN"):
-        os.environ.setdefault("motherduck_token", token)
-    bootstrap = duckdb.connect(DB_PATH)
-    init_db(bootstrap)
-    bootstrap.close()
+    conn = get_db_conn()
+    seed_companies(conn)
+    conn.close()
     try:
         await _auth0().api_client._discover()
     except Exception:

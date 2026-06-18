@@ -6,17 +6,18 @@ sys.path.insert(0, ".")
 
 
 def _seed_contract(db, contract_id="contract-1", status="open", user_id="auth0|testuser123"):
-    db.execute(f"""
+    cur = db.cursor()
+    cur.execute(
+        """
         INSERT INTO contracts (
             id, user_id, package_name, package_ecosystem, market_type,
             cvss_threshold, epss_threshold, purchase_price, max_payout,
             opening_probability, package_grade, expires_at, status, created_at
-        ) VALUES (
-            '{contract_id}', '{user_id}', 'requests', 'PyPI', 'all',
-            7.0, NULL, 100, 500,
-            0.5, 5.0, '{date.today() + timedelta(days=7)}', '{status}', now()
-        )
-    """)
+        ) VALUES (%s, %s, 'requests', 'PyPI', 'all', 7.0, NULL, 100, 500, 0.5, 5.0, %s, %s, now())
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, user_id = EXCLUDED.user_id
+        """,
+        (contract_id, user_id, date.today() + timedelta(days=7), status),
+    )
 
 
 # ── Auth enforcement ──────────────────────────────────────────────────────────
@@ -137,14 +138,14 @@ def test_buy_deducts_schmeckles(client, db_with_data):
         "duration_days": 30,
     })
     assert r.status_code == 201
-    bal = db_with_data.execute(
-        "SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'"
-    ).fetchone()[0]
+    cur = db_with_data.cursor()
+    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    bal = cur.fetchone()[0]
     assert bal == 900
 
 
 def test_buy_insufficient_schmeckles(client, db_with_data):
-    db_with_data.execute(
+    db_with_data.cursor().execute(
         "UPDATE users SET schmeckles = 10 WHERE id = 'auth0|testuser123'"
     )
     r = client.post("/contracts", json={
@@ -158,7 +159,7 @@ def test_buy_insufficient_schmeckles(client, db_with_data):
 
 def test_buy_user_not_in_db_returns_404(client, db_with_data):
     # Authenticated user whose sub isn't in the users table
-    db_with_data.execute("DELETE FROM users WHERE id = 'auth0|testuser123'")
+    db_with_data.cursor().execute("DELETE FROM users WHERE id = 'auth0|testuser123'")
     r = client.post("/contracts", json={
         "package_name": "requests",
         "ecosystem": "PyPI",
@@ -177,9 +178,9 @@ def test_sell_open_contract_credits_user(client, db_with_data):
     body = r.json()
     assert body["status"] == "sold"
     assert body["sell_price"] >= 0
-    bal = db_with_data.execute(
-        "SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'"
-    ).fetchone()[0]
+    cur = db_with_data.cursor()
+    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    bal = cur.fetchone()[0]
     assert bal > 1000  # refunded some value
 
 

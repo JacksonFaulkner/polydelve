@@ -1,19 +1,22 @@
-import duckdb
+from typing import Any
 
 
-def count_packages(conn: duckdb.DuckDBPyConnection, where: str, params: list) -> int:
-    return conn.execute(f"SELECT COUNT(*) FROM packages p WHERE {where}", params).fetchone()[0]
+def count_packages(conn: Any, where: str, params: list) -> int:
+    cur = conn.cursor()
+    cur.execute(f"SELECT COUNT(*) FROM packages p WHERE {where}", params)
+    return cur.fetchone()[0]
 
 
 def list_packages(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     where: str,
     params: list,
     sort_col: str,
     page_size: int,
     offset: int,
 ) -> list[tuple]:
-    return conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         f"""
         SELECT
             p.name,
@@ -24,7 +27,7 @@ def list_packages(
             p.has_mal_advisory,
             p.sectors,
             p.logo_url,
-            len(p.cve_ids) AS num_cves,
+            cardinality(p.cve_ids) AS num_cves,
             COUNT(DISTINCT np.news_id)  AS news_mentions,
             MAX(ch.published_date)      AS latest_cve_date,
             MAX(ch.severity)            AS worst_severity,
@@ -38,71 +41,80 @@ def list_packages(
         GROUP BY
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
             p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
-            len(p.cve_ids)
+            cardinality(p.cve_ids)
         ORDER BY {sort_col} DESC NULLS LAST
-        LIMIT ? OFFSET ?
+        LIMIT %s OFFSET %s
         """,
         params + [page_size, offset],
-    ).fetchall()
+    )
+    return cur.fetchall()
 
 
-def get_package(conn: duckdb.DuckDBPyConnection, name: str, ecosystem: str) -> tuple | None:
-    return conn.execute(
+def get_package(conn: Any, name: str, ecosystem: str) -> tuple | None:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
             p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
             p.cve_ids, p.last_enriched_at
         FROM packages p
-        WHERE p.name = ? AND p.ecosystem = ?
+        WHERE p.name = %s AND p.ecosystem = %s
         """,
         [name, ecosystem],
-    ).fetchone()
+    )
+    return cur.fetchone()
 
 
-def get_cve_history(conn: duckdb.DuckDBPyConnection, name: str, ecosystem: str) -> list[tuple]:
-    return conn.execute(
+def get_cve_history(conn: Any, name: str, ecosystem: str) -> list[tuple]:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT osv_id, cve_id, published_date, severity, cvss_vector, cvss_score
         FROM cve_history
-        WHERE name = ? AND ecosystem = ?
+        WHERE name = %s AND ecosystem = %s
         ORDER BY published_date DESC
         """,
         [name, ecosystem],
-    ).fetchall()
+    )
+    return cur.fetchall()
 
 
-def get_package_news(conn: duckdb.DuckDBPyConnection, name: str, ecosystem: str) -> list[tuple]:
-    return conn.execute(
+def get_package_news(conn: Any, name: str, ecosystem: str) -> list[tuple]:
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT n.id, n.title, n.published_date, n.source_name,
                n.source_url, n.summary, n.exploit_status, n.severity
         FROM news n
         JOIN news_packages np ON np.news_id = n.id
-        WHERE np.name = ? AND np.ecosystem = ?
+        WHERE np.name = %s AND np.ecosystem = %s
         ORDER BY n.published_date DESC
         LIMIT 10
         """,
         [name, ecosystem],
-    ).fetchall()
+    )
+    return cur.fetchall()
 
 
-def get_epss_history(conn: duckdb.DuckDBPyConnection, name: str, ecosystem: str) -> list[tuple]:
-    return conn.execute(
+def get_epss_history(conn: Any, name: str, ecosystem: str) -> list[tuple]:
+    cur = conn.cursor()
+    cur.execute(
         """
         WITH windowed AS (
             SELECT recorded_at, epss_score,
                 LAG(epss_score)    OVER (ORDER BY recorded_at) AS prev_epss,
                 LAG(recorded_at)   OVER (ORDER BY recorded_at) AS prev_date
             FROM epss_history
-            WHERE name = ? AND ecosystem = ?
+            WHERE name = %s AND ecosystem = %s
         )
         SELECT recorded_at, epss_score
         FROM windowed
         WHERE prev_epss IS NULL
-           OR round(prev_epss, 5) != round(epss_score, 5)
-           OR datediff('day', prev_date, recorded_at) >= 10
+           OR round(prev_epss::numeric, 5) != round(epss_score::numeric, 5)
+           OR (recorded_at - prev_date) >= 10
         ORDER BY recorded_at ASC
         """,
         [name, ecosystem],
-    ).fetchall()
+    )
+    return cur.fetchall()

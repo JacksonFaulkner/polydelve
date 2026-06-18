@@ -272,45 +272,50 @@ def price_contract(
     purchase_price: int,
     duration_days: int = 30,
 ) -> ContractTerms:
-    pkg = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
-        SELECT epss_score, array_length(cve_ids), has_mal_advisory
-        FROM packages WHERE name = ? AND ecosystem = ?
+        SELECT epss_score, cardinality(cve_ids), has_mal_advisory
+        FROM packages WHERE name = %s AND ecosystem = %s
         """,
         [package_name, ecosystem],
-    ).fetchone()
+    )
+    pkg = cur.fetchone()
     if not pkg:
         raise ValueError(f"Package {package_name}/{ecosystem} not found")
 
     epss_score, num_cves, has_mal_advisory = pkg
     num_cves = num_cves or 0
 
-    max_cvss_row = conn.execute(
-        "SELECT MAX(cvss_score) FROM cve_history WHERE name = ? AND ecosystem = ?",
+    cur.execute(
+        "SELECT MAX(cvss_score) FROM cve_history WHERE name = %s AND ecosystem = %s",
         [package_name, ecosystem],
-    ).fetchone()
+    )
+    max_cvss_row = cur.fetchone()
     max_cvss = max_cvss_row[0] if max_cvss_row else None
 
-    recent_cves_row = conn.execute(
+    cur.execute(
         """
         SELECT COUNT(*) FROM cve_history
-        WHERE name = ? AND ecosystem = ?
-          AND published_date >= now() - INTERVAL '90' DAY
+        WHERE name = %s AND ecosystem = %s
+          AND published_date >= now() - INTERVAL '90 days'
         """,
         [package_name, ecosystem],
-    ).fetchone()
+    )
+    recent_cves_row = cur.fetchone()
     recent_cves = recent_cves_row[0] if recent_cves_row else 0
 
-    news_row = conn.execute(
+    cur.execute(
         """
         SELECT COUNT(*),
                bool_or(n.exploit_status = 'actively_exploited')
         FROM news n JOIN news_packages np ON np.news_id = n.id
-        WHERE np.name = ? AND np.ecosystem = ?
-          AND n.published_date >= now() - interval 30 day
+        WHERE np.name = %s AND np.ecosystem = %s
+          AND n.published_date >= now() - INTERVAL '30 days'
         """,
         [package_name, ecosystem],
-    ).fetchone()
+    )
+    news_row = cur.fetchone()
     exploit_in_news = bool(news_row[1]) if news_row else False
 
     grade = compute_grade(num_cves, epss_score, bool(has_mal_advisory), max_cvss)

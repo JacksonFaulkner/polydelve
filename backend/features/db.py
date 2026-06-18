@@ -1,34 +1,40 @@
 import os
-import threading
-from functools import lru_cache
 
-import duckdb
+import psycopg2
+import psycopg2.pool
 from fastapi import Request
 
-# Switch to "md:polydelve" for MotherDuck
-DB_PATH = os.getenv("DB_PATH", "polydelve.dev.duckdb")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://polydelve:polydelve@localhost:5432/polydelve_dev"
+)
 
-_lock = threading.Lock()
-
-
-@lru_cache(maxsize=1)
-def _get_shared_conn(path: str) -> duckdb.DuckDBPyConnection:
-    conn = duckdb.connect(path)
-    init_db(conn)
-    return conn
+_pool: psycopg2.pool.ThreadedConnectionPool | None = None
 
 
-def get_db(request: Request) -> duckdb.DuckDBPyConnection:  # noqa: ARG001
-    with _lock:
-        yield _get_shared_conn(DB_PATH)
+def _get_pool() -> psycopg2.pool.ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, DATABASE_URL)
+    return _pool
 
 
-def get_db_conn() -> duckdb.DuckDBPyConnection:
+def get_db(request: Request):  # noqa: ARG001
+    conn = _get_pool().getconn()
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _get_pool().putconn(conn)
+
+
+def get_db_conn():
     """Direct connection for scripts (no FastAPI Request context)."""
-    return _get_shared_conn(DB_PATH)
+    return psycopg2.connect(DATABASE_URL)
 
 
-def init_db(conn: duckdb.DuckDBPyConnection) -> None:
+def init_db(conn) -> None:  # kept for test compat, no-op — schema managed by Alembic
     def _safe(sql: str) -> None:
         try:
             conn.execute(sql)
@@ -278,23 +284,25 @@ COMPANIES = [
 ]
 
 
-def seed_companies(conn: duckdb.DuckDBPyConnection) -> None:
-    count = conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+def seed_companies(conn) -> None:
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM companies")
+    count = cur.fetchone()[0]
     if count >= len(COMPANIES):
         return
-    conn.executemany(
+    cur.executemany(
         """
-        INSERT INTO companies (id, title, logo, grade) VALUES (?, ?, ?, ?)
-        ON CONFLICT (id) DO UPDATE SET title = excluded.title, logo = excluded.logo, grade = excluded.grade
+        INSERT INTO companies (id, title, logo, grade) VALUES (%s, %s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, logo = EXCLUDED.logo, grade = EXCLUDED.grade
         """,
         [(c["id"], c["title"], c["logo"], c["grade"]) for c in COMPANIES],
     )
+    conn.commit()
     print(f"Seeded {len(COMPANIES)} companies.")
 
 
 if __name__ == "__main__":
-    conn = duckdb.connect(DB_PATH)
-    init_db(conn)
+    conn = get_db_conn()
     seed_companies(conn)
     conn.close()
 
