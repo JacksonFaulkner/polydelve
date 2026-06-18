@@ -1,0 +1,53 @@
+---
+title: Local DB Setup
+description: Querying the local Postgres database with nvim-dbee
+---
+
+## Local Postgres
+
+`make dev` starts a Dockerized Postgres 16 instance automatically and stops it on Ctrl-C.
+
+```
+postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev
+```
+
+Schema is managed by Alembic. Run migrations after first clone:
+
+```bash
+cd backend && uv run alembic upgrade head
+```
+
+## nvim-dbee
+
+[nvim-dbee](https://github.com/kndndrj/nvim-dbee) is wired to the local connection out of the box via `~/.config/nvim/lua/plugins/dbee.lua`.
+
+```
+:Dbee   — open the UI
+```
+
+The `polydelve-local` connection is pre-configured. No env vars needed for local dev.
+
+<img src="/dbee-local.png" alt="nvim-dbee querying the local Postgres DB" />
+
+### Key bindings
+
+| Key | Action |
+|-----|--------|
+| `<CR>` | Execute query (`n` = next page) |
+| `cw` | Close window |
+| `dd` | Delete note |
+| `<Esc>` / `q` | Close menu |
+
+## Connecting to RDS (prod)
+
+When RDS is provisioned, temporarily allowlist your IP in the RDS security group (port 5432) and add a second connection to `dbee.lua`:
+
+```lua
+{
+  name = "polydelve-prod",
+  type = "postgres",
+  url = "postgresql://<user>:<pass>@<rds-endpoint>:5432/polydelve",
+},
+```
+
+Revoke the security group rule when done.
