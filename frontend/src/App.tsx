@@ -106,16 +106,17 @@ export default function App() {
   }
 
   const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
+  const isFullHeight = isHome || activeSector === "News";
 
   return (
     <div
-      className={isHome ? "flex h-dvh flex-col overflow-hidden text-white" : "min-h-screen text-white"}
+      className={isFullHeight ? "flex h-dvh flex-col overflow-hidden text-white" : "min-h-screen text-white"}
       style={{ backgroundColor: "#15191D" }}
     >
       <Navbar user={me ?? undefined} activeSector={activeSector} />
 
       {needsUsername && <UsernameModal onComplete={(user) => setMe(user)} />}
-      <main className={isHome ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
+      <main className={isFullHeight ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
         {activeSector === "Settings" ? (
           <SettingsPage user={me} onUsernameChange={(u) => setMe(u)} />
         ) : activeSector === "News" ? (

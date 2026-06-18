@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,6 +7,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 import type { Package, PackageListResponse } from "@/types"
+import { Search } from "lucide-react"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { PackageExpandedRow } from "@/components/PackageExpandedRow"
 import { useApi } from "@/lib/api"
@@ -226,8 +227,16 @@ export function PackagesTable({ ecosystem }: Props) {
   const [page, setPage] = useState(1)
   const [sorting, setSorting] = useState<SortingState>([{ id: "risk_score", desc: true }])
   const [latestCveDays, setLatestCveDays] = useState<number | null>(null)
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [loading, setLoading] = useState(false)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(t)
+  }, [search])
 
   function toggleRow(name: string, ecosystem: string) {
     const key = `${ecosystem}::${name}`
@@ -321,6 +330,7 @@ export function PackagesTable({ ecosystem }: Props) {
     })
     if (ecosystem) params.set("ecosystem", ecosystem)
     if (latestCveDays !== null) params.set("latest_cve_days", String(latestCveDays))
+    if (debouncedSearch) params.set("search", debouncedSearch)
 
     try {
       const res = await authFetch(`/packages?${params}`)
@@ -332,7 +342,7 @@ export function PackagesTable({ ecosystem }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [page, sorting, ecosystem, latestCveDays, authFetch])
+  }, [page, sorting, ecosystem, latestCveDays, debouncedSearch, authFetch])
 
   useEffect(() => {
     fetchData()
@@ -340,7 +350,7 @@ export function PackagesTable({ ecosystem }: Props) {
 
   useEffect(() => {
     setPage(1)
-  }, [ecosystem, sorting, latestCveDays])
+  }, [ecosystem, sorting, latestCveDays, debouncedSearch])
 
   const colCount = useMemo(() => allColumns.length, [allColumns.length])
 
@@ -359,6 +369,28 @@ export function PackagesTable({ ecosystem }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Search bar */}
+      <div className="relative w-full sm:w-72">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+        <input
+          ref={searchRef}
+          type="text"
+          placeholder="Search packages…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-zinc-700 bg-[#1C2229] pl-8 pr-8 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-500"
+        />
+        {search && (
+          <button
+            onClick={() => { setSearch(""); searchRef.current?.focus() }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-zinc-800">
         <table className="w-full text-sm">

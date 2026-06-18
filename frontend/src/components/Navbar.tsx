@@ -191,7 +191,7 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
 
       {/* Tab strip */}
       <div className="overflow-x-auto scrollbar-none border-t border-zinc-800/60">
-        <nav className="mx-auto flex max-w-7xl items-stretch px-4 min-w-max md:min-w-0">
+        <nav className="mx-auto flex max-w-7xl items-stretch justify-center px-4 min-w-max md:min-w-0">
           {visibleTabs.map((s) => (
             <Tab key={s} s={s} active={activeSector === s} />
           ))}
