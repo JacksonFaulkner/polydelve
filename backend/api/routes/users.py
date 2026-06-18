@@ -1,3 +1,4 @@
+from typing import Any
 import os
 import re
 import uuid
@@ -5,7 +6,6 @@ from collections import defaultdict
 from datetime import date as dt
 
 import boto3
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
@@ -54,7 +54,7 @@ router = APIRouter(prefix="/users", dependencies=[Depends(get_current_user)])
 @router.get("/me", response_model=User)
 def get_me(
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> User:
     sub = claims["sub"]
     email = claims.get("email")
@@ -63,6 +63,7 @@ def get_me(
 
     if not row:
         upsert_user(conn, sub, email)
+        conn.commit()
         return User(id=sub, email=email, username=None, schmeckles=1000)
 
     return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
@@ -95,7 +96,7 @@ def get_avatar_upload_url(
 def update_me(
     body: UserUpdate,
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> User:
     sub = claims["sub"]
 
@@ -111,6 +112,7 @@ def update_me(
     if body.avatar_url is not None:
         set_avatar_url(conn, sub, body.avatar_url)
 
+    conn.commit()
     row = get_user(conn, sub)
     if not row:
         raise HTTPException(404, "User not found.")
@@ -122,7 +124,7 @@ def update_me(
 def get_leaderboard(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> LeaderboardResponse:
     cache_key = f"leaderboard:{page}:{page_size}"
@@ -177,7 +179,7 @@ def get_leaderboard(
 @router.get("/leaderboard/{user_id}/timeline", response_model=SchmeckleTimeline)
 def get_schmeckle_timeline(
     user_id: str,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> SchmeckleTimeline:
     schmeckles = get_user_schmeckles(conn, user_id)
     if schmeckles is None:

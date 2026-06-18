@@ -1,7 +1,7 @@
+from typing import Any
 import uuid
 from datetime import date, timedelta
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import get_current_user
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/contracts", dependencies=[Depends(get_current_user)]
 
 
 def _reject_backward_epss(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     package_name: str,
     ecosystem: str,
     epss_threshold: float | None,
@@ -45,7 +45,7 @@ def _reject_backward_epss(
 
 
 @router.post("/simulate", response_model=SimulateResponse)
-def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> SimulateResponse:
+def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> SimulateResponse:
     """Return sell-value curve + three stacked win areas for the predict page chart."""
     # The EPSS slider sets a target = current_epss * drift. Price through the real
     # logit model so the payout actually moves as the user drags (higher target =
@@ -114,7 +114,7 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
 
 
 @router.post("/quote", response_model=QuoteResponse)
-def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(get_db)) -> QuoteResponse:
+def quote_contract(req: QuoteRequest, conn: Any = Depends(get_db)) -> QuoteResponse:
     if req.purchase_price < 10:
         raise HTTPException(422, "minimum purchase_price is 10 schmeckles")
     _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
@@ -152,7 +152,7 @@ def quote_contract(req: QuoteRequest, conn: duckdb.DuckDBPyConnection = Depends(
 def buy_contract(
     req: BuyRequest,
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> BuyResponse:
     user_id = claims["sub"]
 
@@ -208,7 +208,7 @@ def buy_contract(
 @router.get("/me", response_model=list[ContractDetail])
 def list_my_contracts(
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> list[ContractDetail]:
     cache_key = f"contracts:me:{claims['sub']}"
     if cached := cache_get(cache_key):
@@ -221,12 +221,12 @@ def list_my_contracts(
 @router.get("/user/{user_id}", response_model=list[ContractDetail])
 def list_user_contracts(
     user_id: str,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> list[ContractDetail]:
     return _list_contracts(user_id, conn)
 
 
-def _list_contracts(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[ContractDetail]:
+def _list_contracts(user_id: str, conn: Any) -> list[ContractDetail]:
     rows = list_contracts(conn, user_id)
 
     result: list[ContractDetail] = []
@@ -271,7 +271,7 @@ def _list_contracts(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[Contr
 def sell_contract(
     contract_id: str,
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> SellResponse:
     caller_id = claims["sub"]
     row = get_contract_for_sell(conn, contract_id, caller_id)

@@ -1,7 +1,7 @@
+from typing import Any
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -49,7 +49,7 @@ def list_news(
     page_size: int = 20,
     severity: str | None = None,
     exploit_status: str | None = None,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> dict:
     cache_key = f"news:{page}:{page_size}:{severity}:{exploit_status}"
@@ -110,7 +110,7 @@ def list_news(
 
 @public_router.get("/companies")
 def list_companies(
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> list[dict]:
     cache_key = "companies"
@@ -127,7 +127,7 @@ def list_companies(
 @public_router.get("/markets")
 def list_markets(
     status: str = "open",
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> list[dict]:
     cache_key = f"markets:{status}"
@@ -149,7 +149,7 @@ def list_markets(
 @public_router.get("/markets/{market_id}")
 def get_market(
     market_id: str,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> dict:
     cache_key = f"market:{market_id}"
@@ -170,7 +170,7 @@ def get_market(
 @router.post("/markets", status_code=201)
 def create_market(
     req: CreateMarketRequest,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> dict:
     if not (1 <= req.duration_days <= 31):
         raise HTTPException(status_code=422, detail="duration_days must be between 1 and 31")
@@ -194,7 +194,7 @@ def create_market(
 def place_bet(
     req: PlaceBetRequest,
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> dict:
     user_id = claims["sub"]
 
@@ -226,7 +226,7 @@ def place_bet(
 def get_user(
     user_id: str,
     claims: dict = Depends(get_current_user),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> dict:
     if claims["sub"] != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")

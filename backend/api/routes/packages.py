@@ -1,7 +1,6 @@
 from datetime import date, timedelta
-from typing import Literal
+from typing import Any, Literal
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.auth import get_current_user
@@ -29,7 +28,7 @@ def list_packages(
     sort: Literal["risk_score", "weekly_downloads", "epss_score", "num_cves"] = "risk_score",
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> dict:
     cache_key = f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{search}:{sort}:{page}:{page_size}"
     if cached := cache_get(cache_key):
@@ -102,7 +101,7 @@ def list_packages(
 def get_package(
     ecosystem: str,
     name: str,
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> dict:
     cache_key = f"pkg:{ecosystem}:{name}"
     if cached := cache_get(cache_key):

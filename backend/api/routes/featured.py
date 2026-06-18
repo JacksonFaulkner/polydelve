@@ -1,7 +1,7 @@
+from typing import Any
 """Featured contracts endpoint — home screen market data."""
 from datetime import date
 
-import duckdb
 from fastapi import APIRouter, Depends
 
 from api.cache import cache_get, cache_set
@@ -67,7 +67,7 @@ def _to_market(r: tuple) -> dict:
 
 @router.get("/featured-contracts")
 def list_featured_contracts(
-    conn: duckdb.DuckDBPyConnection = Depends(get_db),
+    conn: Any = Depends(get_db),
 ) -> list[dict]:
     cache_key = "featured_contracts:open"
     if cached := cache_get(cache_key):
