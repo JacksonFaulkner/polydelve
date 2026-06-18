@@ -8,7 +8,20 @@ from pydantic import BaseModel, Field
 from api.auth import get_current_user, get_optional_user
 from api.cache import cache_get, cache_set, ttl_for
 from features.db import get_db
+from features.markets_repo import (
+    count_news as repo_count_news,
+    create_market as repo_create_market,
+    get_company_grade,
+    get_market as repo_get_market,
+    get_market_price_status,
+    get_user_basic,
+    list_companies as repo_list_companies,
+    list_markets as repo_list_markets,
+    list_news as repo_list_news,
+    place_bet as repo_place_bet,
+)
 from features.prediction_market import calculate_payout
+from features.users_repo import get_user_schmeckles
 
 public_router = APIRouter()
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -54,28 +67,8 @@ def list_news(
     where = " AND ".join(filters)
     offset = (page - 1) * page_size
 
-    total = conn.execute(f"SELECT COUNT(*) FROM news WHERE {where}", params).fetchone()[0]
-
-    rows = conn.execute(
-        f"""
-        SELECT
-            n.id, n.title, n.summary, n.source_url, n.source_name,
-            n.published_date, n.sector_labels, n.company_labels,
-            n.threat_actor, n.exploit_status, n.severity,
-            array_agg(DISTINCT np.name || '::' || np.ecosystem)
-                FILTER (WHERE np.name IS NOT NULL) AS packages
-        FROM news n
-        LEFT JOIN news_packages np ON np.news_id = n.id
-        WHERE {where}
-        GROUP BY
-            n.id, n.title, n.summary, n.source_url, n.source_name,
-            n.published_date, n.sector_labels, n.company_labels,
-            n.threat_actor, n.exploit_status, n.severity, n.relevancy_score
-        ORDER BY n.published_date::DATE DESC, coalesce(n.relevancy_score, 0.5) DESC, n.published_date DESC
-        LIMIT ? OFFSET ?
-        """,
-        params + [page_size, offset],
-    ).fetchall()
+    total = repo_count_news(conn, where, params)
+    rows = repo_list_news(conn, where, params, page_size, offset)
 
     def parse_packages(raw: list[str] | None) -> list[dict]:
         if not raw:
@@ -123,7 +116,7 @@ def list_companies(
     cache_key = "companies"
     if cached := cache_get(cache_key):
         return cached
-    rows = conn.execute("SELECT id, title, logo, grade FROM companies").fetchall()
+    rows = repo_list_companies(conn)
     result = [{"id": r[0], "title": r[1], "logo": r[2], "grade": r[3]} for r in rows]
     cache_set(cache_key, result, ttl_for(user))
     return result
@@ -140,16 +133,7 @@ def list_markets(
     cache_key = f"markets:{status}"
     if cached := cache_get(cache_key):
         return cached
-    rows = conn.execute(
-        """
-        SELECT m.id, m.title, m.description, m.grade, m.price, m.payout,
-               m.end_date, m.status, c.id, c.title, c.logo
-        FROM markets m
-        JOIN companies c ON c.id = m.company_id
-        WHERE m.status = ?
-        """,
-        [status],
-    ).fetchall()
+    rows = repo_list_markets(conn, status)
     result = [
         {
             "id": r[0], "title": r[1], "description": r[2], "grade": r[3],
@@ -171,16 +155,7 @@ def get_market(
     cache_key = f"market:{market_id}"
     if cached := cache_get(cache_key):
         return cached
-    row = conn.execute(
-        """
-        SELECT m.id, m.title, m.description, m.grade, m.price, m.payout,
-               m.end_date, m.status, c.id, c.title, c.logo
-        FROM markets m
-        JOIN companies c ON c.id = m.company_id
-        WHERE m.id = ?
-        """,
-        [market_id],
-    ).fetchone()
+    row = repo_get_market(conn, market_id)
     if not row:
         raise HTTPException(status_code=404, detail="Market not found")
     result = {
@@ -200,24 +175,15 @@ def create_market(
     if not (1 <= req.duration_days <= 31):
         raise HTTPException(status_code=422, detail="duration_days must be between 1 and 31")
 
-    company = conn.execute(
-        "SELECT grade FROM companies WHERE id = ?", [req.company_id]
-    ).fetchone()
-    if not company:
+    grade = get_company_grade(conn, req.company_id)
+    if not grade:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    grade = company[0]
     payout = calculate_payout(grade, req.duration_days, req.price)
     market_id = str(uuid.uuid4())
     end_date = datetime.now(timezone.utc) + timedelta(days=req.duration_days)
 
-    conn.execute(
-        """
-        INSERT INTO markets (id, company_id, title, description, grade, price, payout, end_date, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')
-        """,
-        [market_id, req.company_id, req.title, req.description, grade, req.price, payout, end_date],
-    )
+    repo_create_market(conn, market_id, req.company_id, req.title, req.description, grade, req.price, payout, end_date)
 
     return {"id": market_id, "grade": grade, "payout": payout, "end_date": end_date}
 
@@ -232,37 +198,23 @@ def place_bet(
 ) -> dict:
     user_id = claims["sub"]
 
-    market = conn.execute(
-        "SELECT price, status FROM markets WHERE id = ?", [req.market_id]
-    ).fetchone()
+    market = get_market_price_status(conn, req.market_id)
     if not market:
         raise HTTPException(status_code=404, detail="Market not found")
     if market[1] != "open":
         raise HTTPException(status_code=409, detail="Market is not open")
 
     price = market[0]
-    user = conn.execute(
-        "SELECT schmeckles FROM users WHERE id = ?", [user_id]
-    ).fetchone()
-    if not user:
+    schmeckles = get_user_schmeckles(conn, user_id)
+    if schmeckles is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if user[0] < price:
+    if schmeckles < price:
         raise HTTPException(status_code=409, detail="Insufficient schmeckles")
 
     bet_id = str(uuid.uuid4())
     try:
-        conn.execute("BEGIN")
-        conn.execute(
-            "UPDATE users SET schmeckles = schmeckles - ? WHERE id = ? AND schmeckles >= ?",
-            [price, user_id, price],
-        )
-        conn.execute(
-            "INSERT INTO bets (id, user_id, market_id, placed_at) VALUES (?, ?, ?, ?)",
-            [bet_id, user_id, req.market_id, datetime.now(timezone.utc)],
-        )
-        conn.execute("COMMIT")
+        repo_place_bet(conn, bet_id, user_id, req.market_id, datetime.now(timezone.utc), price)
     except Exception as e:
-        conn.execute("ROLLBACK")
         raise HTTPException(500, "Failed to place bet") from e
 
     return {"id": bet_id, "market_id": req.market_id, "user_id": user_id}
@@ -278,9 +230,7 @@ def get_user(
 ) -> dict:
     if claims["sub"] != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    row = conn.execute(
-        "SELECT id, username, schmeckles FROM users WHERE id = ?", [user_id]
-    ).fetchone()
+    row = get_user_basic(conn, user_id)
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     return {"id": row[0], "username": row[1], "schmeckles": row[2]}

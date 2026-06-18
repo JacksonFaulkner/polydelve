@@ -7,6 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from api.auth import get_current_user
 from api.cache import cache_get, cache_set
 from features.db import get_db
+from features.packages_repo import (
+    count_packages as repo_count_packages,
+    get_cve_history as repo_get_cve_history,
+    get_epss_history as repo_get_epss_history,
+    get_package as repo_get_package,
+    get_package_news as repo_get_package_news,
+    list_packages as repo_list_packages,
+)
 
 router = APIRouter(prefix="/packages", dependencies=[Depends(get_current_user)])
 
@@ -17,12 +25,13 @@ def list_packages(
     sector: str | None = None,
     has_cves: bool | None = None,
     latest_cve_days: int | None = Query(None, ge=1, description="Only packages with a CVE in the last N days"),
+    search: str | None = Query(None, max_length=100, description="Filter by package name prefix"),
     sort: Literal["risk_score", "weekly_downloads", "epss_score", "num_cves"] = "risk_score",
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> dict:
-    cache_key = f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{sort}:{page}:{page_size}"
+    cache_key = f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{search}:{sort}:{page}:{page_size}"
     if cached := cache_get(cache_key):
         return cached
     filters = ["p.ecosystem IN ('PyPI', 'npm')"]
@@ -38,6 +47,9 @@ def list_packages(
         filters.append("len(p.cve_ids) > 0")
     elif has_cves is False:
         filters.append("(p.cve_ids IS NULL OR len(p.cve_ids) = 0)")
+    if search:
+        filters.append("p.name ILIKE ?")
+        params.append(f"%{search}%")
     if latest_cve_days is not None:
         cutoff = (date.today() - timedelta(days=latest_cve_days)).isoformat()
         filters.append(
@@ -56,41 +68,8 @@ def list_packages(
 
     offset = (page - 1) * page_size
 
-    total = conn.execute(
-        f"SELECT COUNT(*) FROM packages p WHERE {where}", params
-    ).fetchone()[0]
-
-    rows = conn.execute(
-        f"""
-        SELECT
-            p.name,
-            p.ecosystem,
-            p.weekly_downloads,
-            p.epss_score,
-            p.risk_score,
-            p.has_mal_advisory,
-            p.sectors,
-            p.logo_url,
-            len(p.cve_ids) AS num_cves,
-            COUNT(DISTINCT np.news_id)  AS news_mentions,
-            MAX(ch.published_date)      AS latest_cve_date,
-            MAX(ch.severity)            AS worst_severity,
-            MAX(ch.cvss_score)          AS max_cvss_score
-        FROM packages p
-        LEFT JOIN news_packages np
-            ON np.name = p.name AND np.ecosystem = p.ecosystem
-        LEFT JOIN cve_history ch
-            ON ch.name = p.name AND ch.ecosystem = p.ecosystem
-        WHERE {where}
-        GROUP BY
-            p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
-            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
-            len(p.cve_ids)
-        ORDER BY {sort_col} DESC NULLS LAST
-        LIMIT ? OFFSET ?
-        """,
-        params + [page_size, offset],
-    ).fetchall()
+    total = repo_count_packages(conn, where, params)
+    rows = repo_list_packages(conn, where, params, sort_col, page_size, offset)
 
     result = {
         "total": total,
@@ -129,62 +108,14 @@ def get_package(
     if cached := cache_get(cache_key):
         return cached
 
-    row = conn.execute(
-        """
-        SELECT
-            p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
-            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
-            p.cve_ids, p.last_enriched_at
-        FROM packages p
-        WHERE p.name = ? AND p.ecosystem = ?
-        """,
-        [name, ecosystem],
-    ).fetchone()
+    row = repo_get_package(conn, name, ecosystem)
 
     if not row:
         raise HTTPException(status_code=404, detail="Package not found")
 
-    cve_rows = conn.execute(
-        """
-        SELECT osv_id, cve_id, published_date, severity, cvss_vector, cvss_score
-        FROM cve_history
-        WHERE name = ? AND ecosystem = ?
-        ORDER BY published_date DESC
-        """,
-        [name, ecosystem],
-    ).fetchall()
-
-    news_rows = conn.execute(
-        """
-        SELECT n.id, n.title, n.published_date, n.source_name,
-               n.source_url, n.summary, n.exploit_status, n.severity
-        FROM news n
-        JOIN news_packages np ON np.news_id = n.id
-        WHERE np.name = ? AND np.ecosystem = ?
-        ORDER BY n.published_date DESC
-        LIMIT 10
-        """,
-        [name, ecosystem],
-    ).fetchall()
-
-    epss_history_rows = conn.execute(
-        """
-        WITH windowed AS (
-            SELECT recorded_at, epss_score,
-                LAG(epss_score)    OVER (ORDER BY recorded_at) AS prev_epss,
-                LAG(recorded_at)   OVER (ORDER BY recorded_at) AS prev_date
-            FROM epss_history
-            WHERE name = ? AND ecosystem = ?
-        )
-        SELECT recorded_at, epss_score
-        FROM windowed
-        WHERE prev_epss IS NULL
-           OR round(prev_epss, 5) != round(epss_score, 5)
-           OR datediff('day', prev_date, recorded_at) >= 10
-        ORDER BY recorded_at ASC
-        """,
-        [name, ecosystem],
-    ).fetchall()
+    cve_rows = repo_get_cve_history(conn, name, ecosystem)
+    news_rows = repo_get_package_news(conn, name, ecosystem)
+    epss_history_rows = repo_get_epss_history(conn, name, ecosystem)
 
     result = {
         "name": row[0],

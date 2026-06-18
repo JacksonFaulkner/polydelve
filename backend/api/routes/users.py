@@ -12,6 +12,19 @@ from pydantic import BaseModel, field_validator
 from api.auth import get_current_user, get_optional_user
 from api.cache import cache_get, cache_set, cache_invalidate, ttl_for
 from features.db import get_db
+from features.users_repo import (
+    check_username_taken,
+    count_users,
+    get_contracts_for_users,
+    get_ranked_users,
+    get_user,
+    get_user_basic,
+    get_user_contract_history,
+    get_user_schmeckles,
+    set_avatar_url,
+    set_username,
+    upsert_user,
+)
 from models.models import (
     LeaderboardContract, LeaderboardResponse, LeaderboardUser,
     SchmecklePoint, SchmeckleTimeline, User,
@@ -46,15 +59,10 @@ def get_me(
     sub = claims["sub"]
     email = claims.get("email")
 
-    row = conn.execute(
-        "SELECT id, email, username, schmeckles, avatar_url FROM users WHERE id = ?", [sub]
-    ).fetchone()
+    row = get_user(conn, sub)
 
     if not row:
-        conn.execute(
-            "INSERT OR IGNORE INTO users (id, email, username, schmeckles) VALUES (?, ?, NULL, 1000)",
-            [sub, email],
-        )
+        upsert_user(conn, sub, email)
         return User(id=sub, email=email, username=None, schmeckles=1000)
 
     return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
@@ -92,23 +100,18 @@ def update_me(
     sub = claims["sub"]
 
     if body.username is not None:
-        taken = conn.execute(
-            "SELECT id FROM users WHERE username = ? AND id != ?", [body.username, sub]
-        ).fetchone()
-        if taken:
+        if check_username_taken(conn, body.username, sub):
             raise HTTPException(409, "Username already taken.")
-        conn.execute("UPDATE users SET username = ? WHERE id = ?", [body.username, sub])
+        set_username(conn, sub, body.username)
         # Invalidate leaderboard cache so new username appears immediately.
         for p in range(1, 6):
             for ps in [50, 100]:
                 cache_invalidate(f"leaderboard:{p}:{ps}")
 
     if body.avatar_url is not None:
-        conn.execute("UPDATE users SET avatar_url = ? WHERE id = ?", [body.avatar_url, sub])
+        set_avatar_url(conn, sub, body.avatar_url)
 
-    row = conn.execute(
-        "SELECT id, email, username, schmeckles, avatar_url FROM users WHERE id = ?", [sub]
-    ).fetchone()
+    row = get_user(conn, sub)
     if not row:
         raise HTTPException(404, "User not found.")
 
@@ -127,36 +130,14 @@ def get_leaderboard(
         return cached
 
     offset = (page - 1) * page_size
-    total = (conn.execute("SELECT COUNT(*) FROM users").fetchone() or (0,))[0]
-
-    ranked = conn.execute(
-        """
-        SELECT id, username, schmeckles,
-               ROW_NUMBER() OVER (ORDER BY schmeckles DESC) AS rank
-        FROM users
-        ORDER BY schmeckles DESC
-        LIMIT ? OFFSET ?
-        """,
-        [page_size, offset],
-    ).fetchall()
+    total = count_users(conn)
+    ranked = get_ranked_users(conn, page_size, offset)
 
     if not ranked:
         return LeaderboardResponse(total=total, page=page, page_size=page_size, users=[])
 
     user_ids = [r[0] for r in ranked]
-    placeholders = ", ".join("?" * len(user_ids))
-
-    contracts_rows = conn.execute(
-        f"""
-        SELECT user_id, id, package_name, package_ecosystem, market_type,
-               purchase_price, max_payout, opening_probability, status,
-               expires_at::VARCHAR, created_at::VARCHAR
-        FROM contracts
-        WHERE user_id IN ({placeholders})
-        ORDER BY created_at DESC
-        """,
-        user_ids,
-    ).fetchall()
+    contracts_rows = get_contracts_for_users(conn, user_ids)
 
     contracts_by_user: dict[str, list[LeaderboardContract]] = defaultdict(list)
     for row in contracts_rows:
@@ -198,22 +179,12 @@ def get_schmeckle_timeline(
     user_id: str,
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> SchmeckleTimeline:
-    user_row = conn.execute(
-        "SELECT schmeckles FROM users WHERE id = ?", [user_id]
-    ).fetchone()
-    if not user_row:
+    schmeckles = get_user_schmeckles(conn, user_id)
+    if schmeckles is None:
         raise HTTPException(404, "User not found")
+    user_row = (schmeckles,)
 
-    rows = conn.execute(
-        """
-        SELECT created_at::VARCHAR, resolved_at::VARCHAR,
-               purchase_price, max_payout, sell_price, status
-        FROM contracts
-        WHERE user_id = ?
-        ORDER BY created_at ASC
-        """,
-        [user_id],
-    ).fetchall()
+    rows = get_user_contract_history(conn, user_id)
 
     events: list[tuple[str, int, str]] = []
     for created, resolved, price, payout, sell_price, status in rows:
@@ -228,7 +199,7 @@ def get_schmeckle_timeline(
 
     today = dt.today().isoformat()
     try:
-        current = int(user_row[0])
+        current = int(schmeckles)
     except (ValueError, TypeError):
         current = 1000
 

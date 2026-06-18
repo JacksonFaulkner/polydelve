@@ -7,6 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.auth import get_current_user
 from api.cache import cache_get, cache_invalidate, cache_set
 from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
+from features.contracts_repo import (
+    buy_contract as repo_buy_contract,
+    get_contract_for_sell,
+    get_package_epss,
+    get_user_schmeckles,
+    list_contracts,
+    sell_contract as repo_sell_contract,
+)
 from features.db import get_db
 from models.models import (
     BuyRequest, BuyResponse, ContractDetail,
@@ -27,11 +35,7 @@ def _reject_backward_epss(
     (i.e. betting the package gets safer), even if the client edited the payload."""
     if epss_threshold is None:
         return
-    row = conn.execute(
-        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
-        [package_name, ecosystem],
-    ).fetchone()
-    current = (row[0] if row else None) or 0.0
+    current = get_package_epss(conn, package_name, ecosystem) or 0.0
     if epss_threshold < current:
         raise HTTPException(
             422,
@@ -46,11 +50,7 @@ def simulate_contract(req: SimulateRequest, conn: duckdb.DuckDBPyConnection = De
     # The EPSS slider sets a target = current_epss * drift. Price through the real
     # logit model so the payout actually moves as the user drags (higher target =
     # harder to reach = lower prob = bigger payout), instead of a clamped multiply.
-    epss_row = conn.execute(
-        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
-        [req.package_name, req.ecosystem],
-    ).fetchone()
-    current_epss = (epss_row[0] if epss_row else None) or 0.0
+    current_epss = get_package_epss(conn, req.package_name, req.ecosystem) or 0.0
     epss_target = min(current_epss * max(req.epss_drift, 1.0), 1.0) or None
 
     try:
@@ -156,10 +156,10 @@ def buy_contract(
 ) -> BuyResponse:
     user_id = claims["sub"]
 
-    user = conn.execute("SELECT schmeckles FROM users WHERE id = ?", [user_id]).fetchone()
-    if not user:
+    schmeckles = get_user_schmeckles(conn, user_id)
+    if schmeckles is None:
         raise HTTPException(404, "User not found")
-    if user[0] < req.purchase_price:
+    if schmeckles < req.purchase_price:
         raise HTTPException(409, "Insufficient schmeckles")
 
     _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
@@ -179,42 +179,18 @@ def buy_contract(
 
     contract_id = str(uuid.uuid4())
     expires_at = date.today() + timedelta(days=req.duration_days)
-
-    opening_epss_row = conn.execute(
-        "SELECT epss_score FROM packages WHERE name = ? AND ecosystem = ?",
-        [req.package_name, req.ecosystem],
-    ).fetchone()
-    opening_epss = opening_epss_row[0] if opening_epss_row else None
+    opening_epss = get_package_epss(conn, req.package_name, req.ecosystem)
 
     try:
-        conn.execute("BEGIN")
-        conn.execute(
-            """
-            INSERT INTO contracts (
-                id, user_id, package_name, package_ecosystem, market_type,
-                cvss_threshold, epss_threshold, purchase_price, max_payout,
-                opening_probability, package_grade, expires_at, opening_epss
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                contract_id, user_id, req.package_name, req.ecosystem,
-                "all", req.cvss_threshold, req.epss_threshold,
-                req.purchase_price, terms.max_payout, terms.opening_probability,
-                terms.package_grade, expires_at, opening_epss,
-            ],
+        repo_buy_contract(
+            conn, contract_id, user_id, req.package_name, req.ecosystem,
+            "all", req.cvss_threshold, req.epss_threshold,
+            req.purchase_price, terms.max_payout, terms.opening_probability,
+            terms.package_grade, expires_at, opening_epss,
         )
-        result = conn.execute(
-            "UPDATE users SET schmeckles = schmeckles - ? WHERE id = ? AND schmeckles >= ?",
-            [req.purchase_price, user_id, req.purchase_price],
-        )
-        if result.rowcount == 0:
-            raise HTTPException(409, "Insufficient schmeckles")
-        conn.execute("COMMIT")
-    except HTTPException:
-        conn.execute("ROLLBACK")
-        raise
+    except ValueError:
+        raise HTTPException(409, "Insufficient schmeckles")
     except Exception as e:
-        conn.execute("ROLLBACK")
         raise HTTPException(500, "Failed to create contract") from e
 
     cache_invalidate(f"contracts:me:{user_id}")
@@ -251,20 +227,7 @@ def list_user_contracts(
 
 
 def _list_contracts(user_id: str, conn: duckdb.DuckDBPyConnection) -> list[ContractDetail]:
-    rows = conn.execute(
-        """
-        SELECT c.id, c.package_name, c.package_ecosystem, c.market_type,
-               c.cvss_threshold, c.epss_threshold, c.purchase_price, c.max_payout,
-               c.opening_probability, c.package_grade, c.expires_at,
-               c.status, c.resolved_at, c.sell_price, c.created_at,
-               c.opening_epss, p.epss_score AS current_epss
-        FROM contracts c
-        LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
-        WHERE c.user_id = ?
-        ORDER BY c.created_at DESC
-        """,
-        [user_id],
-    ).fetchall()
+    rows = list_contracts(conn, user_id)
 
     result: list[ContractDetail] = []
     for row in rows:
@@ -311,17 +274,7 @@ def sell_contract(
     conn: duckdb.DuckDBPyConnection = Depends(get_db),
 ) -> SellResponse:
     caller_id = claims["sub"]
-    row = conn.execute(
-        """
-        SELECT c.user_id, c.purchase_price,
-               c.expires_at, c.status, c.created_at,
-               c.opening_epss, p.epss_score AS current_epss
-        FROM contracts c
-        LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
-        WHERE c.id = ? AND c.user_id = ?
-        """,
-        [contract_id, caller_id],
-    ).fetchone()
+    row = get_contract_for_sell(conn, contract_id, caller_id)
     if not row:
         raise HTTPException(404, "Contract not found")
 
@@ -338,18 +291,8 @@ def sell_contract(
     )
 
     try:
-        conn.execute("BEGIN")
-        conn.execute(
-            "UPDATE contracts SET status = 'sold', sell_price = ?, resolved_at = now() WHERE id = ?",
-            [sell_val, contract_id],
-        )
-        conn.execute(
-            "UPDATE users SET schmeckles = schmeckles + ? WHERE id = ?",
-            [sell_val, user_id],
-        )
-        conn.execute("COMMIT")
+        repo_sell_contract(conn, contract_id, user_id, sell_val)
     except Exception as e:
-        conn.execute("ROLLBACK")
         raise HTTPException(500, "Failed to sell contract") from e
 
     cache_invalidate(f"contracts:me:{caller_id}")
