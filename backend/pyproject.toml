@@ -22,6 +22,8 @@ dependencies = [
     "slowapi>=0.1.9",
     "boto3>=1.38.0",
     "botocore[crt]>=1.38.0",
+    "alembic>=1.18.4",
+    "psycopg2-binary>=2.9.12",
 ]
 
 [project.scripts]
