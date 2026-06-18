@@ -5,7 +5,7 @@
 
 ifneq (,$(wildcard backend/.env))
 	include backend/.env
-	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN
+	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN EXA_API_KEY
 endif
 
 UV   := cd backend && uv run
@@ -34,9 +34,8 @@ help: ## Show this help message
 ##@ Dev
 
 .PHONY: dev
-dev: ## Start backend + frontend concurrently
-	@trap 'kill 0' SIGINT; \
-	$(MAKE) be & $(MAKE) fe & wait
+dev: ## Start Postgres + backend + frontend; Ctrl-C stops all three
+	@./scripts/dev.sh
 
 .PHONY: be
 be: ## Start backend dev server
@@ -89,8 +88,9 @@ resolve-contracts-dry: ## Dry-run contract resolution (no writes)
 ##@ Data pipeline — Onboarding (run once for new packages)
 
 .PHONY: seed-packages
-seed-packages: ## Bulk seed PyPI + npm packages up to ~100k (downloads, CVEs, EPSS, risk_score)
-	$(UV) python scripts/seed_top_packages.py
+seed-packages: ## Seed packages from top npm + PyPI (CVEs + EPSS required to insert)
+	$(UV) python -c "import asyncio; from etl.jobs.packages import run_seed; from features.db import get_db_conn; conn = get_db_conn(); conn.autocommit = True; asyncio.run(run_seed(conn)); conn.close()"
+
 
 .PHONY: build-cve-history
 build-cve-history: ## Backfill CVE history for all tracked packages (requires seed-packages first)
@@ -105,7 +105,7 @@ classify-sectors-llm: ## LLM sector classification — slow + costs money, run f
 #   make etl DB_PATH=md:polydelve
 
 .PHONY: etl
-etl: etl-news etl-epss etl-mal ## Run all daily ETL jobs (news + epss + mal)
+etl: seed-packages etl-news etl-epss etl-mal-cached etl-packages ## Run full ETL pipeline (seed + daily jobs)
 
 .PHONY: etl-news
 etl-news: ## Fetch news, generate + rerank featured contracts (daily)
@@ -116,8 +116,12 @@ etl-epss: ## Refresh EPSS scores from daily bulk file (daily)
 	$(UV) python -m etl.run epss
 
 .PHONY: etl-mal
-etl-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (daily)
+etl-mal: ## Ingest OSV MAL-* advisories for npm + PyPI (re-downloads zips)
 	$(UV) python -m etl.run mal
+
+.PHONY: etl-mal-cached
+etl-mal-cached: ## Ingest OSV MAL-* advisories using cached zips (no download)
+	$(UV) python -m etl.run mal --skip-download
 
 .PHONY: etl-packages
 etl-packages: ## Refresh package metadata (weekly)

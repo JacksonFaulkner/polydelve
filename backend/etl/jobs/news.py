@@ -1,23 +1,24 @@
 """Daily news ingest job."""
 from datetime import datetime, timedelta, timezone
-
-import duckdb
+from typing import Any
 
 from etl.fetch.news import fetch_news_gpt_structured
 from features.featured_contracts import generate_featured_contracts, rerank_featured_contracts
 from features.news_repository import ingest_many
 
 
-async def run(conn: duckdb.DuckDBPyConnection, days_back: int = 1) -> None:
+async def run(conn: Any, days_back: int = 1) -> None:
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     totals: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0}
 
     for offset in range(days_back, 0, -1):
         start = today - timedelta(days=offset)
         end = start + timedelta(days=1)
-        existing = conn.execute(
-            "SELECT COUNT(*) FROM news WHERE published_date::DATE = ?", [start.date()]
-        ).fetchone()[0]
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM news WHERE published_date::DATE = %s", [start.date()]
+        )
+        existing = cur.fetchone()[0]
         if existing >= 5:
             print(f"[news] {start.date()} skipping — {existing} articles already ingested", flush=True)
             continue

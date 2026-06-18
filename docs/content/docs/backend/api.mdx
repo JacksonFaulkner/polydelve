@@ -13,18 +13,17 @@ flowchart TD
     CF["CloudFront CDN\npolydelve.com"]
     CFF["CF Function\nstrips /api prefix"]
     S3["S3\nReact SPA (private)"]
-    ECS["ECS Express Gateway\nFastAPI · 512c/1GB · 1-5 tasks"]
+    ECS["ECS FastAPI\n512c/1GB · 1-5 tasks"]
     ECR["ECR\ncontainer image"]
-    SM["Secrets Manager\nMD token, OpenAI, Exa, Auth0, GCP"]
+    RDS["RDS Postgres 16\npolydelve"]
+    SM["Secrets Manager\nOpenAI, Exa, Auth0"]
   end
-
-  MD["MotherDuck\nmd:polydelve"]
 
   CF --"/*"--> S3
   CF --"/api/*"--> CFF --> ECS
   ECS --"pull image"--> ECR
   ECS --"inject secrets"--> SM
-  ECS --"DuckDB HTTPS"--> MD
+  ECS --"psycopg2"--> RDS
 ```
 
 ## Auth

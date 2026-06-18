@@ -1,8 +1,10 @@
 """Download and process EPSS scores from FIRST daily CSV dumps."""
+import csv
+import gzip
 from datetime import date
 from pathlib import Path
+from typing import Any
 
-import duckdb
 import httpx
 
 BULK_URL = "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz"
@@ -20,78 +22,73 @@ def download_day(day: date, cache_dir: Path = CACHE_DIR) -> Path:
     return dest
 
 
-def load_epss_for_packages(
-    conn: duckdb.DuckDBPyConnection,
-    csv_path: Path,
-    today: date,
-) -> int:
+def load_epss_for_packages(conn: Any, csv_path: Path, today: date) -> int:
     """
     Join today's EPSS CSV against tracked packages via cve_history.
     Updates packages.epss_score and snapshots to epss_history where score changed or 10+ days stale.
     Returns number of packages updated.
     """
-    conn.execute("""
-        CREATE TEMP TABLE IF NOT EXISTS _pkg_cves AS
-        SELECT name, ecosystem, cve_id
-        FROM cve_history
-        WHERE cve_id LIKE 'CVE-%'
-    """)
+    # Load CVE → EPSS score map from gzipped CSV.
+    # File format: first line is a comment (#model_version:...), second is header cve,epss,percentile
+    epss_map: dict[str, float] = {}
+    with gzip.open(csv_path, "rt") as f:
+        next(f)  # skip comment line
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                epss_map[row["cve"]] = float(row["epss"])
+            except (KeyError, ValueError):
+                pass
 
-    conn.execute(f"""
-        CREATE TEMP TABLE IF NOT EXISTS _today_epss AS
-        SELECT
-            pc.name,
-            pc.ecosystem,
-            MAX(CAST(e.epss AS FLOAT)) AS epss_score
-        FROM read_csv(
-            '{csv_path}',
-            skip=1,
-            header=true,
-            columns={{'cve':'VARCHAR','epss':'VARCHAR','percentile':'VARCHAR'}}
-        ) AS e
-        JOIN _pkg_cves pc ON pc.cve_id = e.cve
-        GROUP BY pc.name, pc.ecosystem
-    """)
+    cur = conn.cursor()
 
-    n_pkgs = conn.execute("SELECT COUNT(*) FROM _today_epss").fetchone()[0]
+    # Get all CVE IDs for tracked packages
+    cur.execute("SELECT name, ecosystem, cve_id FROM cve_history WHERE cve_id LIKE 'CVE-%'")
+    rows = cur.fetchall()
 
-    conn.execute("""
-        UPDATE packages p
-        SET epss_score = t.epss_score
-        FROM _today_epss t
-        WHERE p.name = t.name AND p.ecosystem = t.ecosystem
-    """)
+    # Compute max EPSS per package
+    pkg_epss: dict[tuple[str, str], float] = {}
+    for name, ecosystem, cve_id in rows:
+        score = epss_map.get(cve_id)
+        if score is not None:
+            key = (name, ecosystem)
+            if score > pkg_epss.get(key, 0.0):
+                pkg_epss[key] = score
 
-    conn.execute(f"""
-        INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
-        SELECT t.name, t.ecosystem, t.epss_score, DATE '{today.isoformat()}'
-        FROM _today_epss t
-        WHERE NOT EXISTS (
-            SELECT 1 FROM epss_history h
-            WHERE h.name = t.name AND h.ecosystem = t.ecosystem
-              AND h.recorded_at = DATE '{today.isoformat()}'
+    if not pkg_epss:
+        return 0
+
+    # Update packages.epss_score
+    for (name, ecosystem), score in pkg_epss.items():
+        cur.execute(
+            "UPDATE packages SET epss_score = %s WHERE name = %s AND ecosystem = %s",
+            [score, name, ecosystem],
         )
-        AND (
-            NOT EXISTS (
-                SELECT 1 FROM epss_history h2
-                WHERE h2.name = t.name AND h2.ecosystem = t.ecosystem
+
+    # Snapshot to epss_history if score changed or 10+ days stale
+    for (name, ecosystem), score in pkg_epss.items():
+        cur.execute(
+            """
+            SELECT epss_score, recorded_at FROM epss_history
+            WHERE name = %s AND ecosystem = %s
+            ORDER BY recorded_at DESC LIMIT 1
+            """,
+            [name, ecosystem],
+        )
+        last = cur.fetchone()
+        should_insert = (
+            last is None
+            or abs(last[0] - score) > 1e-6
+            or (today - last[1]).days >= 10
+        )
+        if should_insert:
+            cur.execute(
+                """
+                INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (name, ecosystem, recorded_at) DO NOTHING
+                """,
+                [name, ecosystem, score, today],
             )
-            OR (
-                SELECT ROUND(h3.epss_score, 6)
-                FROM epss_history h3
-                WHERE h3.name = t.name AND h3.ecosystem = t.ecosystem
-                ORDER BY h3.recorded_at DESC LIMIT 1
-            ) != ROUND(t.epss_score, 6)
-            OR (
-                SELECT (DATE '{today.isoformat()}' - MAX(h4.recorded_at))
-                FROM epss_history h4
-                WHERE h4.name = t.name AND h4.ecosystem = t.ecosystem
-            ) >= 10
-        )
-        ON CONFLICT (name, ecosystem, recorded_at) DO NOTHING
-    """)
 
-    conn.execute("DROP TABLE IF EXISTS _pkg_cves")
-    conn.execute("DROP TABLE IF EXISTS _today_epss")
-
-    return n_pkgs
+    return len(pkg_epss)

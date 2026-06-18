@@ -5,8 +5,8 @@ import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
-import duckdb
 import httpx
 
 _OSV_ECOSYSTEMS = {"npm": "npm", "PyPI": "PyPI", "composer": "Packagist"}
@@ -168,22 +168,23 @@ async def build_cve_history(
     return records
 
 
-def upsert_cve_records(conn: duckdb.DuckDBPyConnection, records: list[CveRecord]) -> int:
+def upsert_cve_records(conn: Any, records: list[CveRecord]) -> int:
     """Upsert CveRecord list into cve_history. Returns count inserted/updated."""
     if not records:
         return 0
-    conn.executemany(
+    cur = conn.cursor()
+    cur.executemany(
         """
         INSERT INTO cve_history
             (osv_id, cve_id, name, ecosystem, published_date, modified_date,
              severity, cvss_vector, cvss_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (osv_id, name, ecosystem) DO UPDATE SET
-            cve_id        = excluded.cve_id,
-            modified_date = excluded.modified_date,
-            severity      = excluded.severity,
-            cvss_vector   = excluded.cvss_vector,
-            cvss_score    = excluded.cvss_score
+            cve_id        = EXCLUDED.cve_id,
+            modified_date = EXCLUDED.modified_date,
+            severity      = EXCLUDED.severity,
+            cvss_vector   = EXCLUDED.cvss_vector,
+            cvss_score    = EXCLUDED.cvss_score
         """,
         [
             (r.osv_id, r.cve_id, r.name, r.ecosystem,

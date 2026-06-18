@@ -1,7 +1,7 @@
 """Package enrichment jobs: downloads, CVEs, sectors, seeding."""
 import asyncio
+from typing import Any
 
-import duckdb
 import httpx
 from tqdm.asyncio import tqdm
 
@@ -17,14 +17,14 @@ from etl.fetch.sectors import classify_sectors_llm, fetch_package_sectors
 from etl.utils import bounded_gather
 
 
-async def run(conn: duckdb.DuckDBPyConnection) -> None:
+async def run(conn: Any) -> None:
     """Fill NULL package fields: downloads, CVEs, MAL, logos, risk_score."""
     async with httpx.AsyncClient(timeout=10) as client:
         await _pass_downloads(conn)
         await _pass_cves_and_mal(conn, client)
-        await _pass_logos(conn, client)
 
-    conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         UPDATE packages
         SET risk_score = CASE
             WHEN weekly_downloads > 0 AND epss_score IS NOT NULL
@@ -33,18 +33,21 @@ async def run(conn: duckdb.DuckDBPyConnection) -> None:
         END
         WHERE ecosystem IN ('npm', 'PyPI')
     """)
-    risk_count = conn.execute(
+    cur.execute(
         "SELECT COUNT(*) FROM packages WHERE risk_score > 0"
-    ).fetchone()[0]
+    )
+    risk_count = cur.fetchone()[0]
     print(f"[packages] risk_score computed for {risk_count} packages", flush=True)
 
 
-async def _pass_downloads(conn: duckdb.DuckDBPyConnection) -> None:
-    rows = conn.execute("""
+async def _pass_downloads(conn: Any) -> None:
+    cur = conn.cursor()
+    cur.execute("""
         SELECT name, ecosystem FROM packages
         WHERE ecosystem IN ('npm', 'PyPI')
           AND (weekly_downloads IS NULL OR weekly_downloads = 0)
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     if not rows:
         print("  downloads: nothing to fetch", flush=True)
         return
@@ -53,21 +56,21 @@ async def _pass_downloads(conn: duckdb.DuckDBPyConnection) -> None:
     updated = 0
     for (name, eco), dl in tqdm(result.items(), desc="  writing downloads", unit="pkg"):
         if dl > 0:
-            conn.execute(
-                "UPDATE packages SET weekly_downloads = ? WHERE name = ? AND ecosystem = ?",
+            cur.execute(
+                "UPDATE packages SET weekly_downloads = %s WHERE name = %s AND ecosystem = %s",
                 [dl, name, eco],
             )
             updated += 1
     print(f"  downloads: updated {updated}", flush=True)
 
 
-async def _pass_cves_and_mal(
-    conn: duckdb.DuckDBPyConnection, client: httpx.AsyncClient
-) -> None:
-    rows = conn.execute("""
+async def _pass_cves_and_mal(conn: Any, client: httpx.AsyncClient) -> None:
+    cur = conn.cursor()
+    cur.execute("""
         SELECT name, ecosystem, cve_ids FROM packages
         WHERE ecosystem IN ('npm', 'PyPI') AND epss_score IS NULL
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     if not rows:
         print("  cves/mal: nothing to fetch", flush=True)
         return
@@ -86,22 +89,22 @@ async def _pass_cves_and_mal(
         desc="  fetching cves/mal",
     )
     for name, eco, cve_ids, has_mal in results:
-        conn.execute(
+        cur.execute(
             """UPDATE packages SET
-               cve_ids = COALESCE(CASE WHEN len(?) > 0 THEN ? END, cve_ids),
-               has_mal_advisory = CASE WHEN ? THEN TRUE ELSE has_mal_advisory END
-               WHERE name = ? AND ecosystem = ?""",
-            [cve_ids, cve_ids, has_mal, name, eco],
+               cve_ids = CASE WHEN %s THEN %s ELSE cve_ids END,
+               has_mal_advisory = CASE WHEN %s THEN TRUE ELSE has_mal_advisory END
+               WHERE name = %s AND ecosystem = %s""",
+            [len(cve_ids) > 0, cve_ids, has_mal, name, eco],
         )
 
 
-async def _pass_logos(
-    conn: duckdb.DuckDBPyConnection, client: httpx.AsyncClient
-) -> None:
-    rows = conn.execute("""
+async def _pass_logos(conn: Any, client: httpx.AsyncClient) -> None:
+    cur = conn.cursor()
+    cur.execute("""
         SELECT name, ecosystem FROM packages
         WHERE ecosystem IN ('npm', 'PyPI') AND logo_url IS NULL
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     if not rows:
         print("  logos: nothing to fetch", flush=True)
         return
@@ -120,20 +123,22 @@ async def _pass_logos(
     updated = 0
     for name, eco, logo in results:
         if logo:
-            conn.execute(
-                "UPDATE packages SET logo_url = ? WHERE name = ? AND ecosystem = ?",
+            cur.execute(
+                "UPDATE packages SET logo_url = %s WHERE name = %s AND ecosystem = %s",
                 [logo, name, eco],
             )
             updated += 1
     print(f"  logos: updated {updated}", flush=True)
 
 
-async def run_sectors(conn: duckdb.DuckDBPyConnection) -> None:
+async def run_sectors(conn: Any) -> None:
     """Heuristic sector classification for packages missing sectors."""
-    rows = conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         SELECT name, ecosystem FROM packages
         WHERE sectors IS NULL AND ecosystem IN ('npm', 'PyPI')
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     if not rows:
         print("[sectors] nothing to classify", flush=True)
         return
@@ -154,8 +159,8 @@ async def run_sectors(conn: duckdb.DuckDBPyConnection) -> None:
     updated = no_match = 0
     for name, eco, sectors in sorted(results, key=lambda r: (not r[2], r[0])):
         if sectors:
-            conn.execute(
-                "UPDATE packages SET sectors = ? WHERE name = ? AND ecosystem = ?",
+            cur.execute(
+                "UPDATE packages SET sectors = %s WHERE name = %s AND ecosystem = %s",
                 [sectors, name, eco],
             )
             updated += 1
@@ -164,12 +169,14 @@ async def run_sectors(conn: duckdb.DuckDBPyConnection) -> None:
     print(f"[sectors] updated={updated} no_match={no_match}", flush=True)
 
 
-async def run_sectors_llm(conn: duckdb.DuckDBPyConnection) -> None:
+async def run_sectors_llm(conn: Any) -> None:
     """LLM sector classification. Onboarding only — slow and costs money."""
-    rows = conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         SELECT name, ecosystem FROM packages
         WHERE (sectors IS NULL OR sectors = '{}') AND ecosystem IN ('npm', 'PyPI')
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     if not rows:
         print("[sectors-llm] nothing to classify", flush=True)
         return
@@ -190,15 +197,15 @@ async def run_sectors_llm(conn: duckdb.DuckDBPyConnection) -> None:
     updated = 0
     for name, eco, sectors in results:
         if sectors:
-            conn.execute(
-                "UPDATE packages SET sectors = ? WHERE name = ? AND ecosystem = ?",
+            cur.execute(
+                "UPDATE packages SET sectors = %s WHERE name = %s AND ecosystem = %s",
                 [sectors, name, eco],
             )
             updated += 1
     print(f"[sectors-llm] updated={updated}/{len(rows)}", flush=True)
 
 
-async def run_seed(conn: duckdb.DuckDBPyConnection, top_n: int = 99_999) -> None:
+async def run_seed(conn: Any, top_n: int = 99_999) -> None:
     """Bulk seed packages from top PyPI + npm lists with CVEs and EPSS."""
     print(f"[seed] fetching top {top_n} npm + PyPI packages...", flush=True)
     npm_names, pypi_names = await asyncio.gather(
@@ -209,14 +216,13 @@ async def run_seed(conn: duckdb.DuckDBPyConnection, top_n: int = 99_999) -> None
 
     packages = [(n, "npm") for n in npm_names] + [(n, "PyPI") for n in pypi_names]
 
-    # Upsert package stubs
-    conn.executemany(
-        "INSERT INTO packages (name, ecosystem) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    cur = conn.cursor()
+    cur.executemany(
+        "INSERT INTO packages (name, ecosystem) VALUES (%s, %s) ON CONFLICT DO NOTHING",
         packages,
     )
     print(f"[seed] {len(packages)} package stubs inserted", flush=True)
 
-    # Build CVE history
     print("[seed] fetching CVE history from OSV...", flush=True)
     records = await build_cve_history(packages, progress=True)
     upsert_cve_records(conn, records)

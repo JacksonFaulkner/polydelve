@@ -1,17 +1,9 @@
-import math
 from typing import Any
 
 from features.package_enrichment import validate_packages
 from models.models import PackageRisk, RecentNews
 
-_SIMILARITY_THRESHOLD = 0.92
-
-
-def _cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    return dot / (na * nb) if na and nb else 0.0
+_SIMILARITY_THRESHOLD = 0.08  # cosine distance threshold (lower = more similar)
 
 
 def _exists(conn: Any, news_id: str) -> bool:
@@ -25,19 +17,20 @@ def _find_semantic_duplicate(
     embedding: list[float],
 ) -> tuple[str, float] | None:
     cur = conn.cursor()
+    # pgvector <=> is cosine distance (0 = identical, 2 = opposite)
     cur.execute(
-        "SELECT id, embed_description FROM news WHERE embed_description IS NOT NULL ORDER BY ingested_at DESC LIMIT 200"
+        """
+        SELECT id, embed_description <=> %s::halfvec AS dist
+        FROM news
+        WHERE embed_description IS NOT NULL
+        ORDER BY dist ASC
+        LIMIT 1
+        """,
+        [embedding],
     )
-    rows = cur.fetchall()
-    best_id, best_score = None, 0.0
-    for nid, emb in rows:
-        if emb is None:
-            continue
-        score = _cosine(embedding, emb)
-        if score > best_score:
-            best_id, best_score = nid, score
-    if best_id and best_score >= _SIMILARITY_THRESHOLD:
-        return (best_id, best_score)
+    row = cur.fetchone()
+    if row and row[1] <= _SIMILARITY_THRESHOLD:
+        return (row[0], 1.0 - row[1])
     return None
 
 

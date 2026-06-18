@@ -1,8 +1,8 @@
 """Generate, re-rank, and expire featured contracts from package risk signals."""
 import uuid
 from datetime import date, timedelta
+from typing import Any
 
-import duckdb
 from pydantic import BaseModel, Field
 
 from config import get_openai_client
@@ -21,12 +21,12 @@ WITH cve_stats AS (
            max(cvss_score) AS max_cvss,
            count(*)        AS cve_count
     FROM cve_history
-    WHERE published_date >= now() - INTERVAL 90 DAY
+    WHERE published_date >= now() - INTERVAL '90 days'
     GROUP BY name, ecosystem
 ),
 epss_delta AS (
     SELECT name, ecosystem,
-           arg_max(epss_score, recorded_at) - arg_min(epss_score, recorded_at) AS delta
+           MAX(epss_score) - MIN(epss_score) AS delta
     FROM epss_history
     WHERE recorded_at >= current_date - 7
     GROUP BY name, ecosystem
@@ -59,7 +59,7 @@ scored AS (
 SELECT name, ecosystem, max_cvss, least(score, 1.0) AS score
 FROM scored
 ORDER BY score DESC
-LIMIT ?
+LIMIT %s
 """
 
 
@@ -73,7 +73,7 @@ def _cvss_threshold(max_cvss: float) -> float:
 
 
 def generate_featured_contracts(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     pool_size: int = _CANDIDATE_POOL,
 ) -> int:
     """Mint featured contracts for the highest-signal packages.
@@ -81,24 +81,26 @@ def generate_featured_contracts(
     Deterministic — pure SQL over packages / cve_history / epss_history with
     per-ecosystem percentile normalization. Returns count of new contracts.
     """
-    candidates = conn.execute(_SIGNAL_QUERY, [pool_size]).fetchall()
+    cur = conn.cursor()
+    cur.execute(_SIGNAL_QUERY, [pool_size])
+    candidates = cur.fetchall()
     if not candidates:
         return 0
 
+    cur.execute(
+        "SELECT package_name, package_ecosystem, id FROM featured_contracts WHERE status IN ('open', 'benched')"
+    )
     existing: dict[tuple[str, str], str] = {
         (row[0], row[1]): row[2]
-        for row in conn.execute(
-            "SELECT package_name, package_ecosystem, id FROM featured_contracts WHERE status IN ('open', 'benched')"
-        ).fetchall()
+        for row in cur.fetchall()
     }
 
     inserted = 0
     for name, ecosystem, max_cvss, score in candidates:
         key = (name, ecosystem)
         if key in existing:
-            # Already live — refresh its signal score so ranking stays current
-            conn.execute(
-                "UPDATE featured_contracts SET relevancy_score = ? WHERE id = ?",
+            cur.execute(
+                "UPDATE featured_contracts SET relevancy_score = %s WHERE id = %s",
                 [score, existing[key]],
             )
             continue
@@ -115,14 +117,14 @@ def generate_featured_contracts(
         except ValueError:
             continue
 
-        conn.execute(
+        cur.execute(
             """
             INSERT INTO featured_contracts (
                 id, package_name, package_ecosystem,
                 cvss_threshold, epss_threshold, purchase_price,
                 duration_days, max_payout, opening_probability,
                 package_grade, expires_at, news_id, relevancy_score
-            ) VALUES (?, ?, ?, ?, NULL, 100, 30, ?, ?, ?, ?, NULL, ?)
+            ) VALUES (%s, %s, %s, %s, NULL, 100, 30, %s, %s, %s, %s, NULL, %s)
             """,
             [
                 str(uuid.uuid4()),
@@ -136,8 +138,8 @@ def generate_featured_contracts(
         )
         inserted += 1
 
-    conn.execute(
-        "UPDATE featured_contracts SET status = 'expired' WHERE expires_at < ? AND status IN ('open', 'benched')",
+    cur.execute(
+        "UPDATE featured_contracts SET status = 'expired' WHERE expires_at < %s AND status IN ('open', 'benched')",
         [date.today()],
     )
 
@@ -177,7 +179,7 @@ _RANK_SYSTEM_PROMPT = (
 
 
 async def rerank_featured_contracts(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     limit: int = _FEATURED_LIMIT,
 ) -> int:
     """Re-score all live featured contracts against current news via GPT + web
@@ -186,16 +188,18 @@ async def rerank_featured_contracts(
     Returns number of contracts re-scored. On API failure, leaves existing
     scores and statuses untouched.
     """
-    rows = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """
         SELECT fc.id, fc.package_name, fc.package_ecosystem,
                fc.cvss_threshold, fc.epss_threshold, fc.expires_at,
                fc.relevancy_score
         FROM featured_contracts fc
-        WHERE fc.status IN ('open', 'benched') AND fc.expires_at >= ?
+        WHERE fc.status IN ('open', 'benched') AND fc.expires_at >= %s
         """,
         [date.today()],
-    ).fetchall()
+    )
+    rows = cur.fetchall()
     if not rows:
         return 0
 
@@ -226,31 +230,30 @@ async def rerank_featured_contracts(
     valid_ids = {r[0] for r in rows}
     scored = [s for s in ranking.scores if s.id in valid_ids]
 
-    conn.executemany(
-        "UPDATE featured_contracts SET relevancy_score = ? WHERE id = ?",
+    cur.executemany(
+        "UPDATE featured_contracts SET relevancy_score = %s WHERE id = %s",
         [(s.relevancy_score, s.id) for s in scored],
     )
 
-    # Top `limit` by fresh score stay open; the rest are benched (eligible to
-    # return on the next rerank). Contracts the model skipped keep prior scores.
-    ranked_ids = conn.execute(
+    cur.execute(
         """
         SELECT id FROM featured_contracts
-        WHERE status IN ('open', 'benched') AND expires_at >= ?
+        WHERE status IN ('open', 'benched') AND expires_at >= %s
         ORDER BY relevancy_score DESC, opening_probability DESC
         """,
         [date.today()],
-    ).fetchall()
+    )
+    ranked_ids = cur.fetchall()
     open_ids = [r[0] for r in ranked_ids[:limit]]
     bench_ids = [r[0] for r in ranked_ids[limit:]]
     if open_ids:
-        conn.executemany(
-            "UPDATE featured_contracts SET status = 'open' WHERE id = ?",
+        cur.executemany(
+            "UPDATE featured_contracts SET status = 'open' WHERE id = %s",
             [(i,) for i in open_ids],
         )
     if bench_ids:
-        conn.executemany(
-            "UPDATE featured_contracts SET status = 'benched' WHERE id = ?",
+        cur.executemany(
+            "UPDATE featured_contracts SET status = 'benched' WHERE id = %s",
             [(i,) for i in bench_ids],
         )
 

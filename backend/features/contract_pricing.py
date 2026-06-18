@@ -18,8 +18,7 @@ Current value (for sell):
 import math
 from dataclasses import dataclass
 from datetime import date
-
-import duckdb
+from typing import Any
 
 
 @dataclass
@@ -264,7 +263,7 @@ def current_sell_value(
 
 
 def price_contract(
-    conn: duckdb.DuckDBPyConnection,
+    conn: Any,
     package_name: str,
     ecosystem: str,
     cvss_threshold: float | None,

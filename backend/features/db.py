@@ -1,37 +1,34 @@
 import os
 
 import psycopg2
-import psycopg2.pool
 from fastapi import Request
+from pgvector.psycopg2 import register_vector
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://polydelve:polydelve@localhost:5432/polydelve_dev"
+    "DATABASE_URL", "postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev"
 )
 
-_pool: psycopg2.pool.ThreadedConnectionPool | None = None
 
-
-def _get_pool() -> psycopg2.pool.ThreadedConnectionPool:
-    global _pool
-    if _pool is None:
-        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, DATABASE_URL)
-    return _pool
+def _connect() -> psycopg2.extensions.connection:
+    conn = psycopg2.connect(DATABASE_URL)
+    register_vector(conn)
+    return conn
 
 
 def get_db(request: Request):  # noqa: ARG001
-    conn = _get_pool().getconn()
+    conn = _connect()
     try:
         yield conn
     except Exception:
         conn.rollback()
         raise
     finally:
-        _get_pool().putconn(conn)
+        conn.close()
 
 
 def get_db_conn():
     """Direct connection for scripts (no FastAPI Request context)."""
-    return psycopg2.connect(DATABASE_URL)
+    return _connect()
 
 
 def init_db(conn) -> None:  # kept for test compat, no-op — schema managed by Alembic
