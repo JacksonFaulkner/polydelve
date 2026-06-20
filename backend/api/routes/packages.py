@@ -97,7 +97,7 @@ def list_packages(
     return result
 
 
-@router.get("/{ecosystem}/{name}")
+@router.get("/{ecosystem}/{name:path}")
 def get_package(
     ecosystem: str,
     name: str,

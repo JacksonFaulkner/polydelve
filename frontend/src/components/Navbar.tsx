@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Boxes, BookOpen, LayoutDashboard, Newspaper, Package, Search, Settings, TrendingUp, Trophy } from "lucide-react";
+import { Boxes, BookOpen, LayoutDashboard, Newspaper, Package, Settings, TrendingUp, Trophy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { SchmeckleIcon } from "./SchmeckleIcon";
 import type { User } from "@/types";
@@ -44,7 +44,6 @@ const TAB_LABEL: Partial<Record<Sector, string>> = {
 interface NavbarProps {
   user?: User;
   activeSector: Sector;
-  onSearch?: (query: string) => void;
 }
 
 function Tab({ s, active }: { s: Sector; active: boolean }) {
@@ -78,9 +77,9 @@ function navigate(path: string) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
+export function Navbar({ user, activeSector }: NavbarProps) {
   const { isAuthenticated, isLoading, loginWithRedirect, logout, user: auth0User } = useAuth();
-  const [searchOpen, setSearchOpen] = useState(false);
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -107,26 +106,6 @@ export function Navbar({ user, activeSector, onSearch }: NavbarProps) {
         </a>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Search */}
-          {searchOpen ? (
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search markets..."
-              onChange={(e) => onSearch?.(e.target.value)}
-              onBlur={() => setSearchOpen(false)}
-              className="w-36 sm:w-48 rounded-full border border-zinc-700/60 bg-[#1C2229] py-1.5 px-3 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-zinc-500"
-            />
-          ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search markets"
-              className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          )}
-
           {/* Schmeckles */}
           {isAuthenticated && user && (
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">

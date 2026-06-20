@@ -24,8 +24,13 @@ def list_featured_contracts(conn: Any) -> list[tuple]:
             p.logo_url,
             fc.relevancy_score
         FROM featured_contracts fc
-        LEFT JOIN packages p ON p.name = fc.package_name AND p.ecosystem = fc.package_ecosystem
+        JOIN packages p ON p.name = fc.package_name AND p.ecosystem = fc.package_ecosystem
         WHERE fc.status = 'open'
+          AND p.epss_score IS NOT NULL
+          AND (
+            SELECT COUNT(*) FROM epss_history eh
+            WHERE eh.name = fc.package_name AND eh.ecosystem = fc.package_ecosystem
+          ) >= 2
         ORDER BY fc.relevancy_score DESC, fc.opening_probability DESC
         LIMIT 12
         """

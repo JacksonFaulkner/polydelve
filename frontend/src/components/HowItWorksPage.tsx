@@ -58,7 +58,7 @@ const EVENT_TYPES = [
 ]
 
 const GLOSSARY = [
-  { term: "Schmeckles (sch)", def: "The in-app currency. You start with 500. Earn more by winning contracts." },
+  { term: "Schmeckles (sch)", def: "The in-app currency. You start with 1,000. Earn more by winning contracts." },
   { term: "EPSS", def: "Exploit Prediction Scoring System — a 0–100% daily probability that a CVE will be exploited in the next 30 days." },
   { term: "CVSS", def: "Common Vulnerability Scoring System — 0–10 severity score for a vulnerability. ≥7 is High, ≥9 is Critical." },
   { term: "MAL advisory", def: "A published notice that a specific package version contained intentionally malicious code." },
@@ -69,23 +69,39 @@ const GLOSSARY = [
 
 export function HowItWorksPage() {
   return (
-    <div className="max-w-3xl mx-auto space-y-12 pb-16">
+    <div className="mx-auto max-w-3xl lg:max-w-5xl space-y-12 pb-16">
 
       {/* Hero */}
-      <div className="space-y-2">
-        <h1 className="text-xs font-bold uppercase tracking-widest text-[#FDE832]">How it works</h1>
-        <p className="text-2xl font-bold text-zinc-100">Predict security events. Earn schmeckles.</p>
-        <p className="text-sm text-zinc-400 max-w-xl">
-          Polydelve is a prediction market for open-source security. You stake in-app currency on whether a package will be hit by a security event before your contract expires.
-        </p>
+      <div className="lg:flex lg:items-end lg:justify-between lg:gap-12">
+        <div className="space-y-2">
+          <h1 className="text-xs font-bold uppercase tracking-widest text-[#FDE832]">How it works</h1>
+          <p className="text-2xl lg:text-3xl font-bold text-zinc-100">Predict security events.<br className="hidden lg:block" /> Earn schmeckles.</p>
+          <p className="text-sm text-zinc-400 max-w-xl">
+            Polydelve is a prediction market for open-source security. You stake in-app currency on whether a package will be hit by a security event before your contract expires.
+          </p>
+        </div>
+        {/* Desktop stat strip */}
+        <div className="hidden lg:flex flex-shrink-0 items-center gap-8 rounded-xl border border-zinc-800 bg-[#181D21] px-7 py-5">
+          {[
+            { label: "Starting balance", value: "1,000 sch" },
+            { label: "Contract lengths", value: "7 / 14 / 30d" },
+            { label: "Event types", value: "3" },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="text-lg font-bold text-zinc-100">{s.value}</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Steps */}
       <section className="space-y-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Getting started</h2>
-        <div className="space-y-2">
-          {STEPS.map((step) => (
-            <div key={step.number} className="flex gap-4 rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-4">
+        {/* mobile: stacked list; desktop: 2-col grid */}
+        <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
+          {STEPS.map((step, i) => (
+            <div key={step.number} className={`flex gap-4 rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-4${i === STEPS.length - 1 ? " lg:col-span-2" : ""}`}>
               <div className="flex-shrink-0 flex items-start gap-3">
                 <span className="text-[10px] font-bold tabular-nums text-zinc-600 mt-0.5 w-5">{step.number}</span>
                 <span className="text-zinc-400 mt-0.5">{step.icon}</span>
@@ -99,48 +115,57 @@ export function HowItWorksPage() {
         </div>
       </section>
 
-      {/* Event types */}
-      <section className="space-y-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Event types</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {EVENT_TYPES.map((e) => (
-            <div key={e.label} className={`rounded-xl border ${e.border} bg-[#181D21] px-4 py-4`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`w-2 h-2 rounded-full ${e.dot}`} />
-                <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
+      {/* Event types + Payout side-by-side on desktop */}
+      <div className="lg:grid lg:grid-cols-[1fr_1fr] lg:gap-6 space-y-12 lg:space-y-0">
+        {/* Event types */}
+        <section className="space-y-3 lg:flex lg:flex-col">
+          <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Event types</h2>
+          {/* mobile / sm: individual cards in a row; desktop: flush grouped list */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:hidden">
+            {EVENT_TYPES.map((e) => (
+              <div key={e.label} className={`rounded-xl border ${e.border} bg-[#181D21] px-4 py-4`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${e.dot}`} />
+                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
               </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+          <div className="hidden lg:flex lg:flex-col lg:flex-1 rounded-xl border border-zinc-800 bg-[#181D21] overflow-hidden">
+            {EVENT_TYPES.map((e, i) => (
+              <div key={e.label} className={`flex gap-3 px-4 py-4 flex-1${i < EVENT_TYPES.length - 1 ? " border-b border-zinc-800/60" : ""}`}>
+                <span className={`w-1 self-stretch rounded-full flex-shrink-0 ${e.dot} opacity-80`} />
+                <div>
+                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
+                  <p className="text-xs text-zinc-400 leading-relaxed mt-1">{e.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* Payout explanation */}
-      <section className="space-y-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">How payouts work</h2>
-        <div className="rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-5 space-y-4 text-sm text-zinc-400 leading-relaxed">
-          <p>
-            When you buy a contract, the payout multiplier is locked in based on the probability of each event firing — riskier bets pay more. The <span className="text-zinc-200 font-medium">Simulated Returns</span> panel shows your projected payout for each event type at your chosen stake.
-          </p>
-          <p>
-            If <span className="text-emerald-400 font-medium">EPSS spike</span>, <span className="text-[#FDE832] font-medium">CVSS event</span>, or <span className="text-rose-400 font-medium">MAL advisory</span> fires before your contract expires, the corresponding payout is credited to your balance immediately.
-          </p>
-          <p>
-            If nothing happens, you can sell early for the current <span className="text-zinc-200 font-medium">sell value</span> (which decays toward zero as expiry approaches), or hold and accept the max loss.
-          </p>
-          <div className="rounded-lg bg-zinc-900/60 border border-zinc-700/40 px-4 py-3 flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-[#FDE832] flex-shrink-0 mt-0.5" />
-            <p className="text-xs">
-              Schmeckles are play money — there is no real financial value. Predictions are for educational and entertainment purposes only.
+        {/* Payout explanation */}
+        <section className="space-y-3 lg:flex lg:flex-col">
+          <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">How payouts work</h2>
+          <div className="rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-5 space-y-4 text-sm text-zinc-400 leading-relaxed lg:flex-1">
+            <p>
+              When you buy a contract, the payout multiplier is locked in based on the probability of each event firing — riskier bets pay more. The <span className="text-zinc-200 font-medium">Simulated Returns</span> panel shows your projected payout for each event type at your chosen stake.
+            </p>
+            <p>
+              If <span className="text-emerald-400 font-medium">EPSS spike</span>, <span className="text-[#FDE832] font-medium">CVSS event</span>, or <span className="text-rose-400 font-medium">MAL advisory</span> fires before your contract expires, the corresponding payout is credited to your balance immediately.
+            </p>
+            <p>
+              If nothing happens, you can sell early for the current <span className="text-zinc-200 font-medium">sell value</span> (which decays toward zero as expiry approaches), or hold and accept the max loss.
             </p>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Chart guide */}
       <section className="space-y-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Reading the chart</h2>
-        <div className="rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-5 space-y-3">
+        <div className="rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-5 lg:grid lg:grid-cols-2 lg:gap-x-10 space-y-3 lg:space-y-0">
           {[
             { color: "bg-emerald-400", label: "EPSS spike curve", desc: "Payout if the EPSS event fires on that date." },
             { color: "bg-[#FDE832]",   label: "CVSS event curve", desc: "Payout if a CVSS event fires on that date." },
@@ -155,7 +180,7 @@ export function HowItWorksPage() {
               </div>
             </div>
           ))}
-          <p className="text-xs text-zinc-500 pt-1">
+          <p className="text-xs text-zinc-500 pt-1 lg:col-span-2">
             Hover over the chart to see exact values for any date. The <span className="text-red-400">MAX LOSS</span> dashed line shows your downside if you hold to expiry with no event.
           </p>
         </div>
@@ -164,9 +189,10 @@ export function HowItWorksPage() {
       {/* Glossary */}
       <section className="space-y-3">
         <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Glossary</h2>
-        <div className="rounded-xl border border-zinc-800 bg-[#181D21] divide-y divide-zinc-800/60">
+        {/* mobile: single-col divide list; desktop: 2-col grid of cards */}
+        <div className="rounded-xl border border-zinc-800 bg-[#181D21] divide-y divide-zinc-800/60 lg:divide-y-0 lg:grid lg:grid-cols-2 lg:gap-px lg:overflow-hidden">
           {GLOSSARY.map(({ term, def }) => (
-            <div key={term} className="flex gap-4 px-5 py-3">
+            <div key={term} className="flex gap-4 px-5 py-3 lg:bg-[#181D21] lg:border-b lg:border-zinc-800/60">
               <span className="text-xs font-semibold text-zinc-200 w-44 flex-shrink-0">{term}</span>
               <span className="text-xs text-zinc-400">{def}</span>
             </div>
@@ -174,11 +200,19 @@ export function HowItWorksPage() {
         </div>
       </section>
 
+      {/* Disclaimer */}
+      <div className="rounded-lg bg-zinc-900/60 border border-zinc-700/40 px-4 py-3 flex items-start gap-3">
+        <AlertTriangle className="w-4 h-4 text-[#FDE832] flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-zinc-400">
+          Schmeckles are play money — there is no real financial value. Predictions are for educational and entertainment purposes only.
+        </p>
+      </div>
+
       {/* CTA */}
       <div className="rounded-xl border border-[#FDE832]/20 bg-[#FDE832]/5 px-6 py-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-zinc-100">Ready to make your first prediction?</p>
-          <p className="text-xs text-zinc-500 mt-0.5">You start with 500 schmeckles — no deposit needed.</p>
+          <p className="text-xs text-zinc-500 mt-0.5">You start with 1,000 schmeckles — no deposit needed.</p>
         </div>
         <button
           onClick={() => { history.pushState({}, "", "/predict"); window.dispatchEvent(new PopStateEvent("popstate")) }}
