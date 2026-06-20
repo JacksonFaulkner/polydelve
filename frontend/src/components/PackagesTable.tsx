@@ -95,7 +95,7 @@ const columns = [
     ),
     cell: (info) => {
       const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">—</span>
+      if (!v) return <span className="text-zinc-600">  </span>
       return <span className="text-zinc-300 tabular-nums">{(v / 1_000_000).toFixed(1)}M</span>
     },
   }),
@@ -103,14 +103,14 @@ const columns = [
     header: () => (
       <ColHeader
         label="EPSS"
-        tip="Exploit Prediction Scoring System — probability (0–100%) that this package's worst CVE will be exploited in the wild within 30 days. Published daily by FIRST.org. Higher = more dangerous."
+        tip="Exploit Prediction Scoring System. probability (0–100%) that this package's worst CVE will be exploited in the wild within 30 days. Published daily by FIRST.org. Higher = more dangerous."
         source="https://www.first.org/epss/"
-        sourceLabel="first.org/epss — thank you FIRST!"
+        sourceLabel="first.org/epss. thank you FIRST!"
       />
     ),
     cell: (info) => {
       const v = info.getValue()
-      if (v === null || v === undefined) return <span className="text-zinc-600">—</span>
+      if (v === null || v === undefined) return <span className="text-zinc-600">  </span>
       const pct = Math.round(v * 100)
       const color = pct >= 70 ? "bg-red-500" : pct >= 30 ? "bg-orange-400" : "bg-zinc-500"
       return (
@@ -129,7 +129,7 @@ const columns = [
         label="CVEs"
         tip="Total number of known CVEs affecting this package, sourced from the OSV vulnerability database. Includes historical and active vulnerabilities."
         source="https://osv.dev"
-        sourceLabel="osv.dev — thank you Google!"
+        sourceLabel="osv.dev. thank you Google!"
       />
     ),
     cell: (info) => {
@@ -161,7 +161,7 @@ const columns = [
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">—</span>
+      if (!v) return <span className="text-zinc-600">  </span>
       return (
         <span className={`text-xs font-medium capitalize ${SEVERITY_COLOR[v] ?? "text-zinc-400"}`}>
           {v}
@@ -173,12 +173,12 @@ const columns = [
     header: () => (
       <ColHeader
         label="Risk Score"
-        tip="Composite risk signal: weekly downloads × max EPSS score. Captures both blast radius (how widely used) and exploit likelihood. Not a standardised metric — use as a relative ranking."
+        tip="Composite risk signal: weekly downloads × max EPSS score. Captures both blast radius (how widely used) and exploit likelihood. Not a standardised metric. use as a relative ranking."
       />
     ),
     cell: (info) => {
       const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">—</span>
+      if (!v) return <span className="text-zinc-600">  </span>
       return <span className="tabular-nums text-sm text-zinc-200">{(v / 1_000_000).toFixed(1)}M</span>
     },
   }),
@@ -186,7 +186,7 @@ const columns = [
     header: () => (
       <ColHeader
         label="MAL"
-        tip="Has an OSV MAL-* advisory — confirmed or suspected supply chain compromise (malicious code injected into the package)."
+        tip="Has an OSV MAL-* advisory. confirmed or suspected supply chain compromise (malicious code injected into the package)."
         source="https://osv.dev"
         sourceLabel="osv.dev"
       />
@@ -287,7 +287,7 @@ export function PackagesTable({ ecosystem }: Props) {
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">—</span>
+      if (!v) return <span className="text-zinc-600">  </span>
       return <span className="text-xs text-zinc-400">{v}</span>
     },
   })

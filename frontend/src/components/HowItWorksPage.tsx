@@ -11,7 +11,7 @@ const STEPS = [
     number: "02",
     title: "Set your conditions",
     icon: <Zap className="w-5 h-5" />,
-    body: "Choose what security event you're betting will happen — an EPSS spike, a new high-severity CVE, or a malware advisory. Dial in the CVSS threshold and EPSS scenario.",
+    body: "Choose what security event you're betting will happen. an EPSS spike, a new high-severity CVE, or a malware advisory. Dial in the CVSS threshold and EPSS scenario.",
   },
   {
     number: "03",
@@ -29,7 +29,7 @@ const STEPS = [
     number: "05",
     title: "Climb the leaderboard",
     icon: <Trophy className="w-5 h-5" />,
-    body: "Schmeckles earned from winning contracts boost your rank. The leaderboard resets weekly — consistent good calls beat lucky one-offs.",
+    body: "Schmeckles earned from winning contracts boost your rank. The leaderboard resets weekly. consistent good calls beat lucky one-offs.",
   },
 ]
 
@@ -53,18 +53,18 @@ const EVENT_TYPES = [
     dot: "bg-rose-400",
     border: "border-rose-400/20",
     label: "MAL Advisory",
-    desc: "A malware advisory is published for the package — someone snuck malicious code into a release. Rare, but pays the highest multiplier when it hits.",
+    desc: "A malware advisory is published for the package. someone snuck malicious code into a release. Rare, but pays the highest multiplier when it hits.",
   },
 ]
 
 const GLOSSARY = [
   { term: "Schmeckles (sch)", def: "The in-app currency. You start with 1,000. Earn more by winning contracts." },
-  { term: "EPSS", def: "Exploit Prediction Scoring System — a 0–100% daily probability that a CVE will be exploited in the next 30 days." },
-  { term: "CVSS", def: "Common Vulnerability Scoring System — 0–10 severity score for a vulnerability. ≥7 is High, ≥9 is Critical." },
+  { term: "EPSS", def: "Exploit Prediction Scoring System. a 0–100% daily probability that a CVE will be exploited in the next 30 days." },
+  { term: "CVSS", def: "Common Vulnerability Scoring System. 0–10 severity score for a vulnerability. ≥7 is High, ≥9 is Critical." },
   { term: "MAL advisory", def: "A published notice that a specific package version contained intentionally malicious code." },
-  { term: "EPSS Scenario slider", def: "Sets the EPSS level you're betting the package will reach. Can only go up from today's baseline — you can't bet on a package getting safer." },
+  { term: "EPSS Scenario slider", def: "Sets the EPSS level you're betting the package will reach. Can only go up from today's baseline. you can't bet on a package getting safer." },
   { term: "Sell value", def: "What you'd get if you sold your contract right now instead of holding to expiry. Decays toward max loss over time if no event fires." },
-  { term: "Max loss", def: "The most you can lose on a contract — your stake minus any sell value at expiry. Always shown on the chart as a dashed red line." },
+  { term: "Max loss", def: "The most you can lose on a contract. your stake minus any sell value at expiry. Always shown on the chart as a dashed red line." },
 ]
 
 export function HowItWorksPage() {
@@ -150,7 +150,7 @@ export function HowItWorksPage() {
           <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">How payouts work</h2>
           <div className="rounded-xl border border-zinc-800 bg-[#181D21] px-5 py-5 space-y-4 text-sm text-zinc-400 leading-relaxed lg:flex-1">
             <p>
-              When you buy a contract, the payout multiplier is locked in based on the probability of each event firing — riskier bets pay more. The <span className="text-zinc-200 font-medium">Simulated Returns</span> panel shows your projected payout for each event type at your chosen stake.
+              When you buy a contract, the payout multiplier is locked in based on the probability of each event firing. riskier bets pay more. The <span className="text-zinc-200 font-medium">Simulated Returns</span> panel shows your projected payout for each event type at your chosen stake.
             </p>
             <p>
               If <span className="text-emerald-400 font-medium">EPSS spike</span>, <span className="text-[#FDE832] font-medium">CVSS event</span>, or <span className="text-rose-400 font-medium">MAL advisory</span> fires before your contract expires, the corresponding payout is credited to your balance immediately.
@@ -170,7 +170,7 @@ export function HowItWorksPage() {
             { color: "bg-emerald-400", label: "EPSS spike curve", desc: "Payout if the EPSS event fires on that date." },
             { color: "bg-[#FDE832]",   label: "CVSS event curve", desc: "Payout if a CVSS event fires on that date." },
             { color: "bg-rose-400",    label: "MAL advisory curve", desc: "Payout if a malware advisory fires on that date." },
-            { color: "bg-red-400",     label: "Sell value line (dashed)", desc: "What you'd get selling the contract that day — decays to zero at expiry." },
+            { color: "bg-red-400",     label: "Sell value line (dashed)", desc: "What you'd get selling the contract that day. decays to zero at expiry." },
           ].map((row) => (
             <div key={row.label} className="flex items-start gap-3">
               <span className={`w-2.5 h-2.5 rounded-sm ${row.color} flex-shrink-0 mt-1`} />
@@ -204,7 +204,7 @@ export function HowItWorksPage() {
       <div className="rounded-lg bg-zinc-900/60 border border-zinc-700/40 px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-4 h-4 text-[#FDE832] flex-shrink-0 mt-0.5" />
         <p className="text-xs text-zinc-400">
-          Schmeckles are play money — there is no real financial value. Predictions are for educational and entertainment purposes only.
+          Schmeckles are play money. there is no real financial value. Predictions are for educational and entertainment purposes only.
         </p>
       </div>
 
@@ -212,7 +212,7 @@ export function HowItWorksPage() {
       <div className="rounded-xl border border-[#FDE832]/20 bg-[#FDE832]/5 px-6 py-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-zinc-100">Ready to make your first prediction?</p>
-          <p className="text-xs text-zinc-500 mt-0.5">You start with 1,000 schmeckles — no deposit needed.</p>
+          <p className="text-xs text-zinc-500 mt-0.5">You start with 1,000 schmeckles. no deposit needed.</p>
         </div>
         <button
           onClick={() => { history.pushState({}, "", "/predict"); window.dispatchEvent(new PopStateEvent("popstate")) }}

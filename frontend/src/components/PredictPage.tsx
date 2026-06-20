@@ -172,7 +172,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               : "border-[#FDE832]/50 shadow-[0_0_0_1px_rgba(253,232,50,0.12),0_0_24px_rgba(253,232,50,0.06)]"
           }`}>
             <label className={`text-[10px] font-semibold uppercase tracking-wide ${selectedPkg ? "text-zinc-500" : "text-[#FDE832]"}`}>
-              1 — Package
+              1. Package
             </label>
             <div className="relative">
               <input
@@ -226,7 +226,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                 </span>
                 <span className="font-mono text-sm text-zinc-100">{selectedPkg.name}</span>
                 <span className="ml-auto text-xs text-zinc-500">
-                  {selectedPkg.num_cves} CVEs · EPSS {selectedPkg.epss_score != null ? Math.round(selectedPkg.epss_score * 100) + "%" : "—"}
+                  {selectedPkg.num_cves} CVEs · EPSS {selectedPkg.epss_score != null ? Math.round(selectedPkg.epss_score * 100) + "%" : ""}
                 </span>
               </div>
             )}
@@ -430,7 +430,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                       {[1,2,3,4,5].map(i => <div key={i} className="h-2 w-6 rounded bg-zinc-700/40 animate-pulse" />)}
                     </div>
                   </div>
-                  {/* Legend skeleton — matches real legend exactly */}
+                  {/* Legend skeleton. matches real legend exactly */}
                   <div className="flex items-center gap-4 px-3 pt-1 pb-3">
                     {[
                       { swatch: "bg-emerald-400/60", w: "w-14" },
@@ -473,10 +473,10 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
                         </div>
                         <p className={`text-2xl font-bold tabular-nums ${color}`}>
-                          {sim ? `+${(sim[key as keyof SimResult] as number).toLocaleString()}` : "—"}
+                          {sim ? `+${(sim[key as keyof SimResult] as number).toLocaleString()}` : ""}
                         </p>
                         <p className="text-[11px] text-zinc-600 mt-1">
-                          {sim ? `${(price > 0 ? ((sim[key as keyof SimResult] as number) / price + 1).toFixed(1) : "—")}× if YES` : "calculating…"}
+                          {sim ? `${(price > 0 ? ((sim[key as keyof SimResult] as number) / price + 1).toFixed(1) : "")}× if YES` : "calculating…"}
                         </p>
                       </div>
                     ))}

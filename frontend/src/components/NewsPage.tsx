@@ -51,7 +51,7 @@ function newsBackground(item: NewsItem, size: CardSize) {
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl flex flex-col">
-      {/* screenshot — slides down from top on hover */}
+      {/* screenshot. slides down from top on hover */}
       <div className={`relative w-full max-h-0 overflow-hidden transition-[max-height] duration-500 ease-in-out ${THUMB_MAX_H[size]}`}>
         <img
           src={screenshotUrl(item.url)}
@@ -64,7 +64,7 @@ function newsBackground(item: NewsItem, size: CardSize) {
 
       {/* content */}
       <div className="flex flex-col px-4 pt-3 pb-4 group-hover:pt-2 transition-[padding] duration-300 flex-1 min-h-0">
-        {/* source metadata — top */}
+        {/* source metadata. top */}
         <div className="flex items-center gap-1.5 mb-2 shrink-0">
           {favicon && <img src={favicon} alt="" className="h-3.5 w-3.5 rounded-sm opacity-70" />}
           <span className="text-[10px] font-medium text-zinc-400">{item.source_name}</span>
@@ -95,12 +95,12 @@ function newsBackground(item: NewsItem, size: CardSize) {
 }
 
 const BENTO_LAYOUTS = [
-  "lg:col-start-1 lg:col-end-2 lg:row-start-1 lg:row-end-2",  // left top — small
-  "lg:col-start-1 lg:col-end-2 lg:row-start-2 lg:row-end-4",  // left bottom — medium
-  "lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-end-3",  // center top — medium
-  "lg:col-start-2 lg:col-end-3 lg:row-start-3 lg:row-end-4",  // center bottom — small
-  "lg:col-start-3 lg:col-end-4 lg:row-start-1 lg:row-end-2",  // right top — small
-  "lg:col-start-3 lg:col-end-4 lg:row-start-2 lg:row-end-4",  // right bottom — medium
+  "lg:col-start-1 lg:col-end-2 lg:row-start-1 lg:row-end-2",  // left top. small
+  "lg:col-start-1 lg:col-end-2 lg:row-start-2 lg:row-end-4",  // left bottom. medium
+  "lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-end-3",  // center top. medium
+  "lg:col-start-2 lg:col-end-3 lg:row-start-3 lg:row-end-4",  // center bottom. small
+  "lg:col-start-3 lg:col-end-4 lg:row-start-1 lg:row-end-2",  // right top. small
+  "lg:col-start-3 lg:col-end-4 lg:row-start-2 lg:row-end-4",  // right bottom. medium
 ]
 
 export function NewsPage() {

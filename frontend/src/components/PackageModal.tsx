@@ -96,10 +96,10 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
               {/* Stats */}
               <div className="flex flex-wrap gap-6 text-sm">
                 {[
-                  ["Weekly DL", detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : "—"],
-                  ["EPSS", detail.epss_score != null ? `${(detail.epss_score * 100).toFixed(1)}%` : "—"],
+                  ["Weekly DL", detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : ""],
+                  ["EPSS", detail.epss_score != null ? `${(detail.epss_score * 100).toFixed(1)}%` : ""],
                   ["CVEs", String(detail.cve_ids.length)],
-                  ["Risk Score", detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : "—"],
+                  ["Risk Score", detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : ""],
                 ].map(([label, val]) => (
                   <div key={label}>
                     <p className="text-xs text-zinc-500">{label}</p>
@@ -151,11 +151,11 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                               >{c.cve_id}</a>
                             ) : <span className="text-zinc-300">{c.osv_id}</span>}
                           </td>
-                          <td className="px-3 py-1.5 tabular-nums text-zinc-500">{c.published_date?.slice(0, 10) ?? "—"}</td>
+                          <td className="px-3 py-1.5 tabular-nums text-zinc-500">{c.published_date?.slice(0, 10) ?? ""}</td>
                           <td className="px-3 py-1.5">
                             {c.severity
                               ? <span className="capitalize font-medium" style={{ color: SEV_COLOR[c.severity] ?? "#71717a" }}>{c.severity}</span>
-                              : "—"}
+                              : ""}
                           </td>
                           <td className="px-3 py-1.5 tabular-nums">
                             {c.cvss_score != null ? (
@@ -163,7 +163,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                                 className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
                                 style={{ backgroundColor: `${SCORE_COLOR(c.cvss_score)}22`, color: SCORE_COLOR(c.cvss_score) }}
                               >{c.cvss_score.toFixed(1)}</span>
-                            ) : "—"}
+                            ) : ""}
                           </td>
                         </tr>
                       ))}

@@ -271,7 +271,7 @@ export function AdminPage() {
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
-                  {m.contract.epss_threshold != null ? `≥${(m.contract.epss_threshold * 100).toFixed(0)}%` : "—"}
+                  {m.contract.epss_threshold != null ? `≥${(m.contract.epss_threshold * 100).toFixed(0)}%` : ""}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-zinc-400">
                   {m.contract.duration_days}d

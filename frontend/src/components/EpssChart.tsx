@@ -194,7 +194,7 @@ export default function EpssChart({
       </ComposedChart>
     </ResponsiveContainer>
 
-    {/* CVE dot tooltip — positioned relative to chart container */}
+    {/* CVE dot tooltip. positioned relative to chart container */}
     {cveHover && (
       <div
         className="pointer-events-none absolute z-10 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-0.5"

@@ -168,7 +168,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
           </div>
 
           <div className="space-y-0.5 min-w-0">
-            <p className="text-lg font-semibold text-white truncate">{user?.username ?? "—"}</p>
+            <p className="text-lg font-semibold text-white truncate">{user?.username ?? ""}</p>
             {"email" in (auth0User ?? {}) && (
               <p className="text-sm text-zinc-400 truncate">{(auth0User as { email?: string })?.email}</p>
             )}
@@ -181,7 +181,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
           <SchmeckleIcon className="h-5 w-5 text-[#FDE832]" />
           <span className="text-sm text-zinc-300">Balance</span>
           <span className="ml-auto font-bold tabular-nums text-white">
-            {user?.schmeckles.toLocaleString() ?? "—"}
+            {user?.schmeckles.toLocaleString() ?? ""}
           </span>
         </div>
 

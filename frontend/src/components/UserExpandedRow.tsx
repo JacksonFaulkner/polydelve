@@ -18,7 +18,7 @@ const MARKET_LABEL: Record<string, string> = {
 }
 
 function multiplier(c: LeaderboardContract): string {
-  if (!c.purchase_price) return "—"
+  if (!c.purchase_price) return ""
   return `${(c.max_payout / c.purchase_price).toFixed(1)}×`
 }
 
@@ -88,7 +88,7 @@ export function UserExpandedRow({ user, colSpan }: Props) {
                   <p className="font-medium text-zinc-200">
                     {user.total_contracts > 0
                       ? `${Math.round((user.won_contracts / user.total_contracts) * 100)}%`
-                      : "—"}
+                      : ""}
                   </p>
                 </div>
               </div>

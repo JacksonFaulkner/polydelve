@@ -137,13 +137,13 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
                       <div>
                         <span className="text-xs text-zinc-500">Weekly DL</span>
                         <p className="font-medium text-zinc-200 tabular-nums">
-                          {detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : "—"}
+                          {detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : ""}
                         </p>
                       </div>
                       <div>
                         <span className="text-xs text-zinc-500">EPSS</span>
                         <p className="font-medium text-zinc-200">
-                          {detail.epss_score !== null ? `${(detail.epss_score * 100).toFixed(1)}%` : "—"}
+                          {detail.epss_score !== null ? `${(detail.epss_score * 100).toFixed(1)}%` : ""}
                         </p>
                       </div>
                       <div>
@@ -153,7 +153,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
                       <div>
                         <span className="text-xs text-zinc-500">Risk Score</span>
                         <p className="font-medium text-zinc-200">
-                          {detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : "—"}
+                          {detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : ""}
                         </p>
                       </div>
                       {detail.has_mal_advisory && (
@@ -196,17 +196,17 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
                                     >{c.cve_id}</a>
                                   ) : <span className="text-zinc-300">{c.osv_id}</span>}
                                 </td>
-                                <td className="px-3 py-1.5 text-zinc-500 tabular-nums">{c.published_date?.slice(0, 10) ?? "—"}</td>
+                                <td className="px-3 py-1.5 text-zinc-500 tabular-nums">{c.published_date?.slice(0, 10) ?? ""}</td>
                                 <td className="px-3 py-1.5">
                                   {c.severity
                                     ? <span className="capitalize font-medium" style={{ color: SEV_COLOR[c.severity] ?? "#71717a" }}>{c.severity}</span>
-                                    : "—"}
+                                    : ""}
                                 </td>
                                 <td className="px-3 py-1.5 tabular-nums">
-                                  {c.cvss_score != null ? <CvssScoreBadge score={c.cvss_score} /> : "—"}
+                                  {c.cvss_score != null ? <CvssScoreBadge score={c.cvss_score} /> : ""}
                                 </td>
                                 <td className="px-3 py-1.5">
-                                  {c.cvss_vector ? <CvssVectorBreakdown vector={c.cvss_vector} /> : "—"}
+                                  {c.cvss_vector ? <CvssVectorBreakdown vector={c.cvss_vector} /> : ""}
                                 </td>
                               </tr>
                             ))}

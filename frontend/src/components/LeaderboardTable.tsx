@@ -89,7 +89,7 @@ const columns = [
     meta: { className: "hidden md:table-cell" },
     cell: (info) => {
       const { total_contracts, won_contracts } = info.row.original
-      if (!total_contracts) return <span className="text-zinc-600">—</span>
+      if (!total_contracts) return <span className="text-zinc-600">  </span>
       const pct = Math.round((won_contracts / total_contracts) * 100)
       const color = pct >= 60 ? "bg-green-500" : pct >= 30 ? "bg-yellow-400" : "bg-zinc-500"
       return (

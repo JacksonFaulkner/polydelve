@@ -101,7 +101,7 @@ export default function App() {
       alert(`Contract bought! Max payout: ${data.max_payout} sch · ${Number(data.multiplier).toFixed(1)}×`);
       authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {});
     } catch {
-      alert("Network error — is the backend running?");
+      alert("Network error. is the backend running?");
     }
   }
 

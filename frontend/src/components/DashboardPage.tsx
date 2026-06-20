@@ -173,7 +173,7 @@ function StatCard({
 }
 
 function GradeScore({ grade }: { grade: number | null }) {
-  if (grade == null) return <span className="text-zinc-600">—</span>
+  if (grade == null) return <span className="text-zinc-600">  </span>
   const g = Math.round(grade * 10) / 10
   const color = g >= 8 ? "text-red-400 border-red-500/30 bg-red-500/10"
     : g >= 6 ? "text-orange-400 border-orange-500/30 bg-orange-500/10"
@@ -252,7 +252,7 @@ function ContractTable({
                   <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-zinc-300">
-                    {c.status === "open" ? (c.current_sell_value?.toLocaleString() ?? "—") : "—"}
+                    {c.status === "open" ? (c.current_sell_value?.toLocaleString() ?? "") : ""}
                   </td>
                   <td className={`px-4 py-3 text-right tabular-nums font-medium ${pnlColor(pnl)}`}>
                     {pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}
@@ -285,8 +285,8 @@ function ContractTable({
                         <Detail label="Expires" value={c.expires_at} />
                         <Detail label="Multiplier" value={`${c.multiplier.toFixed(2)}×`} />
                         <Detail label="Open probability" value={`${(c.opening_probability * 100).toFixed(1)}%`} />
-                        <Detail label="CVSS threshold" value={c.cvss_threshold != null ? `≥ ${c.cvss_threshold}` : "—"} />
-                        <Detail label="EPSS threshold" value={c.epss_threshold != null ? `≥ ${(c.epss_threshold * 100).toFixed(1)}%` : "—"} />
+                        <Detail label="CVSS threshold" value={c.cvss_threshold != null ? `≥ ${c.cvss_threshold}` : ""} />
+                        <Detail label="EPSS threshold" value={c.epss_threshold != null ? `≥ ${(c.epss_threshold * 100).toFixed(1)}%` : ""} />
                         <Detail label="Market type" value={c.market_type} />
                       </div>
                       <ContractSimChart
