@@ -1,11 +1,11 @@
 locals {
   secrets = {
-    motherduck_token = var.motherduck_token
-    openai_api_key   = var.openai_api_key
-    exa_api_key      = var.exa_api_key
-    gcp_sa_json      = var.gcp_sa_json
-    auth0_domain     = var.auth0_domain
-    auth0_audience   = var.auth0_audience
+    openai_api_key = var.openai_api_key
+    exa_api_key    = var.exa_api_key
+    gcp_sa_json    = var.gcp_sa_json
+    bq_sa_json     = var.bq_sa_json
+    auth0_domain   = var.auth0_domain
+    auth0_audience = var.auth0_audience
   }
 }
 

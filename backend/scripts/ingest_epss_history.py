@@ -1,17 +1,19 @@
 """
-Bulk-ingest historical EPSS scores into DuckDB (uses DB_PATH env var, default: polydelve.dev.duckdb).
+Bulk-ingest historical EPSS scores into Postgres.
 
-Reads pre-downloaded CSV.GZ files from /tmp/epss_csv/ via DuckDB read_csv (vectorized).
-Downloads any missing files first.
+Downloads daily CSV.GZ files from empiricalsecurity.com, joins against
+cve_history to find tracked packages, upserts into epss_history.
 
-Earliest available date from empiricalsecurity.com: 2021-04-14
+Earliest available date: 2021-04-14
 
 Usage:
   uv run python scripts/ingest_epss_history.py --start 2021-04-14
   uv run python scripts/ingest_epss_history.py --start 2021-04-14 --end 2026-03-01
-  uv run python scripts/ingest_epss_history.py --skip-download  # use cached files only
+  uv run python scripts/ingest_epss_history.py --skip-download
 """
 import argparse
+import csv
+import gzip
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -41,10 +43,24 @@ def download_day(day: date) -> tuple[date, bool]:
         return day, False
 
 
+def load_epss_csv(path: Path) -> dict[str, float]:
+    """Parse EPSS CSV.GZ → {cve_id: epss_score}."""
+    scores: dict[str, float] = {}
+    with gzip.open(path, "rt") as f:
+        next(f)  # skip comment line (#model_version:...)
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                scores[row["cve"]] = float(row["epss"])
+            except (KeyError, ValueError):
+                pass
+    return scores
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--days", type=int, default=90)
-    parser.add_argument("--start", help="YYYY-MM-DD")
+    parser.add_argument("--start", help="YYYY-MM-DD (earliest: 2021-04-14)")
     parser.add_argument("--end", help="YYYY-MM-DD (default: yesterday)")
     parser.add_argument("--workers", type=int, default=DOWNLOAD_WORKERS)
     parser.add_argument("--skip-download", action="store_true")
@@ -61,7 +77,7 @@ def main() -> None:
     if not args.skip_download:
         missing = [d for d in all_days if not (CACHE_DIR / f"epss_{d.isoformat()}.csv.gz").exists()]
         if missing:
-            print(f"\nPhase 1: downloading {len(missing)} missing files…", flush=True)
+            print(f"\nPhase 1: downloading {len(missing)} missing files...", flush=True)
             with ThreadPoolExecutor(max_workers=args.workers) as pool:
                 futures = {pool.submit(download_day, d): d for d in missing}
                 done = 0
@@ -70,57 +86,57 @@ def main() -> None:
                     if done % 100 == 0 or done == len(missing):
                         print(f"  {done}/{len(missing)}", flush=True)
         else:
-            print("Phase 1: all files cached, skipping download.", flush=True)
+            print("Phase 1: all files cached.", flush=True)
 
-    # Phase 2: DuckDB vectorized load
-    print("\nPhase 2: loading via DuckDB read_csv…", flush=True)
-    conn = get_db_conn()
+    # Phase 2: load CVE → package mapping from DB
+    print("\nPhase 2: loading CVE → package map from DB...", flush=True)
+    conn = get_db_conn(autocommit=True)
+    cur = conn.cursor()
 
-    # Build temp CVE→package mapping table
-    conn.execute("""
-        CREATE TEMP TABLE _pkg_cves AS
-        SELECT name, ecosystem, cve_id
-        FROM cve_history
-        WHERE cve_id LIKE 'CVE-%'
-    """)
-    n_cves = conn.execute("SELECT COUNT(DISTINCT cve_id) FROM _pkg_cves").fetchone()[0]
-    print(f"Tracked CVEs: {n_cves}", flush=True)
+    cur.execute("SELECT name, ecosystem, cve_id FROM cve_history WHERE cve_id LIKE 'CVE-%'")
+    rows = cur.fetchall()
+    # cve_id → list of (name, ecosystem)
+    cve_to_pkgs: dict[str, list[tuple[str, str]]] = {}
+    for name, ecosystem, cve_id in rows:
+        cve_to_pkgs.setdefault(cve_id, []).append((name, ecosystem))
+    print(f"Tracked CVEs: {len(cve_to_pkgs)}  packages: {len({(n,e) for v in cve_to_pkgs.values() for n,e in v})}", flush=True)
 
+    # Phase 3: process each day
+    print("\nPhase 3: upserting epss_history...", flush=True)
     total_rows = 0
     for i, day in enumerate(all_days, 1):
         path = CACHE_DIR / f"epss_{day.isoformat()}.csv.gz"
         if not path.exists() or path.stat().st_size < 1000:
             continue
         try:
-            rows = conn.execute(
-                f"""
-                INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
-                SELECT
-                    pc.name,
-                    pc.ecosystem,
-                    MAX(CAST(e.epss AS FLOAT)),
-                    DATE '{day.isoformat()}'
-                FROM read_csv(
-                    '{path}',
-                    skip=1,
-                    header=true,
-                    columns={{'cve':'VARCHAR','epss':'VARCHAR','percentile':'VARCHAR'}}
-                ) AS e
-                JOIN _pkg_cves pc ON pc.cve_id = e.cve
-                GROUP BY pc.name, pc.ecosystem
-                ON CONFLICT (name, ecosystem, recorded_at)
-                    DO UPDATE SET epss_score = excluded.epss_score
-                RETURNING 1
-                """
-            ).fetchall()
-            n = len(rows)
+            epss_map = load_epss_csv(path)
+
+            # Compute max EPSS per package for this day
+            pkg_epss: dict[tuple[str, str], float] = {}
+            for cve_id, score in epss_map.items():
+                for name, ecosystem in cve_to_pkgs.get(cve_id, []):
+                    key = (name, ecosystem)
+                    if score > pkg_epss.get(key, 0.0):
+                        pkg_epss[key] = score
+
+            if pkg_epss:
+                cur.executemany(
+                    """
+                    INSERT INTO epss_history (name, ecosystem, epss_score, recorded_at)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (name, ecosystem, recorded_at) DO UPDATE
+                        SET epss_score = EXCLUDED.epss_score
+                    """,
+                    [(name, eco, score, day) for (name, eco), score in pkg_epss.items()],
+                )
+            n = len(pkg_epss)
         except Exception as ex:
             print(f"  WARN {day}: {ex}", flush=True)
             n = 0
 
         total_rows += n
         if i % 50 == 0 or i == len(all_days):
-            print(f"  [{i}/{len(all_days)}] {day}: {n} pkgs | total: {total_rows}", flush=True)
+            print(f"  [{i}/{len(all_days)}] {day}: {n} pkgs | total={total_rows}", flush=True)
 
     conn.close()
     print(f"\nDone. Total rows upserted: {total_rows}", flush=True)

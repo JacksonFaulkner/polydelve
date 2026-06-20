@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react"
-import { ChevronLeft, ChevronRight, ShieldAlert, Flame, AlertTriangle, Globe, Bell } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import type { NewsItem, NewsResponse } from "@/types"
 import { useApi } from "@/lib/api"
 import { PackageModal } from "./PackageModal"
@@ -11,33 +11,6 @@ const SEVERITY_FILTERS = ["all", "critical", "high", "medium", "low"] as const
 
 interface SelectedPkg { name: string; ecosystem: string }
 
-const SEV_GRADIENT: Record<string, string> = {
-  critical: "from-purple-950/60 to-transparent",
-  high:     "from-orange-950/60 to-transparent",
-  medium:   "from-yellow-950/40 to-transparent",
-  low:      "from-zinc-900/60 to-transparent",
-}
-
-const SEV_ICON: Record<string, React.ElementType> = {
-  critical: ShieldAlert,
-  high:     Flame,
-  medium:   AlertTriangle,
-  low:      Globe,
-}
-
-const EXPLOIT_LABEL: Record<string, string> = {
-  actively_exploited: "Active",
-  poc_available: "PoC",
-  patched: "Patched",
-  unpatched: "Unpatched",
-}
-
-const EXPLOIT_STYLES: Record<string, string> = {
-  actively_exploited: "bg-purple-900/60 text-purple-300",
-  poc_available: "bg-orange-900/60 text-orange-300",
-  patched: "bg-green-900/60 text-green-300",
-  unpatched: "bg-zinc-700 text-zinc-400",
-}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -47,37 +20,87 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-function newsBackground(item: NewsItem) {
-  const grad = item.severity ? SEV_GRADIENT[item.severity] : "from-zinc-900/60 to-transparent"
+type CardSize = "large" | "medium" | "small"
+const CARD_SIZES: CardSize[] = ["small", "medium", "medium", "small", "small", "medium"]
+
+function screenshotUrl(url: string) {
+  return `https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`
+}
+
+const SUMMARY_LINES: Record<CardSize, string> = {
+  large:  "line-clamp-8",
+  medium: "line-clamp-8",
+  small:  "line-clamp-4",
+}
+
+const THUMB_MAX_H: Record<CardSize, string> = {
+  large:  "group-hover:max-h-52",
+  medium: "group-hover:max-h-40",
+  small:  "group-hover:max-h-28",
+}
+
+function faviconUrl(url: string) {
+  try {
+    const domain = new URL(url).hostname
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`
+  } catch { return null }
+}
+
+function newsBackground(item: NewsItem, size: CardSize) {
+  const favicon = faviconUrl(item.url)
+
   return (
-    <div className={`absolute inset-0 bg-gradient-to-b ${grad} pointer-events-none`}>
-      {item.affected_packages.length > 0 && (
-        <div className="absolute bottom-16 left-4 right-4 flex flex-wrap gap-1 opacity-40">
-          {item.affected_packages.slice(0, 6).map((p) => (
-            <span key={`${p.ecosystem}:${p.name}`} className="rounded bg-zinc-700 px-1.5 py-0.5 font-mono text-[9px] text-zinc-300">
-              {p.name}
-            </span>
-          ))}
+    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl flex flex-col">
+      {/* screenshot — slides down from top on hover */}
+      <div className={`relative w-full max-h-0 overflow-hidden transition-[max-height] duration-500 ease-in-out ${THUMB_MAX_H[size]}`}>
+        <img
+          src={screenshotUrl(item.url)}
+          alt=""
+          className="w-full object-cover object-top"
+          loading="lazy"
+        />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-[#181D21]" />
+      </div>
+
+      {/* content */}
+      <div className="flex flex-col px-4 pt-3 pb-4 group-hover:pt-2 transition-[padding] duration-300 flex-1 min-h-0">
+        {/* source metadata — top */}
+        <div className="flex items-center gap-1.5 mb-2 shrink-0">
+          {favicon && <img src={favicon} alt="" className="h-3.5 w-3.5 rounded-sm opacity-70" />}
+          <span className="text-[10px] font-medium text-zinc-400">{item.source_name}</span>
+          <span className="text-zinc-700">·</span>
+          <span className="text-[10px] text-zinc-600">{timeAgo(item.published_at)}</span>
+          {item.severity && (
+            <>
+              <span className="text-zinc-700">·</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{item.severity}</span>
+            </>
+          )}
         </div>
-      )}
-      {item.exploit_status && (
-        <span className={`absolute top-3 right-3 rounded px-1.5 py-0.5 text-[10px] font-medium ${EXPLOIT_STYLES[item.exploit_status]}`}>
-          {EXPLOIT_LABEL[item.exploit_status]}
-        </span>
-      )}
-      <div className="absolute bottom-2 right-3 text-[10px] text-zinc-600">
-        {item.source_name} · {timeAgo(item.published_at)}
+
+        <p className={`font-bold text-zinc-100 leading-snug shrink-0 ${size === "small" ? "text-xs line-clamp-4" : "text-sm line-clamp-4"}`}>
+          {item.title}
+        </p>
+
+        {item.summary && (
+          <div className={`border-t border-zinc-800/60 mt-2 pt-2 flex-1 overflow-hidden transition-all duration-300 ${size === "small" ? "group-hover:hidden" : ""}`}>
+            <p className={`text-zinc-400 leading-relaxed text-xs ${SUMMARY_LINES[size]}`}>
+              {item.summary}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 const BENTO_LAYOUTS = [
-  "lg:row-start-1 lg:row-end-4 lg:col-start-2 lg:col-end-3",
-  "lg:col-start-1 lg:col-end-2 lg:row-start-1 lg:row-end-3",
-  "lg:col-start-1 lg:col-end-2 lg:row-start-3 lg:row-end-4",
-  "lg:col-start-3 lg:col-end-4 lg:row-start-1 lg:row-end-2",
-  "lg:col-start-3 lg:col-end-4 lg:row-start-2 lg:row-end-4",
+  "lg:col-start-1 lg:col-end-2 lg:row-start-1 lg:row-end-2",  // left top — small
+  "lg:col-start-1 lg:col-end-2 lg:row-start-2 lg:row-end-4",  // left bottom — medium
+  "lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-end-3",  // center top — medium
+  "lg:col-start-2 lg:col-end-3 lg:row-start-3 lg:row-end-4",  // center bottom — small
+  "lg:col-start-3 lg:col-end-4 lg:row-start-1 lg:row-end-2",  // right top — small
+  "lg:col-start-3 lg:col-end-4 lg:row-start-2 lg:row-end-4",  // right bottom — medium
 ]
 
 export function NewsPage() {
@@ -108,7 +131,7 @@ export function NewsPage() {
   useEffect(() => { setPage(1); setSlide(0) }, [severity])
 
   const slides: NewsItem[][] = []
-  for (let i = 0; i < items.length; i += 5) slides.push(items.slice(i, i + 5))
+  for (let i = 0; i < items.length; i += 6) slides.push(items.slice(i, i + 6))
   const current = slides[slide] ?? []
   const totalSlides = slides.length
 
@@ -167,17 +190,17 @@ export function NewsPage() {
         ) : (
           <div className="flex-1 min-h-0 overflow-hidden">
             <BentoGrid className="h-full lg:grid-rows-3 [&>*]:bg-[#181D21] [&>*]:dark:[box-shadow:none] [&>*]:dark:[border:1px_solid_rgb(39_39_42)]">
-              {current.slice(0, 5).map((item, i) => {
-                const Icon = item.severity ? SEV_ICON[item.severity] : Bell
+              {current.slice(0, 6).map((item, i) => {
+                const size = CARD_SIZES[i] ?? "small"
                 return (
                   <BentoCard
                     key={item.id}
-                    name={item.title}
-                    description={item.summary ?? ""}
+                    name=""
+                    description=""
                     href={item.url}
                     cta="Read article"
-                    Icon={Icon}
-                    background={newsBackground(item)}
+                    Icon={() => null}
+                    background={newsBackground(item, size)}
                     className={BENTO_LAYOUTS[i] ?? ""}
                   />
                 )

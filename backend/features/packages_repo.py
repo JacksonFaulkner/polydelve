@@ -27,7 +27,7 @@ def list_packages(
             p.has_mal_advisory,
             p.sectors,
             p.logo_url,
-            cardinality(p.cve_ids) AS num_cves,
+            COUNT(DISTINCT ch.cve_id)   AS num_cves,
             COUNT(DISTINCT np.news_id)  AS news_mentions,
             MAX(ch.published_date)      AS latest_cve_date,
             MAX(ch.severity)            AS worst_severity,
@@ -40,8 +40,7 @@ def list_packages(
         WHERE {where}
         GROUP BY
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
-            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
-            cardinality(p.cve_ids)
+            p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url
         ORDER BY {sort_col} DESC NULLS LAST
         LIMIT %s OFFSET %s
         """,
@@ -57,7 +56,7 @@ def get_package(conn: Any, name: str, ecosystem: str) -> tuple | None:
         SELECT
             p.name, p.ecosystem, p.weekly_downloads, p.epss_score,
             p.risk_score, p.has_mal_advisory, p.sectors, p.logo_url,
-            p.cve_ids, p.last_enriched_at
+            p.last_enriched_at
         FROM packages p
         WHERE p.name = %s AND p.ecosystem = %s
         """,

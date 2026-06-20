@@ -26,9 +26,13 @@ def get_db(request: Request):  # noqa: ARG001
         conn.close()
 
 
-def get_db_conn():
+def get_db_conn(autocommit: bool = False):
     """Direct connection for scripts (no FastAPI Request context)."""
-    return _connect()
+    conn = psycopg2.connect(DATABASE_URL)
+    if autocommit:
+        conn.autocommit = True
+    register_vector(conn)
+    return conn
 
 
 def init_db(conn) -> None:  # kept for test compat, no-op — schema managed by Alembic

@@ -38,7 +38,10 @@ resource "aws_iam_role_policy" "execution_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [for s in aws_secretsmanager_secret.app : s.arn]
+      Resource = concat(
+        [for s in aws_secretsmanager_secret.app : s.arn],
+        [aws_secretsmanager_secret.db_url.arn]
+      )
     }]
   })
 }

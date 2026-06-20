@@ -130,7 +130,15 @@ async def _insert_packages(
 
 
 async def ingest(conn: Any, article: RecentNews) -> str:
-    """Insert article if not already stored. Returns 'inserted', 'url_duplicate', or 'semantic_duplicate'."""
+    """Insert article if not already stored. Returns 'inserted', 'url_duplicate', 'semantic_duplicate', or 'too_old'."""
+    from datetime import datetime, timedelta, timezone
+    pub = article.analysis.exa.published_date
+    if pub:
+        pub_aware = pub if pub.tzinfo else pub.replace(tzinfo=timezone.utc)
+        age = datetime.now(timezone.utc) - pub_aware
+        if age > timedelta(days=14):
+            return "too_old"
+
     if _exists(conn, article.id):
         return "url_duplicate"
 
@@ -146,7 +154,7 @@ async def ingest(conn: Any, article: RecentNews) -> str:
 
 
 async def ingest_many(conn: Any, articles: list[RecentNews]) -> dict[str, int]:
-    counts: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0}
+    counts: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0, "too_old": 0}
     for article in articles:
         result = await ingest(conn, article)
         counts[result] += 1

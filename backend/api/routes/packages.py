@@ -43,9 +43,9 @@ def list_packages(
         filters.append("%s = ANY(p.sectors)")
         params.append(sector)
     if has_cves is True:
-        filters.append("cardinality(p.cve_ids) > 0")
+        filters.append("EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem)")
     elif has_cves is False:
-        filters.append("(p.cve_ids IS NULL OR cardinality(p.cve_ids) = 0)")
+        filters.append("NOT EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem)")
     if search:
         filters.append("p.name ILIKE %s")
         params.append(f"%{search}%")
@@ -62,7 +62,7 @@ def list_packages(
         "risk_score": "p.risk_score",
         "weekly_downloads": "p.weekly_downloads",
         "epss_score": "p.epss_score",
-        "num_cves": "cardinality(p.cve_ids)",
+        "num_cves": "COUNT(DISTINCT ch.cve_id)",
     }[sort]
 
     offset = (page - 1) * page_size
@@ -125,8 +125,8 @@ def get_package(
         "has_mal_advisory": row[5],
         "sectors": row[6] or [],
         "logo_url": row[7],
-        "cve_ids": row[8] or [],
-        "last_enriched_at": row[9].isoformat() if row[9] else None,
+        "cve_ids": [c[1] for c in cve_rows if c[1]],
+        "last_enriched_at": row[8].isoformat() if row[8] else None,
         "max_cvss_score": max((c[5] for c in cve_rows if c[5] is not None), default=None),
         "cve_history": [
             {

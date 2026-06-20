@@ -8,7 +8,7 @@ ifneq (,$(wildcard backend/.env))
 	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN EXA_API_KEY
 endif
 
-UV   := cd backend && uv run
+UV   := cd backend && uv run --env-file .env
 NPM  := cd frontend &&
 ANIM := cd docs/animation &&
 
@@ -36,6 +36,12 @@ help: ## Show this help message
 .PHONY: dev
 dev: ## Start Postgres + backend + frontend; Ctrl-C stops all three
 	@./scripts/dev.sh
+
+.PHONY: kill
+kill: ## Kill backend (8000), frontend (5173/5174), and stop Postgres
+	@lsof -ti:8000,5173,5174 | xargs kill -9 2>/dev/null || true
+	@cd backend && docker compose down 2>/dev/null || true
+	@echo "killed"
 
 .PHONY: be
 be: ## Start backend dev server
@@ -91,6 +97,10 @@ resolve-contracts-dry: ## Dry-run contract resolution (no writes)
 seed-packages: ## Seed packages from top npm + PyPI (CVEs + EPSS required to insert)
 	$(UV) python -c "import asyncio; from etl.jobs.packages import run_seed; from features.db import get_db_conn; conn = get_db_conn(); conn.autocommit = True; asyncio.run(run_seed(conn)); conn.close()"
 
+.PHONY: etl-seed
+etl-seed: ## Full one-time seed: stubs + CVE history + downloads + EPSS + risk_score
+	$(UV) python -m etl.run seed
+
 
 .PHONY: build-cve-history
 build-cve-history: ## Backfill CVE history for all tracked packages (requires seed-packages first)
@@ -126,6 +136,10 @@ etl-mal-cached: ## Ingest OSV MAL-* advisories using cached zips (no download)
 .PHONY: etl-packages
 etl-packages: ## Refresh package metadata (weekly)
 	$(UV) python -m etl.run packages
+
+.PHONY: etl-hourly
+etl-hourly: ## Run hourly pipeline: epss + news + mal (timed)
+	$(UV) python -m etl.run hourly
 
 .PHONY: refresh-downloads
 refresh-downloads: ## Refresh weekly_downloads + recompute risk_score (daily)

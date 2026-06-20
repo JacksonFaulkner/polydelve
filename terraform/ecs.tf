@@ -28,11 +28,6 @@ resource "aws_ecs_express_gateway_service" "backend" {
     }
 
     environment {
-      name  = "DB_PATH"
-      value = "md:polydelve"
-    }
-
-    environment {
       name  = "AVATARS_BUCKET"
       value = aws_s3_bucket.avatars.bucket
     }
@@ -43,8 +38,8 @@ resource "aws_ecs_express_gateway_service" "backend" {
     }
 
     secret {
-      name       = "MOTHERDUCK_TOKEN"
-      value_from = aws_secretsmanager_secret.app["motherduck_token"].arn
+      name       = "DATABASE_URL"
+      value_from = aws_secretsmanager_secret.db_url.arn
     }
 
     secret {

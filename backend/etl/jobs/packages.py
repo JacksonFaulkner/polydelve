@@ -1,11 +1,9 @@
 """Package enrichment jobs: downloads, CVEs, sectors, seeding."""
-import asyncio
 from typing import Any
 
 import httpx
 from tqdm.asyncio import tqdm
 
-from etl.fetch.cve import build_cve_history, fetch_top_npm, fetch_top_pypi, upsert_cve_records
 from etl.fetch.enrichment import (
     fetch_cve_ids,
     fetch_downloads_bulk,
@@ -205,25 +203,33 @@ async def run_sectors_llm(conn: Any) -> None:
     print(f"[sectors-llm] updated={updated}/{len(rows)}", flush=True)
 
 
-async def run_seed(conn: Any, top_n: int = 99_999) -> None:
-    """Bulk seed packages from top PyPI + npm lists with CVEs and EPSS."""
-    print(f"[seed] fetching top {top_n} npm + PyPI packages...", flush=True)
-    npm_names, pypi_names = await asyncio.gather(
-        fetch_top_npm(top_n),
-        fetch_top_pypi(top_n),
-    )
-    print(f"[seed] npm={len(npm_names)} pypi={len(pypi_names)}", flush=True)
-
-    packages = [(n, "npm") for n in npm_names] + [(n, "PyPI") for n in pypi_names]
-
+async def run_seed(conn: Any) -> None:
+    """Rebuild packages table from cve_history. EPSS is source of truth — no package exists without CVE data."""
     cur = conn.cursor()
+
+    # Derive package universe from cve_history
+    cur.execute("SELECT DISTINCT name, ecosystem FROM cve_history WHERE ecosystem IN ('npm', 'PyPI')")
+    pkg_pairs = cur.fetchall()
+    print(f"[seed] {len(pkg_pairs)} packages with CVEs in cve_history", flush=True)
+
+    # Wipe ghost rows (packages with no CVE data), insert real ones
+    cur.execute("DELETE FROM packages WHERE NOT EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = packages.name AND ch.ecosystem = packages.ecosystem)")
     cur.executemany(
         "INSERT INTO packages (name, ecosystem) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-        packages,
+        pkg_pairs,
     )
-    print(f"[seed] {len(packages)} package stubs inserted", flush=True)
+    print("[seed] package stubs upserted", flush=True)
 
-    print("[seed] fetching CVE history from OSV...", flush=True)
-    records = await build_cve_history(packages, progress=True)
-    upsert_cve_records(conn, records)
-    print(f"[seed] {len(records)} CVE records upserted", flush=True)
+    # Load latest epss_score from epss_history
+    cur.execute("""
+        UPDATE packages p
+        SET epss_score = sub.epss_score
+        FROM (
+            SELECT DISTINCT ON (name, ecosystem) name, ecosystem, epss_score
+            FROM epss_history
+            ORDER BY name, ecosystem, recorded_at DESC
+        ) sub
+        WHERE p.name = sub.name AND p.ecosystem = sub.ecosystem
+    """)
+    cur.execute("SELECT COUNT(*) FROM packages WHERE epss_score IS NOT NULL")
+    print(f"[seed] epss_score loaded for {cur.fetchone()[0]} packages", flush=True)

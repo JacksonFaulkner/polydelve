@@ -1,6 +1,5 @@
 """Fetch and build CVE history from OSV bulk downloads."""
 import asyncio
-import io
 import json
 import zipfile
 from dataclasses import dataclass
@@ -112,28 +111,26 @@ async def _download_bulk_ecosystem(
     if dest.exists() and dest.stat().st_size > 100_000:
         if progress:
             print(f"  {osv_eco}: using cached {dest} ({dest.stat().st_size // 1_000_000}MB)", flush=True)
-        raw = dest.read_bytes()
     else:
         if progress:
             print(f"  downloading {url} ...", flush=True)
         r = await client.get(url, timeout=120)
         r.raise_for_status()
         dest.write_bytes(r.content)
-        raw = r.content
         if progress:
-            print(f"  {osv_eco}: {len(raw)/1e6:.1f}MB saved to cache", flush=True)
+            print(f"  {osv_eco}: {dest.stat().st_size/1e6:.1f}MB saved to cache", flush=True)
 
     if progress:
         print(f"  {osv_eco}: parsing...", flush=True)
-    z = zipfile.ZipFile(io.BytesIO(raw))
     by_pkg: dict[str, list[dict]] = {}
-    for name in z.namelist():
-        vuln = json.loads(z.read(name))
-        for affected in vuln.get("affected", []):
-            pkg = affected.get("package", {})
-            if pkg.get("ecosystem", "") == osv_eco:
-                key = pkg.get("name", "").lower()
-                by_pkg.setdefault(key, []).append(vuln)
+    with zipfile.ZipFile(dest) as z:
+        for name in z.namelist():
+            vuln = json.loads(z.read(name))
+            for affected in vuln.get("affected", []):
+                pkg = affected.get("package", {})
+                if pkg.get("ecosystem", "") == osv_eco:
+                    key = pkg.get("name", "").lower()
+                    by_pkg.setdefault(key, []).append(vuln)
     return by_pkg
 
 

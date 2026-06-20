@@ -7,6 +7,5 @@ __pycache__/
 outputs/
 tests/
 docs/
-scripts/
 *.md
 mkdocs.yml

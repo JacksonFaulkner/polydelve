@@ -274,8 +274,10 @@ def price_contract(
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT epss_score, cardinality(cve_ids), has_mal_advisory
-        FROM packages WHERE name = %s AND ecosystem = %s
+        SELECT p.epss_score,
+               (SELECT COUNT(*) FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem),
+               p.has_mal_advisory
+        FROM packages p WHERE p.name = %s AND p.ecosystem = %s
         """,
         [package_name, ecosystem],
     )
