@@ -10,6 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: polydelve
+          POSTGRES_PASSWORD: polydelve
+          POSTGRES_DB: polydelve_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +44,8 @@ jobs:
 
       - name: Run backend tests
         working-directory: backend
+        env:
+          DATABASE_URL: postgresql://polydelve:polydelve@localhost:5432/polydelve_dev
         run: uv run pytest --tb=short
 
       - uses: actions/setup-node@v4
