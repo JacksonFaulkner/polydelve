@@ -95,11 +95,11 @@ export function MarketSpotlight({ markets, onBet, showTitle = true }: Props) {
               <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-rose-900/50 text-rose-300">MAL</span>
             )}
             {market.package.epss_score != null && (
-              <span className="text-[10px] text-zinc-500">EPSS <span className="text-zinc-300">{(market.package.epss_score * 100).toFixed(1)}%</span></span>
+              <span className="text-[10px] text-zinc-400">EPSS <span className="text-zinc-300">{(market.package.epss_score * 100).toFixed(1)}%</span></span>
             )}
-            <span className="text-[10px] text-zinc-500">Payout <span className="text-emerald-400">{multiplier}×</span></span>
-            <span className="text-[10px] text-zinc-500">Price <span className="text-zinc-300">{purchase_price} <SchmeckleIcon className="inline h-3 w-3" /></span></span>
-            <span className="text-[10px] text-zinc-500">Duration <span className="text-zinc-300">{duration_days}d</span></span>
+            <span className="text-[10px] text-zinc-400">Payout <span className="text-emerald-400">{multiplier}×</span></span>
+            <span className="text-[10px] text-zinc-400">Price <span className="text-zinc-300">{purchase_price} <SchmeckleIcon className="inline h-3 w-3" /></span></span>
+            <span className="text-[10px] text-zinc-400">Duration <span className="text-zinc-300">{duration_days}d</span></span>
           </div>
           <h2 className="text-sm font-medium leading-snug text-zinc-100">{market.title}</h2>
         </div>
@@ -118,7 +118,7 @@ export function MarketSpotlight({ markets, onBet, showTitle = true }: Props) {
       </AnimatePresence>
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="shrink-0 text-xs text-zinc-500">{market.bet_count.toLocaleString()} bets</span>
+        <span className="shrink-0 text-xs text-zinc-400">{market.bet_count.toLocaleString()} bets</span>
         {markets.length > 1 && (
           <div className="flex flex-1 flex-wrap items-center justify-center gap-2">
             {markets.map((m, i) => (

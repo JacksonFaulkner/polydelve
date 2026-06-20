@@ -186,6 +186,103 @@ function GradeScore({ grade }: { grade: number | null }) {
   )
 }
 
+function ContractCard({
+  c,
+  onSell,
+  selling,
+  showSell,
+}: {
+  c: UserContract
+  onSell: (id: string) => void
+  selling: string | null
+  showSell: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : (c.current_sell_value ?? c.purchase_price)
+  const pnl = sellVal - c.purchase_price
+  const days = daysUntil(c.expires_at)
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-[#1C2229] p-4">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="min-w-0">
+          <span className="font-medium text-white truncate block">{c.package_name}</span>
+          <span className="text-xs text-zinc-500">{c.ecosystem}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <GradeScore grade={c.package_grade} />
+          <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium capitalize ${STATUS_STYLE[c.status] ?? STATUS_STYLE.expired}`}>
+            {c.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+        <div>
+          <p className="text-zinc-600 mb-0.5">Cost</p>
+          <p className="tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-zinc-600 mb-0.5">Max payout</p>
+          <p className="tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-zinc-600 mb-0.5">P&L</p>
+          <p className={`tabular-nums font-medium ${pnlColor(pnl)}`}>{pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-zinc-500">
+          {c.status === "open"
+            ? days === 0 ? <span className="text-red-400">Expires today</span> : `Expires in ${days}d`
+            : c.resolved_at ? c.resolved_at.slice(0, 10) : c.expires_at.slice(0, 10)}
+        </span>
+        <div className="flex items-center gap-2">
+          {showSell && (
+            <button
+              onClick={() => onSell(c.id)}
+              disabled={selling === c.id || c.status !== "open"}
+              className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {selling === c.id ? "..." : "Sell"}
+            </button>
+          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-zinc-800">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs mb-4">
+            <Detail label="Contract ID" value={c.id.slice(0, 8) + "…"} />
+            <Detail label="Opened" value={c.created_at.slice(0, 10)} />
+            <Detail label="Multiplier" value={`${c.multiplier.toFixed(2)}×`} />
+            <Detail label="Open probability" value={`${(c.opening_probability * 100).toFixed(1)}%`} />
+            <Detail label="CVSS threshold" value={c.cvss_threshold != null ? `≥ ${c.cvss_threshold}` : ""} />
+            <Detail label="EPSS threshold" value={c.epss_threshold != null ? `≥ ${(c.epss_threshold * 100).toFixed(1)}%` : ""} />
+          </div>
+          <ContractSimChart
+            packageName={c.package_name}
+            ecosystem={c.ecosystem}
+            cvssThreshold={c.cvss_threshold}
+            purchasePrice={c.purchase_price}
+            durationDays={(() => {
+              const d = Math.round((new Date(c.expires_at).getTime() - new Date(c.created_at).getTime()) / 86400000)
+              return d <= 7 ? 7 : d <= 14 ? 14 : 30
+            })()}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ContractTable({
   contracts,
   onSell,
@@ -205,109 +302,119 @@ function ContractTable({
   })
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
-            <th className="w-6 px-3 py-2.5" />
-            <th className="px-4 py-2.5 font-medium">Package</th>
-            <th className="px-4 py-2.5 font-medium">Risk</th>
-            <th className="px-4 py-2.5 font-medium">Status</th>
-            <th className="px-4 py-2.5 font-medium text-right">Cost</th>
-            <th className="px-4 py-2.5 font-medium text-right">Max payout</th>
-            <th className="px-4 py-2.5 font-medium text-right">Sell value</th>
-            <th className="px-4 py-2.5 font-medium text-right">P&L</th>
-            <th className="px-4 py-2.5 font-medium">Expires</th>
-            {showSell && <th className="px-4 py-2.5" />}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-800/60">
-          {contracts.map((c) => {
-            const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : (c.current_sell_value ?? c.purchase_price)
-            const pnl = sellVal - c.purchase_price
-            const days = daysUntil(c.expires_at)
-            const isOpen = expanded.has(c.id)
+    <>
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-3">
+        {contracts.map((c) => (
+          <ContractCard key={c.id} c={c} onSell={onSell} selling={selling} showSell={showSell} />
+        ))}
+      </div>
 
-            return (
-              <Fragment key={c.id}>
-                <tr
-                  className="bg-[#1C2229] hover:bg-zinc-800/40 transition-colors cursor-pointer"
-                  onClick={() => toggle(c.id)}
-                >
-                  <td className="px-3 py-3 text-zinc-600">
-                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-white">{c.package_name}</span>
-                    <span className="ml-1.5 text-xs text-zinc-500">{c.ecosystem}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <GradeScore grade={c.package_grade} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium capitalize ${STATUS_STYLE[c.status] ?? STATUS_STYLE.expired}`}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-300">
-                    {c.status === "open" ? (c.current_sell_value?.toLocaleString() ?? "") : ""}
-                  </td>
-                  <td className={`px-4 py-3 text-right tabular-nums font-medium ${pnlColor(pnl)}`}>
-                    {pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-400">
-                    {c.status === "open" ? (
-                      days === 0 ? <span className="text-red-400">Today</span> : `${days}d`
-                    ) : (
-                      c.resolved_at ? c.resolved_at.slice(0, 10) : c.expires_at.slice(0, 10)
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-zinc-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+              <th className="w-6 px-3 py-2.5" />
+              <th className="px-4 py-2.5 font-medium">Package</th>
+              <th className="px-4 py-2.5 font-medium">Risk</th>
+              <th className="px-4 py-2.5 font-medium">Status</th>
+              <th className="px-4 py-2.5 font-medium text-right">Cost</th>
+              <th className="px-4 py-2.5 font-medium text-right">Max payout</th>
+              <th className="px-4 py-2.5 font-medium text-right">Sell value</th>
+              <th className="px-4 py-2.5 font-medium text-right">P&L</th>
+              <th className="px-4 py-2.5 font-medium">Expires</th>
+              {showSell && <th className="px-4 py-2.5" />}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/60">
+            {contracts.map((c) => {
+              const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : (c.current_sell_value ?? c.purchase_price)
+              const pnl = sellVal - c.purchase_price
+              const days = daysUntil(c.expires_at)
+              const isOpen = expanded.has(c.id)
+
+              return (
+                <Fragment key={c.id}>
+                  <tr
+                    className="bg-[#1C2229] hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                    onClick={() => toggle(c.id)}
+                  >
+                    <td className="px-3 py-3 text-zinc-600">
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-white">{c.package_name}</span>
+                      <span className="ml-1.5 text-xs text-zinc-500">{c.ecosystem}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <GradeScore grade={c.package_grade} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium capitalize ${STATUS_STYLE[c.status] ?? STATUS_STYLE.expired}`}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">
+                      {c.status === "open" ? (c.current_sell_value?.toLocaleString() ?? "") : ""}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums font-medium ${pnlColor(pnl)}`}>
+                      {pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">
+                      {c.status === "open" ? (
+                        days === 0 ? <span className="text-red-400">Today</span> : `${days}d`
+                      ) : (
+                        c.resolved_at ? c.resolved_at.slice(0, 10) : c.expires_at.slice(0, 10)
+                      )}
+                    </td>
+                    {showSell && (
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => onSell(c.id)}
+                          disabled={selling === c.id || c.status !== "open"}
+                          className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {selling === c.id ? "..." : "Sell"}
+                        </button>
+                      </td>
                     )}
-                  </td>
-                  {showSell && (
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onSell(c.id)}
-                        disabled={selling === c.id || c.status !== "open"}
-                        className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {selling === c.id ? "..." : "Sell"}
-                      </button>
-                    </td>
-                  )}
-                </tr>
-                {isOpen && (
-                  <tr className="bg-zinc-900/60 border-b border-zinc-800/60">
-                    <td colSpan={showSell ? 10 : 9} className="px-8 py-4">
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-xs sm:grid-cols-4 mb-4">
-                        <Detail label="Contract ID" value={c.id.slice(0, 8) + "…"} />
-                        <Detail label="Opened" value={c.created_at.slice(0, 10)} />
-                        <Detail label="Expires" value={c.expires_at} />
-                        <Detail label="Multiplier" value={`${c.multiplier.toFixed(2)}×`} />
-                        <Detail label="Open probability" value={`${(c.opening_probability * 100).toFixed(1)}%`} />
-                        <Detail label="CVSS threshold" value={c.cvss_threshold != null ? `≥ ${c.cvss_threshold}` : ""} />
-                        <Detail label="EPSS threshold" value={c.epss_threshold != null ? `≥ ${(c.epss_threshold * 100).toFixed(1)}%` : ""} />
-                        <Detail label="Market type" value={c.market_type} />
-                      </div>
-                      <ContractSimChart
-                        packageName={c.package_name}
-                        ecosystem={c.ecosystem}
-                        cvssThreshold={c.cvss_threshold}
-                        purchasePrice={c.purchase_price}
-                        durationDays={(() => {
-                          const d = Math.round((new Date(c.expires_at).getTime() - new Date(c.created_at).getTime()) / 86400000)
-                          return d <= 7 ? 7 : d <= 14 ? 14 : 30
-                        })()}
-                      />
-                    </td>
                   </tr>
-                )}
-              </Fragment>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+                  {isOpen && (
+                    <tr className="bg-zinc-900/60 border-b border-zinc-800/60">
+                      <td colSpan={showSell ? 10 : 9} className="px-8 py-4">
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-xs sm:grid-cols-4 mb-4">
+                          <Detail label="Contract ID" value={c.id.slice(0, 8) + "…"} />
+                          <Detail label="Opened" value={c.created_at.slice(0, 10)} />
+                          <Detail label="Expires" value={c.expires_at} />
+                          <Detail label="Multiplier" value={`${c.multiplier.toFixed(2)}×`} />
+                          <Detail label="Open probability" value={`${(c.opening_probability * 100).toFixed(1)}%`} />
+                          <Detail label="CVSS threshold" value={c.cvss_threshold != null ? `≥ ${c.cvss_threshold}` : ""} />
+                          <Detail label="EPSS threshold" value={c.epss_threshold != null ? `≥ ${(c.epss_threshold * 100).toFixed(1)}%` : ""} />
+                          <Detail label="Market type" value={c.market_type} />
+                        </div>
+                        <ContractSimChart
+                          packageName={c.package_name}
+                          ecosystem={c.ecosystem}
+                          cvssThreshold={c.cvss_threshold}
+                          purchasePrice={c.purchase_price}
+                          durationDays={(() => {
+                            const d = Math.round((new Date(c.expires_at).getTime() - new Date(c.created_at).getTime()) / 86400000)
+                            return d <= 7 ? 7 : d <= 14 ? 14 : 30
+                          })()}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 

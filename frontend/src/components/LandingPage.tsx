@@ -7,7 +7,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ backgroundColor: "#15191D" }}>
       <div className="flex items-center gap-3 mb-8">
-        <img src="/logo.png" alt="Polydelve" className="h-14 object-contain invert" />
+        <img src="/logo.png" alt="Polydelve" width={56} height={56} className="h-14 object-contain invert" />
         <span className="text-3xl font-bold tracking-tight text-white">Polydelve</span>
       </div>
 

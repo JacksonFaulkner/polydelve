@@ -6,6 +6,14 @@ import {
   createColumnHelper,
   type SortingState,
 } from "@tanstack/react-table"
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    mobileHidden?: boolean
+    className?: string
+  }
+}
 import type { Package, PackageListResponse } from "@/types"
 import { Search } from "lucide-react"
 import { Tooltip } from "@/components/ui/Tooltip"
@@ -85,6 +93,7 @@ const columns = [
     },
   }),
   col.accessor("weekly_downloads", {
+    meta: { mobileHidden: true },
     header: () => (
       <ColHeader
         label="Weekly DL"
@@ -150,6 +159,7 @@ const columns = [
     },
   }),
   col.accessor("worst_severity", {
+    meta: { mobileHidden: true },
     header: () => (
       <ColHeader
         label="Severity"
@@ -170,6 +180,7 @@ const columns = [
     },
   }),
   col.accessor("risk_score", {
+    meta: { mobileHidden: true },
     header: () => (
       <ColHeader
         label="Risk Score"
@@ -183,6 +194,7 @@ const columns = [
     },
   }),
   col.accessor("has_mal_advisory", {
+    meta: { mobileHidden: true },
     header: () => (
       <ColHeader
         label="MAL"
@@ -245,6 +257,7 @@ export function PackagesTable({ ecosystem }: Props) {
 
   const latestCveDateCol = col.accessor("latest_cve_date", {
     id: "latest_cve_date",
+    meta: { mobileHidden: true },
     header: () => (
       <div className="flex flex-col gap-1.5">
         <Tooltip
@@ -294,6 +307,7 @@ export function PackagesTable({ ecosystem }: Props) {
 
   const allColumns = [...columns, latestCveDateCol, col.accessor("sectors", {
     id: "sectors_col",
+    meta: { mobileHidden: true },
     header: () => (
       <ColHeader
         label="Sectors"
@@ -367,6 +381,31 @@ export function PackagesTable({ ecosystem }: Props) {
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
+  const pagination = (
+    <div className="flex items-center justify-between text-xs text-zinc-500">
+      <span>{total.toLocaleString()} packages</span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          ←
+        </button>
+        <span>
+          {page} / {totalPages}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages}
+          className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          →
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-3">
       {/* Search bar */}
@@ -391,105 +430,159 @@ export function PackagesTable({ ecosystem }: Props) {
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-zinc-800">
-        <table className="w-full text-sm">
-          <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-zinc-800">
-                {hg.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap ${
-                      header.column.getCanSort() ? "cursor-pointer select-none hover:text-zinc-300" : ""
-                    }`}
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <span className="flex items-center gap-1">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <span className="text-zinc-600">
-                          {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? "↕"}
-                        </span>
-                      )}
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          <p className="py-12 text-center text-zinc-500 text-sm">Loading…</p>
+        ) : data.length === 0 ? (
+          <p className="py-12 text-center text-zinc-500 text-sm">No packages found</p>
+        ) : data.map((pkg) => {
+          const key = `${pkg.ecosystem}::${pkg.name}`
+          const isExpanded = expandedKey === key
+          const epss = pkg.epss_score
+          const epssPct = epss != null ? Math.round(epss * 100) : null
+          const epssColor = epssPct != null
+            ? epssPct >= 70 ? "bg-red-500" : epssPct >= 30 ? "bg-orange-400" : "bg-zinc-500"
+            : "bg-zinc-500"
+          return (
+            <div key={key} className="rounded-xl border border-zinc-800 bg-[#1C2229]">
+              <button
+                className="w-full text-left px-4 py-3"
+                onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      pkg.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
+                    }`}>{pkg.ecosystem}</span>
+                    <span className="truncate font-mono text-sm text-zinc-100">{pkg.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {pkg.has_mal_advisory && (
+                      <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">MAL</span>
+                    )}
+                    <span className="text-zinc-600 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs">
+                  {epssPct != null && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-14 h-1.5 rounded-full bg-zinc-700">
+                        <div className={`h-1.5 rounded-full ${epssColor}`} style={{ width: `${epssPct}%` }} />
+                      </div>
+                      <span className="tabular-nums text-zinc-300">{epssPct}%</span>
+                    </div>
+                  )}
+                  {pkg.num_cves > 0 && (
+                    <span className="text-zinc-400">
+                      <span className="text-zinc-200 font-medium">{pkg.num_cves}</span> CVEs
                     </span>
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
-                  Loading…
-                </td>
-              </tr>
-            ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
-                  No packages found
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.flatMap((row) => {
-                const pkg = row.original
-                const key = `${pkg.ecosystem}::${pkg.name}`
-                const isExpanded = expandedKey === key
-                return [
-                  <tr
-                    key={row.id}
-                    onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
-                    className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-2.5">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                    <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
-                      {isExpanded ? "▲" : "▼"}
-                    </td>
-                  </tr>,
-                  ...(isExpanded
-                    ? [
-                        <PackageExpandedRow
-                          key={`${key}::expanded`}
-                          name={pkg.name}
-                          ecosystem={pkg.ecosystem}
-                          colSpan={colCount + 1}
-                        />,
-                      ]
-                    : []),
-                ]
-              })
-            )}
-          </tbody>
-        </table>
+                  )}
+                  {pkg.worst_severity && (
+                    <span className={`capitalize font-medium ${SEVERITY_COLOR[pkg.worst_severity] ?? "text-zinc-400"}`}>
+                      {pkg.worst_severity}
+                    </span>
+                  )}
+                  {pkg.latest_cve_date && (
+                    <span className="text-zinc-500 ml-auto">{pkg.latest_cve_date}</span>
+                  )}
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-zinc-800">
+                  <table className="w-full">
+                    <tbody>
+                      <PackageExpandedRow name={pkg.name} ecosystem={pkg.ecosystem} colSpan={1} />
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {data.length > 0 && pagination}
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-zinc-500">
-        <span>{total.toLocaleString()} packages</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ←
-          </button>
-          <span>
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            →
-          </button>
+      {/* Desktop table */}
+      <div className="hidden sm:block space-y-3">
+        <div className="overflow-x-auto rounded-lg border border-zinc-800">
+          <table className="w-full text-sm">
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="border-b border-zinc-800">
+                  {hg.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap ${
+                        header.column.getCanSort() ? "cursor-pointer select-none hover:text-zinc-300" : ""
+                      }`}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <span className="flex items-center gap-1">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <span className="text-zinc-600">
+                            {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? "↕"}
+                          </span>
+                        )}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
+                    Loading…
+                  </td>
+                </tr>
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
+                    No packages found
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.flatMap((row) => {
+                  const pkg = row.original
+                  const key = `${pkg.ecosystem}::${pkg.name}`
+                  const isExpanded = expandedKey === key
+                  return [
+                    <tr
+                      key={row.id}
+                      onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
+                      className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-3 py-2.5">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                      <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
+                        {isExpanded ? "▲" : "▼"}
+                      </td>
+                    </tr>,
+                    ...(isExpanded
+                      ? [
+                          <PackageExpandedRow
+                            key={`${key}::expanded`}
+                            name={pkg.name}
+                            ecosystem={pkg.ecosystem}
+                            colSpan={colCount + 1}
+                          />,
+                        ]
+                      : []),
+                  ]
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+        {pagination}
       </div>
     </div>
   )

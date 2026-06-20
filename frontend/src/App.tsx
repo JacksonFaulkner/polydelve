@@ -106,7 +106,7 @@ export default function App() {
   }
 
   const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
-  const isFullHeight = isHome || activeSector === "News";
+  const isFullHeight = isHome || activeSector === "News" || activeSector === "Predict";
 
   return (
     <div
