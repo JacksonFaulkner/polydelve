@@ -5,7 +5,6 @@ description = "Backend for Polydelve — a prediction market platform for softwa
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "duckdb>=1.5.3",
     "httpx>=0.27.0",
     "exa-py>=1.0.0",
     "google-genai>=1.0.0",
@@ -39,9 +38,6 @@ schema-export = [
     "openpyxl>=3.1.0",
     "pytz>=2026.2",
 ]
-
-[tool.ruff]
-exclude = ["scripts/export_schema_excel.py"]
 
 [tool.ruff.lint]
 ignore = ["E501"]

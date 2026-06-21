@@ -106,10 +106,6 @@ etl-seed: ## Full one-time seed: stubs + CVE history + downloads + EPSS + risk_s
 build-cve-history: ## Backfill CVE history for all tracked packages (requires seed-packages first)
 	$(UV) python scripts/build_cve_history.py
 
-.PHONY: classify-sectors-llm
-classify-sectors-llm: ## LLM sector classification — slow + costs money, run for new packages only
-	$(UV) python scripts/classify_package_sectors_llm.py
-
 ##@ Data pipeline — Scheduled (daily/frequent)
 # Target DB comes from DB_PATH in backend/.env. Override per-run for prod:
 #   make etl DB_PATH=md:polydelve
@@ -141,19 +137,7 @@ etl-packages: ## Refresh package metadata (weekly)
 etl-hourly: ## Run hourly pipeline: epss + news + mal (timed)
 	$(UV) python -m etl.run hourly
 
-.PHONY: refresh-downloads
-refresh-downloads: ## Refresh weekly_downloads + recompute risk_score (daily)
-	$(UV) python scripts/refresh_downloads.py
-
-.PHONY: enrich-sectors
-enrich-sectors: ## Heuristic sector classification for packages missing sectors (daily)
-	$(UV) python scripts/enrich_package_sectors.py
-
 ##@ Data pipeline — Export
-
-.PHONY: push-motherduck
-push-motherduck: ## Sync local DuckDB → MotherDuck prod (run last, after all enrichment)
-	$(UV) python scripts/push_to_motherduck.py
 
 .PHONY: ingest-epss-history
 ingest-epss-history: ## Bulk-load historical EPSS CSV files (weekly, expensive I/O)
