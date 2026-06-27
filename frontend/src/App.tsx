@@ -12,11 +12,13 @@ import { DashboardPage } from "./components/DashboardPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { HowItWorksPage } from "./components/HowItWorksPage";
 import { UsernameModal } from "./components/UsernameModal";
+import { SignupPrompt } from "./components/SignupPrompt";
 import type { Market, NewsItem, User } from "./types";
 import { useApi } from "@/lib/api";
 
 export default function App() {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [showSignup, setShowSignup] = useState(false);
   const { authFetch } = useApi();
   const [activeSector, setActiveSector] = useState<Sector>(() => pathToSector(window.location.pathname));
 
@@ -74,7 +76,7 @@ export default function App() {
 
   async function handleBet(market: Market) {
     if (!isAuthenticated) {
-      loginWithRedirect();
+      setShowSignup(true);
       return;
     }
     const { purchase_price, cvss_threshold, epss_threshold, duration_days } = market.contract;
@@ -115,6 +117,7 @@ export default function App() {
       <Navbar user={me ?? undefined} activeSector={activeSector} />
 
       {needsUsername && <UsernameModal onComplete={(user) => setMe(user)} />}
+      <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
       <main className={isFullHeight ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
         {activeSector === "Settings" ? (
           <SettingsPage user={me} onUsernameChange={(u) => setMe(u)} />

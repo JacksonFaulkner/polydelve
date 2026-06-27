@@ -7,6 +7,7 @@ import {
 import type { Package } from "@/types"
 import { useApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
+import { SignupPrompt } from "./SignupPrompt"
 
 const DURATION_OPTIONS = [7, 14, 30]
 
@@ -34,7 +35,8 @@ interface SimResult {
 
 export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const { authFetch } = useApi()
-  const { isAuthenticated, loginWithRedirect } = useAuth()
+  const { isAuthenticated } = useAuth()
+  const [showSignup, setShowSignup] = useState(false)
   const [packages, setPackages] = useState<Package[]>([])
   const [search, setSearch] = useState("")
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
@@ -111,7 +113,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
 
   async function buyContract() {
     if (!selectedPkg) return
-    if (!isAuthenticated) { loginWithRedirect(); return }
+    if (!isAuthenticated) { setShowSignup(true); return }
     setBuying(true)
     try {
       await authFetch(`/contracts`, {
@@ -309,6 +311,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
 
   return (
     <div className="w-full flex flex-col h-full">
+      <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
 
       {/* ── MOBILE LAYOUT ── */}
       <div className="flex flex-col h-full sm:hidden gap-2">
