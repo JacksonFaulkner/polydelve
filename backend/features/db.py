@@ -3,27 +3,40 @@ import os
 import psycopg2
 from fastapi import Request
 from pgvector.psycopg2 import register_vector
+from psycopg2.pool import ThreadedConnectionPool
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev"
 )
+POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
+POOL_MAX = int(os.getenv("DB_POOL_MAX", "10"))
+
+_pool: ThreadedConnectionPool | None = None
 
 
-def _connect() -> psycopg2.extensions.connection:
-    conn = psycopg2.connect(DATABASE_URL)
-    register_vector(conn)
-    return conn
+def _get_pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = ThreadedConnectionPool(POOL_MIN, POOL_MAX, dsn=DATABASE_URL)
+    return _pool
 
 
 def get_db(request: Request):  # noqa: ARG001
-    conn = _connect()
+    pool = _get_pool()
+    conn = pool.getconn()
+    register_vector(conn)
     try:
         yield conn
     except Exception:
         conn.rollback()
         raise
     finally:
-        conn.close()
+        # Clear any idle-in-transaction state before returning to the pool.
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        pool.putconn(conn)
 
 
 def get_db_conn(autocommit: bool = False):
