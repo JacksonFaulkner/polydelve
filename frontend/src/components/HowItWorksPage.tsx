@@ -80,19 +80,6 @@ export function HowItWorksPage() {
             Polydelve is a prediction market for open-source security. You stake in-app currency on whether a package will be hit by a security event before your contract expires.
           </p>
         </div>
-        {/* Desktop stat strip */}
-        <div className="hidden lg:flex flex-shrink-0 items-center gap-8 rounded-xl border border-zinc-800 bg-[#181D21] px-7 py-5">
-          {[
-            { label: "Starting balance", value: "1,000 sch" },
-            { label: "Contract lengths", value: "7 / 14 / 30d" },
-            { label: "Event types", value: "3" },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-lg font-bold text-zinc-100">{s.value}</p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">{s.label}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Steps */}
