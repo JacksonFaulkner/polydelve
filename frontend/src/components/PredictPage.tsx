@@ -6,6 +6,7 @@ import {
 } from "recharts"
 import type { Package } from "@/types"
 import { useApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 
 const DURATION_OPTIONS = [7, 14, 30]
 
@@ -33,6 +34,7 @@ interface SimResult {
 
 export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const { authFetch } = useApi()
+  const { isAuthenticated, loginWithRedirect } = useAuth()
   const [packages, setPackages] = useState<Package[]>([])
   const [search, setSearch] = useState("")
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
@@ -50,7 +52,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const epssTarget = posToEpss(epssSliderPos)
   const epssDrift = epssTarget / Math.max(currentEpss, 0.001)
 
-  const [meId, setMeId] = useState<string | null>(null)
   const [buying, setBuying] = useState(false)
   const [schmeckles, setSchmeckles] = useState<number | null>(null)
   const [sim, setSim] = useState<SimResult | null>(null)
@@ -98,7 +99,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const refreshUser = useCallback(() => {
     authFetch(`/users/me`)
       .then((r) => r.json())
-      .then((d) => { setMeId(d.id); setSchmeckles(d.schmeckles) })
+      .then((d) => { setSchmeckles(d.schmeckles) })
       .catch(() => {})
   }, [authFetch])
 
@@ -109,14 +110,14 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   ).slice(0, 20)
 
   async function buyContract() {
-    if (!selectedPkg || !meId) return
+    if (!selectedPkg) return
+    if (!isAuthenticated) { loginWithRedirect(); return }
     setBuying(true)
     try {
       await authFetch(`/contracts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: meId,
           package_name: selectedPkg.name,
           ecosystem: selectedPkg.ecosystem,
           cvss_threshold: cvssThreshold,

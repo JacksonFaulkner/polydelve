@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.auth import get_current_user
+from api.auth import get_browse_user
 from api.cache import cache_get, cache_set
 from features.db import get_db
 from features.packages_repo import (
@@ -15,7 +15,7 @@ from features.packages_repo import (
     list_packages as repo_list_packages,
 )
 
-router = APIRouter(prefix="/packages", dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/packages", dependencies=[Depends(get_browse_user)])
 
 
 @router.get("")

@@ -18,6 +18,7 @@ from api.routes.prediction_market import router as pm_router
 from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
 from api.routes.featured import router as featured_router
+from api.routes.auth_guest import public_router as auth_guest_router
 from api.auth import _auth0
 from features.db import seed_companies, get_db_conn
 
@@ -63,6 +64,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 add_cors(app)
 app.include_router(health_router)
+app.include_router(auth_guest_router)
 app.include_router(users_public_router)
 app.include_router(users_router)
 app.include_router(pm_public_router)

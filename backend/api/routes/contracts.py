@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.auth import get_current_user
+from api.auth import get_browse_user, get_current_user
 from api.cache import cache_get, cache_invalidate, cache_set
 from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
 from features.contracts_repo import (
@@ -22,7 +22,9 @@ from models.models import (
     SellResponse, SimCurvePoint, SimulateRequest, SimulateResponse,
 )
 
-router = APIRouter(prefix="/contracts", dependencies=[Depends(get_current_user)])
+# Browse-level: guests may simulate/quote. buy/sell/me each require a real
+# Auth0 user via their own Depends(get_current_user), so guests can't bet.
+router = APIRouter(prefix="/contracts", dependencies=[Depends(get_browse_user)])
 
 
 def _reject_backward_epss(

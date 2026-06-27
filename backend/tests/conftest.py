@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, ".")
 
-from api.auth import get_current_user
+from api.auth import get_browse_user, get_current_user
 from features.db import get_db
 from main import app
 
@@ -64,8 +64,10 @@ def _make_client(db_conn, authenticated: bool = True):
     app.dependency_overrides[get_db] = override_db
     if authenticated:
         app.dependency_overrides[get_current_user] = lambda: FAKE_USER
+        app.dependency_overrides[get_browse_user] = lambda: FAKE_USER
     else:
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_browse_user, None)
 
     client = TestClient(app, raise_server_exceptions=False)
     return client

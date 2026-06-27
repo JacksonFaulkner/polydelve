@@ -86,9 +86,8 @@ export function Navbar({ user, activeSector }: NavbarProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const publicTabs: Sector[] = ["News", "Leaderboard", "How"];
-  const authTabs: Sector[] = ["PyPI", "npm", "Predict"];
-  const visibleTabs = isAuthenticated ? [...publicTabs, ...authTabs] : publicTabs;
+  // All content pages are browsable logged-out; betting is gated at the action.
+  const visibleTabs: Sector[] = ["PyPI", "npm", "News", "Predict", "Leaderboard", "How"];
 
   const avatarSrc = user?.avatar_url ?? (auth0User as { picture?: string })?.picture;
 

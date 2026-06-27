@@ -83,7 +83,6 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: me?.id,
           package_name: market.package.name,
           ecosystem: market.package.ecosystem,
           cvss_threshold,
