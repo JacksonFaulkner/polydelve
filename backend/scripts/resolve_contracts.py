@@ -19,8 +19,7 @@ import sys
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-
-import duckdb
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from features.db import get_db_conn  # noqa: E402
@@ -40,14 +39,16 @@ class OpenContract:
     created_at: datetime
 
 
-def fetch_open_contracts(conn: duckdb.DuckDBPyConnection) -> list[OpenContract]:
-    rows = conn.execute("""
+def fetch_open_contracts(conn: Any) -> list[OpenContract]:
+    cur = conn.cursor()
+    cur.execute("""
         SELECT id, user_id, package_name, package_ecosystem,
                cvss_threshold, epss_threshold, purchase_price, max_payout,
                expires_at, created_at
         FROM contracts
         WHERE status = 'open'
-    """).fetchall()
+    """)
+    rows = cur.fetchall()
     return [
         OpenContract(
             id=r[0], user_id=r[1], package_name=r[2], package_ecosystem=r[3],
@@ -60,64 +61,72 @@ def fetch_open_contracts(conn: duckdb.DuckDBPyConnection) -> list[OpenContract]:
     ]
 
 
-def check_cve_win(conn: duckdb.DuckDBPyConnection, c: OpenContract) -> bool:
+def check_cve_win(conn: Any, c: OpenContract) -> bool:
     if c.cvss_threshold is None:
         return False
-    row = conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         SELECT COUNT(*) FROM cve_history
-        WHERE name = ? AND ecosystem = ?
-          AND cvss_score >= ?
-          AND published_date > ?
-    """, [c.package_name, c.package_ecosystem, c.cvss_threshold, c.created_at]).fetchone()
+        WHERE name = %s AND ecosystem = %s
+          AND cvss_score >= %s
+          AND published_date > %s
+    """, [c.package_name, c.package_ecosystem, c.cvss_threshold, c.created_at])
+    row = cur.fetchone()
     return bool(row and row[0] > 0)
 
 
-def check_epss_win(conn: duckdb.DuckDBPyConnection, c: OpenContract) -> bool:
+def check_epss_win(conn: Any, c: OpenContract) -> bool:
     if c.epss_threshold is None:
         return False
-    row = conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         SELECT COUNT(*) FROM epss_history
-        WHERE name = ? AND ecosystem = ?
-          AND epss_score >= ?
-          AND recorded_at > ?
-    """, [c.package_name, c.package_ecosystem, c.epss_threshold, c.created_at.date()]).fetchone()
+        WHERE name = %s AND ecosystem = %s
+          AND epss_score >= %s
+          AND recorded_at > %s
+    """, [c.package_name, c.package_ecosystem, c.epss_threshold, c.created_at.date()])
+    row = cur.fetchone()
     return bool(row and row[0] > 0)
 
 
-def check_mal_win(conn: duckdb.DuckDBPyConnection, c: OpenContract) -> bool:
-    row = conn.execute("""
+def check_mal_win(conn: Any, c: OpenContract) -> bool:
+    cur = conn.cursor()
+    cur.execute("""
         SELECT COUNT(*) FROM mal_advisories
-        WHERE name = ? AND ecosystem = ?
+        WHERE name = %s AND ecosystem = %s
           AND withdrawn = false
-          AND published_at > ?
-    """, [c.package_name, c.package_ecosystem, c.created_at]).fetchone()
+          AND published_at > %s
+    """, [c.package_name, c.package_ecosystem, c.created_at])
+    row = cur.fetchone()
     return bool(row and row[0] > 0)
 
 
-def resolve_won(conn: duckdb.DuckDBPyConnection, c: OpenContract, reason: str) -> None:
+def resolve_won(conn: Any, c: OpenContract, reason: str) -> None:
     now = datetime.now(timezone.utc)
-    conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         UPDATE contracts
-        SET status = 'won', resolved_at = ?
-        WHERE id = ?
+        SET status = 'won', resolved_at = %s
+        WHERE id = %s
     """, [now, c.id])
-    conn.execute("""
-        UPDATE users SET schmeckles = schmeckles + ? WHERE id = ?
+    cur.execute("""
+        UPDATE users SET schmeckles = schmeckles + %s WHERE id = %s
     """, [c.max_payout, c.user_id])
     print(f"  WON  {c.id[:8]}  {c.package_name}/{c.package_ecosystem}  +{c.max_payout} sch  ({reason})")
 
 
-def resolve_expired(conn: duckdb.DuckDBPyConnection, c: OpenContract) -> None:
+def resolve_expired(conn: Any, c: OpenContract) -> None:
     now = datetime.now(timezone.utc)
-    conn.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         UPDATE contracts
-        SET status = 'expired', resolved_at = ?
-        WHERE id = ?
+        SET status = 'expired', resolved_at = %s
+        WHERE id = %s
     """, [now, c.id])
     print(f"  EXP  {c.id[:8]}  {c.package_name}/{c.package_ecosystem}  (expired {c.expires_at})")
 
 
-def run(conn: duckdb.DuckDBPyConnection, dry_run: bool = False) -> None:
+def run(conn: Any, dry_run: bool = False) -> None:
     today = date.today()
     contracts = fetch_open_contracts(conn)
     print(f"Resolving contracts — {len(contracts)} open, date={today}")
@@ -147,6 +156,11 @@ def run(conn: duckdb.DuckDBPyConnection, dry_run: bool = False) -> None:
             else:
                 print(f"  [dry] EXP  {c.id[:8]}  {c.package_name}")
             expired += 1
+
+    if dry_run:
+        conn.rollback()
+    else:
+        conn.commit()
 
     print(f"Done — {won} won, {expired} expired, {len(contracts) - won - expired} still open")
 
