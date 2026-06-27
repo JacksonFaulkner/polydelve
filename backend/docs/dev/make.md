@@ -20,9 +20,7 @@ Backend
 
 Scripts
   news-update            Fetch and store latest news
-  build-cve-history      Build CVE history for top npm/PyPI packages
   refresh-downloads      Refresh weekly_downloads + recompute risk_score
-  enrich-sectors         Classify package sectors via heuristics
   classify-sectors-llm   Classify package sectors via LLM
   export-schema          Export DB schema to Excel
 

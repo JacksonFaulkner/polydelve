@@ -18,8 +18,7 @@ Date: 2026-06-06
 | 3b. EPSS history   | `ingest_epss_history.py --start 2021-04-14` | 1m 53s   | 1,471,184 rows loaded. 1,869 cached files + 1 downloaded (2026-06-05). 10 days 403 (missing from upstream). Part of seed flow.            |
 | 4. MAL advisories  | `make ingest-mal`                           | 15s      | 225,094 MAL records (213k npm + 11k PyPI). 87 tracked packages flagged. Zips cached after first run.                                      |
 | 5. Refresh downloads | `make refresh-downloads`                  | 21.6s    | 5,442 npm downloads fetched (266 scoped batches), 74 updated, 1,218 risk scores computed. No EPSS API calls (handled by refresh_epss.py). |
-| 6. Enrich sectors  | `make enrich-sectors`                       | —        | —                                                                                                                                         |
-| 7. News update     | `make news-update`                          | —        | —                                                                                                                                         |
+| 6. News update     | `make news-update`                          | —        | —                                                                                                                                         |
 
 ## Findings
 
