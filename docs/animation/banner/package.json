@@ -1,0 +1,21 @@
+{
+  "name": "polydelve-banner",
+  "version": "1.0.0",
+  "description": "Twitter/X banner generator for Polydelve (Remotion still).",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion still src/index.ts TwitterBanner out/banner.png --image-format=png",
+    "render:avatar": "remotion still src/index.ts Avatar out/avatar.png --image-format=png"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.476",
+    "@remotion/google-fonts": "4.0.476",
+    "remotion": "^4.0.476"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

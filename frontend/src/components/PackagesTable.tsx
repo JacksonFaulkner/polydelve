@@ -348,9 +348,14 @@ export function PackagesTable({ ecosystem }: Props) {
 
     try {
       const res = await authFetch(`/packages?${params}`)
+      if (!res.ok) {
+        setData([])
+        setTotal(0)
+        return
+      }
       const json: PackageListResponse = await res.json()
-      setData(json.packages)
-      setTotal(json.total)
+      setData(json.packages ?? [])
+      setTotal(json.total ?? 0)
     } catch (e) {
       console.error("Failed to fetch packages", e)
     } finally {
