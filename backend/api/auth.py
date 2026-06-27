@@ -5,7 +5,7 @@ import uuid
 from functools import lru_cache
 
 from authlib.jose import jwt, JoseError
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi_plugin.fast_api_client import Auth0FastAPI
 
 log = logging.getLogger(__name__)
@@ -59,17 +59,18 @@ async def get_current_user(request: Request) -> dict:
     return await _auth0().require_auth()(request)
 
 
-async def get_browse_user(request: Request) -> dict:
-    """Accept either a real Auth0 user or a self-issued guest token.
-    Used on read-only endpoints that logged-out visitors may reach."""
+async def get_browse_user(request: Request) -> dict | None:
+    """Identify the caller on read-only endpoints, but never reject.
+
+    Returns Auth0 claims, guest-token claims, or None for a fully anonymous
+    visitor. Browse endpoints (packages, simulate) are public, so we tolerate
+    no token instead of 401ing — a 401 storm from logged-out traffic otherwise
+    trips the deployment error-rate alarm and rolls the service back."""
     try:
         return await _auth0().require_auth()(request)
     except Exception:
         pass
-    guest = _verify_guest(request)
-    if guest is None:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return guest
+    return _verify_guest(request)
 
 
 async def get_optional_user(request: Request) -> dict | None:

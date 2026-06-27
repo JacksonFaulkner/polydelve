@@ -5,14 +5,15 @@ sys.path.insert(0, ".")
 
 # ── Auth enforcement ──────────────────────────────────────────────────────────
 
-def test_packages_requires_auth(unauth_client):
+def test_packages_public_to_anonymous(unauth_client):
+    # Browse endpoints are public — logged-out visitors get 200, not 401.
     r = unauth_client.get("/packages?ecosystem=PyPI")
-    assert r.status_code >= 400
+    assert r.status_code == 200
 
 
-def test_package_detail_requires_auth(unauth_client):
+def test_package_detail_public_to_anonymous(unauth_client):
     r = unauth_client.get("/packages/PyPI/requests")
-    assert r.status_code >= 400
+    assert r.status_code in (200, 404)
 
 
 # ── Package search ────────────────────────────────────────────────────────────
