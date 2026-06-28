@@ -1,0 +1,76 @@
+---
+title: "Using the App"
+description: "Pages, navigation, and how to interact with markets and contracts in the UI."
+---
+
+## Navigation
+
+Navigation lives in the `Navbar` component. Tabs (All, npm, PyPI, News, Predict, Leaderboard, Dashboard) filter the main feed or navigate to named pages. The user avatar in the top-right links to Settings.
+
+## Home (All / sector view)
+
+The default view. Shows:
+- **Market Spotlight** — top featured contract from `GET /featured-contracts`, ranked by `relevancy_score`
+- **Market grid** — remaining featured contracts as cards
+- **Recent News** — latest security news items tagged by package/sector
+
+Selecting a sector tab (e.g. "npm", "PyPI") navigates to the package table filtered to that ecosystem.
+
+## Predict
+
+`PredictPage` — browse all packages and build a custom contract. Users select a package, set their CVSS/EPSS thresholds and duration, and see a live price + payout estimate before buying.
+
+![Predict page — vite selected, simulated returns for EPSS spike, CVSS event, and MAL scenarios](https://assets.polydelve.com/screenshots/predict-simulated-returns.png)
+
+## Dashboard
+
+`DashboardPage` — authenticated users see their open contracts, resolved history, Schmeckle balance over time (`SchmeckleTimeline`), and per-contract P&L.
+
+## Leaderboard
+
+`LeaderboardTable` — all users ranked by Schmeckle balance. Shows username, balance, contract count, win rate. Clicking a row expands the user's contract history.
+
+## News
+
+`NewsPage` — full security news feed with pagination. Articles are tagged by sector and package.
+
+## Settings
+
+`SettingsPage` — reached via the avatar in the top-right navbar. Users can:
+- **Change username** — inline edit with uniqueness validation (`PATCH /users/me`)
+- **Upload avatar** — file picker → presigned PUT to S3 → `PATCH /users/me` with the public URL
+- **Sign out**
+
+### Auth flow
+
+New users are blocked by `UsernameModal` on first login until they choose a valid username (3–20 chars, letters/numbers/underscores). Any legacy username that looks like an Auth0 sub or email is treated as unset and triggers the same modal.
+
+## Buying a contract
+
+1. Find a package via the market feed or Predict page.
+2. Review the EPSS chart — higher EPSS = higher probability of exploitation = higher contract cost.
+3. Click **Buy** on a market card or configure thresholds manually in Predict.
+4. Auth0 login gate: unauthenticated users are redirected to login on buy attempt.
+5. On success, a confirmation shows `max_payout` and `multiplier`.
+
+## EPSS chart
+
+`EpssChart` renders a time-series line of daily EPSS scores for a package's CVEs. CVE publication dates appear as scatter points on the same axis. This lets users see how exploitation risk evolved after each disclosure.
+
+## Contract simulation
+
+`ContractSimChart` shows a user how a contract's payout changes under different EPSS trajectories. Useful for setting thresholds before committing Schmeckles.
+
+## Market cards
+
+`MarketCard` displays:
+- Package name, ecosystem badge, sector tags
+- Current EPSS score and trend arrow
+- Contract price and payout multiplier
+- Exploit signal badges (PoC, active exploit, malicious)
+
+`MarketSpotlight` is the same data in a larger format with the EPSS chart embedded.
+
+## Schmeckle display
+
+`SchmeckleIcon` and `SchmeckleChart` appear throughout the app. Balance is fetched from `GET /users/me` and kept in local React state — no global store. Balance refreshes after any buy or resolution event.

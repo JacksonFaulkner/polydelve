@@ -1,0 +1,39 @@
+---
+title: "Data Sources"
+description: "Provenance, ETL ownership, and cadence for every external data feed."
+---
+
+## Provenance Table
+
+| Source | Access method | Owning ETL job | Cadence | Notes |
+|---|---|---|---|---|
+| EPSS | BigQuery bulk export | `refresh_epss` / `ingest_epss_history` | Daily | Never use FIRST API in a loop |
+| OSV | OSV database | `build-cve-history` | On-demand / scheduled | CVE resolution for contract settlement |
+| npm downloads | npm downloads API | `enrich-packages` | Periodic | Per-package download counts |
+| PyPI downloads | PyPI stats API | `enrich-packages` | Periodic | Per-package download counts |
+| News | Exa API | `news-update` | Periodic | Requires `EXA_API_KEY`; tagged by sector/package via Gemini |
+| MAL advisories | OSV malicious advisories | `ingest_mal_advisories` | Periodic | Run via `make etl-packages` |
+
+## EPSS
+
+Exploit Prediction Scoring System scores are published by FIRST to a public BigQuery dataset. The ETL pulls a full bulk export daily — **do not substitute a per-CVE loop against the FIRST REST API**; the API is rate-limited and unsuitable for bulk refresh. The `refresh_epss` job handles current scores; `ingest_epss_history` backfills historical snapshots. Both write to the `epss` table in Postgres.
+
+## OSV
+
+The Open Source Vulnerabilities database is the authoritative source for CVE metadata used during contract settlement (`build-cve-history`). The job resolves a CVE to its affected package versions and writes the result into the CVE history tables. It runs on-demand (e.g., triggered by a new market) and on a scheduled sweep to catch late-arriving OSV records.
+
+## npm Downloads
+
+Download counts for npm packages are fetched from the npm downloads count API by `enrich-packages`. The job iterates tracked packages and upserts counts. Cadence is periodic — run manually or via scheduler; there is no webhook trigger.
+
+## PyPI Downloads
+
+PyPI download statistics are fetched from the PyPI stats API by the same `enrich-packages` job that handles npm. The two feeds share job infrastructure but hit different endpoints. No API key is required; rate-limit conservatively on large package sets.
+
+## News
+
+News articles are sourced via the Exa API (key: `EXA_API_KEY`). The `news-update` job queries Exa with sector- and package-scoped queries, then sends results through Gemini for tagging before storing them. If `EXA_API_KEY` is absent the job will fail at startup — ensure the secret is present in the environment or Secrets Manager before scheduling.
+
+## MAL Advisories
+
+Malicious package advisories are a subset of OSV. The `ingest_mal_advisories` job filters OSV for `MAL-` prefixed IDs and loads them into the advisories table. The canonical invocation is `make etl-packages`, which runs this job alongside other package enrichment steps. Check OSV schema changes when the job reports unexpected zero-row runs — FIRST occasionally restructures malicious advisory fields.

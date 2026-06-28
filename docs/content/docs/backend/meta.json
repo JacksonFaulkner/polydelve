@@ -1,4 +1,0 @@
-{
-  "title": "Backend",
-  "pages": ["prediction-markets", "vulnerability-tracking", "scoring", "api", "adr-postgres-alembic", "local-db"]
-}

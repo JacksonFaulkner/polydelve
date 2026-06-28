@@ -1,0 +1,51 @@
+---
+title: "Market Resolution"
+description: "How and when contracts settle."
+---
+
+## Resolution outcomes
+
+Every contract asks: will a CVE be published for this package before the deadline?
+
+- **YES** — OSV confirms a CVE against the package before or on the contract deadline. The advisory must name the package directly (not a transitive dependency) and carry a valid CVE ID.
+- **NO** — The deadline passes with no qualifying OSV advisory. Shares on the NO side pay out.
+
+## How resolution is triggered
+
+The resolution job queries OSV for each open contract whose deadline has passed or whose package has newly appeared in OSV data. It does not rely on webhooks — it polls OSV directly.
+
+Steps:
+
+1. Fetch the current OSV advisory set for the tracked package (`ecosystem` + `package name`).
+2. Check whether any advisory carries a CVE ID with a `published` date on or before the contract deadline.
+3. If yes → resolve YES. If no → resolve NO (deadline must have passed).
+
+Scoring and payout math live in `features/probability.py`.
+
+## Timing and cadence
+
+The resolution job runs as part of the daily ETL cycle, triggered by EventBridge Scheduler every 2 hours. Contracts are not resolved in real time — there is a lag between an OSV advisory going live and resolution being recorded. Users should treat the resolution timestamp as an approximation, not an exact match to the OSV publish date.
+
+EPSS and CVSS data refreshes independently of resolution (see [Vulnerability Tracking](/docs/concepts/vulnerability-tracking)).
+
+## Edge cases
+
+### CVE published after deadline
+
+If OSV shows a `published` date after the contract deadline, the contract resolves NO regardless of whether a CVE now exists. The question is scoped to the deadline window.
+
+### Disputed or withdrawn advisories
+
+If an OSV advisory is later withdrawn or the CVE is rejected (CVE ID marked REJECTED by NVD), the contract remains settled. The system does not automatically re-open or reverse a resolved contract — resolution is final at the time the job runs.
+
+### Package removed from tracking
+
+If a package is removed from Polydelve's tracked universe after a contract opens, the contract continues to run against the last known OSV state until the deadline. No new OSV data will be fetched for untracked packages.
+
+### Multiple CVEs for one package
+
+If a package has more than one CVE, any single qualifying advisory is sufficient to resolve YES. The contract does not require all CVEs — just one published on or before the deadline.
+
+### OSV data lag
+
+OSV bulk data can lag the upstream NVD or GitHub Advisory Database by hours to days. A CVE may exist in NVD before it appears in OSV. Resolution is always based on OSV, not NVD directly.

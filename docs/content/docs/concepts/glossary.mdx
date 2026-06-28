@@ -1,0 +1,48 @@
+---
+title: "Glossary"
+description: "Key terms used across Polydelve docs."
+---
+
+## Contract
+
+A bet that a target package receives a CVE meeting specified criteria (e.g. EPSS threshold, CVSS severity) before a deadline. Contracts resolve YES or NO at expiry. A YES resolution pays out `max_payout` Schmeckles to holders; NO returns nothing.
+
+## CVE
+
+Common Vulnerabilities and Exposures. A public identifier assigned by MITRE to a disclosed software vulnerability (e.g. `CVE-2024-12345`). CVEs are the primary resolution signal for contracts on Polydelve.
+
+## CVSS
+
+Common Vulnerability Scoring System. A numeric severity score from 0 to 10 assigned to a CVE. Higher scores indicate greater severity. Contracts may specify a minimum CVSS as part of their resolution criteria.
+
+## EPSS
+
+Exploit Prediction Scoring System. A daily probability score between 0 and 1, published by FIRST, expressing the likelihood that a CVE will be exploited in the wild within the next 30 days. Polydelve sources EPSS data from BigQuery and uses it to price contracts and calculate user scoring calibration.
+
+## EPSS History
+
+A time-series of daily EPSS values for a given package or CVE. Polydelve stores this history to show trend charts on contract detail pages and to support calibration scoring at purchase time.
+
+## MAL Advisory
+
+A malicious package advisory sourced from OSV. Unlike CVEs, MAL advisories flag packages that are themselves intentionally harmful (e.g. typosquats, dependency confusion attacks). Polydelve surfaces MAL advisories alongside CVE-based contracts.
+
+## max_payout
+
+The number of Schmeckles returned to a contract holder if the contract resolves YES. Equivalent to the payout side of the multiplier: `max_payout = cost × multiplier`.
+
+## Multiplier
+
+The payout-to-cost ratio for a contract. A multiplier of 3 means a 10 Schmeckle purchase returns 30 Schmeckles on a YES resolution. Higher multipliers reflect lower implied probability of the event occurring.
+
+## OSV
+
+Open Source Vulnerabilities. A database aggregating vulnerability advisories across ecosystems (PyPI, npm, Go, etc.). OSV is Polydelve's source of truth for contract resolution — a contract resolves YES when a matching OSV advisory is confirmed.
+
+## relevancy_score
+
+An internal numeric field on featured contracts used to rank which contracts surface prominently in the browse view. Higher values indicate contracts Polydelve considers more timely or significant. Not exposed directly in the UI.
+
+## Schmeckle
+
+Polydelve's in-app currency. Schmeckles are awarded on signup and earned by correctly predicting contract outcomes. They have no real-world monetary value and exist solely for ranking and gameplay purposes.

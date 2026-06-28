@@ -1,0 +1,84 @@
+---
+title: "Auth0 Setup"
+description: "Configure Auth0 for local development."
+---
+
+Polydelve delegates all authentication to Auth0. For local dev you need a free Auth0 tenant and a Single Page Application registered inside it.
+
+## 1. Create a dev tenant
+
+1. Sign up or log in at [auth0.com](https://auth0.com).
+2. Click your avatar → **Create tenant**. Name it anything (e.g. `polydelve-dev`). Region does not matter for local use.
+
+## 2. Create a SPA application
+
+1. In the dashboard go to **Applications → Applications → Create Application**.
+2. Name it (e.g. `Polydelve Local`) and select **Single Page Application**.
+3. Click **Create**.
+
+## 3. Configure allowed URLs
+
+On the application's **Settings** tab, set all three fields to `http://localhost:5173` (the Vite dev server port):
+
+| Field | Value |
+|-------|-------|
+| Allowed Callback URLs | `http://localhost:5173` |
+| Allowed Logout URLs | `http://localhost:5173` |
+| Allowed Web Origins | `http://localhost:5173` |
+
+Scroll down and click **Save Changes**.
+
+## 4. Create an API audience
+
+Auth0 requires an API resource to issue access tokens with an audience claim.
+
+1. Go to **Applications → APIs → Create API**.
+2. Name it (e.g. `Polydelve API`) and set the **Identifier** to any URI (e.g. `https://api.polydelve.local`). This value becomes `AUTH0_AUDIENCE`.
+3. Click **Create**.
+
+## 5. Copy credentials to `.env`
+
+### Backend
+
+```bash
+cp backend/secrets/.env.example backend/secrets/.env
+```
+
+Fill in the Auth0 block:
+
+```dotenv
+AUTH0_DOMAIN=your-tenant.us.auth0.com
+AUTH0_AUDIENCE=https://api.polydelve.local
+```
+
+Find `AUTH0_DOMAIN` on the application Settings page (labelled **Domain**).
+
+### Frontend
+
+Check `.env.example` at the repo root for exact variable names. They are likely:
+
+```dotenv
+NEXT_PUBLIC_AUTH0_DOMAIN=your-tenant.us.auth0.com
+NEXT_PUBLIC_AUTH0_CLIENT_ID=<Client ID from application Settings>
+NEXT_PUBLIC_AUTH0_AUDIENCE=https://api.polydelve.local
+```
+
+`Client ID` is on the same Settings page as the domain.
+
+## 6. Test the login flow
+
+```bash
+make dev
+```
+
+Open `http://localhost:5173`. Click **Log in** — you should be redirected to the Auth0 Universal Login page and returned to the app after authenticating.
+
+On first successful login the frontend calls `POST /users` to provision your account. You will then see the **UsernameModal** prompting you to pick a username (3–20 characters, letters, numbers, and underscores only). After submitting, the modal will not appear again.
+
+## Troubleshooting
+
+**Redirect loop / `invalid_grant`** — confirm Allowed Callback URLs includes `http://localhost:5173` exactly (no trailing slash).
+
+**401 from the API** — confirm `AUTH0_AUDIENCE` in both `.env` files matches the API Identifier you registered.
+
+**`UsernameModal` appears on every load** — the `POST /users` call is failing; check the backend logs for a 422 or database error.

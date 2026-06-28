@@ -1,4 +1,4 @@
 {
   "title": "Polydelve",
-  "pages": ["introduction", "backend", "frontend", "data", "lore"]
+  "pages": ["introduction", "concepts", "build", "reference", "project"]
 }

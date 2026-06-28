@@ -1,0 +1,29 @@
+---
+title: "Environment Variables"
+description: "All environment variables for backend and frontend, with defaults and purpose."
+---
+
+> **Note:** Source of truth is `.env.example` — this page may lag updates.
+
+## Backend
+
+Stored in `backend/secrets/.env`.
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `AUTH0_DOMAIN` | Yes | — | Auth0 tenant domain |
+| `AUTH0_AUDIENCE` | Yes | — | Auth0 API audience |
+| `EXA_API_KEY` | Yes | — | Exa news fetch |
+| `GEMINI_API_KEY` | Yes | — | Google Gemini; news tagging + sector LLM |
+| `OPENAI_API_KEY` | No | — | OpenAI; sector classification fallback |
+| `DATABASE_URL` | Yes | `postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev` | Postgres connection string |
+
+## Frontend
+
+Stored in `.env.local` (or `.env.example` for reference).
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_AUTH0_DOMAIN` | Yes | — | Auth0 tenant domain (browser-visible) |
+| `NEXT_PUBLIC_AUTH0_CLIENT_ID` | Yes | — | Auth0 SPA client ID (browser-visible) |
+| `NEXT_PUBLIC_AUTH0_AUDIENCE` | Yes | — | Auth0 API audience (browser-visible) |

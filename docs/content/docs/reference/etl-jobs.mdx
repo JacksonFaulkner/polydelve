@@ -1,0 +1,35 @@
+---
+title: ETL Jobs
+description: "Per-job reference: command, inputs, outputs, and scheduling."
+---
+
+All ETL jobs run via `python -m etl <job>` from the backend container or virtualenv. No AWS orchestration (no EventBridge, no Step Functions) — trigger via external cron or manually.
+
+## Job Reference
+
+| Job | Make target | Command | What it does | Key outputs |
+|-----|-------------|---------|--------------|-------------|
+| `packages` | `make etl-packages` | `python -m etl packages` | Populates/refreshes the package universe for npm and PyPI — fetches CVE associations and current EPSS scores. | `packages` table rows with `epss_score`, CVE links |
+| `epss` | `make refresh-epss` | `python -m etl epss` | Pulls the latest EPSS scores and triggers contract risk resolution. | Updated `epss_score` on `packages`; contract risk recalculated |
+| `epss-history` | `make build-cve-history` | `python -m etl epss-history` | Ingests historical EPSS time-series from BigQuery back to 2021-04-14. Delegates to `scripts/ingest_epss_history.py`. | `epss_history` / `cve_history` tables |
+| `mal` | — | `python -m etl mal [--skip-download]` | Fetches malicious package advisories from the OSV dataset. `--skip-download` reuses cached zip files. | `mal_advisories` table |
+| `news` | `make news-update` | `python -m etl news [--days-back N]` | Fetches recent security news via Exa, then tags articles using Gemini. Defaults to 1 day back. | `news_items` table with tags |
+| `seed` | — | `python -m etl seed` | One-shot bootstrap: runs `packages.run_seed` from CVE/EPSS history, refreshes download counts, then computes `risk_score = weekly_downloads × epss_score`. | Fully populated `packages` table with `risk_score` |
+| `hourly` | — | `python -m etl hourly` | Composite job: runs `epss` → `news` → `mal` in sequence. Intended as the standard recurring job. | Same as constituent jobs above |
+
+## Scheduling
+
+There is no built-in scheduler. Run jobs via:
+
+- **External cron** (e.g., a Kubernetes CronJob or a host crontab)
+- **Manual invocation** against the running backend container
+
+Recommended cadence:
+
+- `hourly` — once per hour (EPSS scores, news, mal advisories)
+- `packages` — daily or on demand after schema/universe changes
+- `epss-history` / `seed` — one-time on fresh deploys; re-run only when rebuilding from scratch
+
+<Callout type="warn">
+  `epss-history` pulls from BigQuery. Ensure `GOOGLE_APPLICATION_CREDENTIALS` or Workload Identity is configured before running.
+</Callout>

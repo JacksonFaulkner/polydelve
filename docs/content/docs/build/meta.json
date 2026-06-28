@@ -1,0 +1,4 @@
+{
+  "title": "Build",
+  "pages": ["architecture", "local-setup", "data-pipeline", "auth0-setup", "deployment", "infrastructure"]
+}

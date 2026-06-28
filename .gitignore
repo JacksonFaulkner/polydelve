@@ -36,3 +36,15 @@ auth0/config.json
 *.db
 
 assets/thumbs/
+
+# Assets hosted on CDN (assets.polydelve.com) — do not commit
+assets/*.gif
+assets/*.png
+assets/*.jpg
+assets/*.mp4
+assets/*.mov
+docs/public/screenshots/
+docs/public/*.mp4
+docs/public/*.png
+docs/public/*.gif
+docs/animation/out/

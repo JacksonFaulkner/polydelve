@@ -1,0 +1,56 @@
+---
+title: "Quickstart"
+description: "Place your first bet in five steps."
+---
+
+## Place your first bet
+
+### Step 1 — Log in
+
+Open the app and click **Sign In** in the top-right navbar. Auth0 handles authentication. If this is your first visit, you will land on the **UsernameModal** after login — pick a username (3–20 chars, letters/numbers/underscores) before continuing.
+
+> Unauthenticated users who click **Bet** on any market card are redirected to the Auth0 login page automatically. Complete login and you will be returned to the contract.
+
+### Step 2 — Find a package
+
+The home feed shows the **Market Spotlight** (top featured contract) and a grid of active markets below it, each ranked by `relevancy_score`. Use the sector tabs (**npm**, **PyPI**) to filter by ecosystem, or go to **Predict** to search by name.
+
+![Home feed showing Market Spotlight and market grid](https://assets.polydelve.com/screenshots/qs-1-home.png)
+
+### Step 3 — Gauge risk with the EPSS chart
+
+Each market card shows an EPSS trend chart. The green line plots daily EPSS scores; orange dots mark past CVE publication dates on the same axis.
+
+- **Higher EPSS** → higher probability of exploitation → higher contract cost and higher potential payout.
+- A rising trend line signals the community considers this package increasingly exploitable.
+
+Use the chart to decide whether the price is worth the risk before committing Schmeckles.
+
+### Step 4 — Configure and buy
+
+**Option A — Market card.** Click **Bet** directly on any market card. Price and payout multiplier are pre-set based on the current EPSS score.
+
+**Option B — Predict page.** Navigate to **Predict**, search for a package, and dial in your own CVSS/EPSS thresholds and contract duration. The live simulator updates `max_payout` and `multiplier` as you adjust.
+
+![Predict page — configure thresholds and see simulated returns before buying](https://assets.polydelve.com/screenshots/predict-simulated-returns.png)
+
+When satisfied, click **Buy**. A confirmation shows your cost in Schmeckles, `max_payout`, and the contract deadline.
+
+### Step 5 — Track your position
+
+Go to **Dashboard** to see your open contracts, Schmeckle balance over time, and per-contract P&L. Check the **Leaderboard** to see where you rank against other players.
+
+![Leaderboard showing Schmeckle balances and win rates](https://assets.polydelve.com/screenshots/qs-5-leaderboard.png)
+
+---
+
+## What happens next
+
+Contracts resolve automatically — no manual action required.
+
+| Outcome | Condition | Result |
+|---|---|---|
+| **YES** | A CVE is published for the package in OSV before the deadline | Payout credited to your Schmeckle balance |
+| **NO** | Deadline passes with no CVE published in OSV | Contract closes; cost is not refunded |
+
+Schmeckle balance updates on the **Dashboard** immediately after resolution. Check the **Leaderboard** to see where you rank.

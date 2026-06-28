@@ -1,0 +1,78 @@
+---
+title: "Deployment"
+description: "How Polydelve ships: rolling deploys, AWS topology, and ETL scheduling."
+---
+
+## Deploy strategy
+
+Polydelve uses a **rolling deploy with `min_healthy_percent=0`**. There are no active users, so zero-downtime guarantees (canary, blue-green) add complexity with no benefit. Rolling with min_healthy=0 lets ECS stop the old task immediately and start the new one — fastest possible iteration cycle.
+
+Canary and blue-green deploys are explicitly out of scope for this project.
+
+## AWS topology
+
+```
+Internet
+  └── CloudFront (CDN / TLS termination)
+        └── Backend API (ECS Fargate — Dockerized)
+              └── RDS Postgres
+```
+
+- **CloudFront** — serves the frontend (S3 origin) and proxies `/api/*` to the backend.
+- **Backend API** — runs the FastAPI app inside a Docker container on ECS Fargate.
+- **RDS Postgres** — primary datastore; Alembic manages schema migrations.
+
+Terraform manages provisioning. Full reference: [Infrastructure](/docs/build/infrastructure).
+
+## Shipping a backend release
+
+1. **Build image** from `backend/Dockerfile`:
+
+   ```bash
+   docker build -t polydelve-backend:$TAG ./backend
+   ```
+
+2. **Push** to ECR (or your configured registry):
+
+   ```bash
+   docker push $ECR_REPO/polydelve-backend:$TAG
+   ```
+
+3. **Update ECS service** — force a new deployment so ECS pulls the new image:
+
+   ```bash
+   aws ecs update-service \
+     --cluster polydelve \
+     --service backend \
+     --force-new-deployment
+   ```
+
+   ECS performs the rolling update: stops the existing task (min_healthy=0), starts the new task with the updated image.
+
+4. **Run migrations** if the release includes schema changes:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+   Run migrations against the live RDS instance before or immediately after the new task starts, depending on whether the change is backward-compatible.
+
+ECS task definition updates (new image tag, env vars, resource limits) are managed via Terraform. See [Infrastructure](/docs/build/infrastructure) for the full resource reference.
+
+## ETL job scheduling
+
+ETL jobs run via `python -m etl <job>` (see `backend/etl/run.py`). The primary scheduler is **EventBridge Scheduler** — a Fargate task runs on a `rate(2 hours)` schedule executing the `hourly` composite job. Individual jobs can also be triggered manually or via CI.
+
+| Cadence | Command | What it does |
+|---------|---------|--------------|
+| Every 2 hours (EventBridge) | `hourly` composite | EPSS refresh + news update + MAL advisories |
+| On-demand | `make etl-epss` | Refresh EPSS scores from BigQuery; resolve open contracts |
+| On-demand | `make etl-news` | Fetch security news, extract entities, regenerate featured contracts |
+| On-demand | `make build-cve-history` | Bulk-load OSV CVE history for all packages |
+| On-demand | `make enrich-packages` | Update download stats and risk scores |
+
+See [Data Pipeline](/docs/build/data-pipeline) for the full ETL architecture and bootstrap order.
+
+## Infrastructure
+
+Terraform provisions and manages all AWS resources (CloudFront, ECS, RDS, ECR, IAM, DNS, ACM). Full reference: [Infrastructure](/docs/build/infrastructure).

@@ -1,0 +1,107 @@
+---
+title: "Local Setup"
+description: "Environment setup, make targets, and database tooling for running Polydelve locally."
+---
+
+## Prerequisites
+
+- Python 3.14+, [uv](https://docs.astral.sh/uv/)
+- Node.js 20+, npm
+- Docker (for local Postgres)
+
+## Install
+
+```bash
+make be-install    # backend deps via uv
+make fe-install    # frontend deps via npm
+```
+
+## Environment variables
+
+Copy the secrets template and fill in keys:
+
+```bash
+cp backend/secrets/.env.example backend/secrets/.env
+```
+
+| Variable | Service | Required for |
+|----------|---------|-------------|
+| `AUTH0_DOMAIN` | Auth0 | Auth (can use dev tenant) |
+| `AUTH0_AUDIENCE` | Auth0 | Auth |
+| `EXA_API_KEY` | Exa | News fetch |
+| `GEMINI_API_KEY` | Google Gemini | News tagging, sector LLM |
+| `OPENAI_API_KEY` | OpenAI | Sector classification fallback |
+
+For local dev the app runs against a local Postgres instance — no cloud DB token needed.
+
+## Run
+
+```bash
+make dev     # backend (port 8000) + frontend (port 5173) concurrently
+make be      # backend only
+make fe      # frontend only
+```
+
+## Local Postgres
+
+`make dev` starts a Dockerized Postgres 16 instance automatically and stops it on Ctrl-C.
+
+```
+postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev
+```
+
+Schema is managed by Alembic. Run migrations after first clone:
+
+```bash
+cd backend && uv run alembic upgrade head
+```
+
+## Useful make targets
+
+```
+make news-update            fetch and store latest security news
+make build-cve-history      pull CVE data from OSV for all packages
+make enrich-packages        add download stats and descriptions
+make enrich-sectors         heuristic sector classification
+make classify-sectors-llm   LLM sector classification (slower)
+make refresh-epss           update EPSS scores + resolve contracts
+make be-test                run backend test suite
+make lint                   lint frontend TypeScript
+```
+
+Run `make help` to see all targets.
+
+## nvim-dbee
+
+[nvim-dbee](https://github.com/kndndrj/nvim-dbee) is wired to the local connection out of the box via `~/.config/nvim/lua/plugins/dbee.lua`.
+
+```
+:Dbee   — open the UI
+```
+
+The `polydelve-local` connection is pre-configured. No env vars needed for local dev.
+
+<img src="https://assets.polydelve.com/dbee-local.png" alt="nvim-dbee querying the local Postgres DB" />
+
+### Key bindings
+
+| Key | Action |
+|-----|--------|
+| `<CR>` | Execute query (`n` = next page) |
+| `cw` | Close window |
+| `dd` | Delete note |
+| `<Esc>` / `q` | Close menu |
+
+## Connecting to RDS (prod)
+
+When RDS is provisioned, temporarily allowlist your IP in the RDS security group (port 5432) and add a second connection to `dbee.lua`:
+
+```lua
+{
+  name = "polydelve-prod",
+  type = "postgres",
+  url = "postgresql://<user>:<pass>@<rds-endpoint>:5432/polydelve",
+},
+```
+
+Revoke the security group rule when done.
