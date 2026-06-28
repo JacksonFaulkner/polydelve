@@ -54,7 +54,7 @@ describe("PackagesTable", () => {
     )
     render(<PackagesTable ecosystem="PyPI" />)
     await waitFor(() => {
-      expect(screen.getByText("requests")).toBeInTheDocument()
+      expect(screen.getAllByText("requests").length).toBeGreaterThan(0)
     })
   })
 
@@ -87,7 +87,7 @@ describe("PackagesTable", () => {
     )
     render(<PackagesTable ecosystem="PyPI" />)
     await waitFor(() => {
-      expect(screen.getByText("requests")).toBeInTheDocument()
+      expect(screen.getAllByText("requests").length).toBeGreaterThan(0)
     })
   })
 

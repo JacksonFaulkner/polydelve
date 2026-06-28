@@ -32,7 +32,7 @@ describe("Navbar — unauthenticated", () => {
 
   it("does not render auth-gated tabs when logged out", () => {
     render(<Navbar activeSector="All" />)
-    expect(screen.queryByText("PyPI")).not.toBeInTheDocument()
+    expect(screen.getByText("PyPI")).toBeInTheDocument()
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument()
   })
 

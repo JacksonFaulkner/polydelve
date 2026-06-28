@@ -31,7 +31,6 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
         run: |
           aws s3 sync docs/public s3://polydelve-assets \
-            --delete \
             --cache-control "max-age=31536000,public" \
             --exclude "*.html"
 
