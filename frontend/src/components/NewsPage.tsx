@@ -50,7 +50,7 @@ function newsBackground(item: NewsItem, size: CardSize) {
   const favicon = faviconUrl(item.url)
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl flex flex-col">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden flex flex-col">
       {/* screenshot. slides down from top on hover */}
       <div className={`relative w-full max-h-0 overflow-hidden transition-[max-height] duration-500 ease-in-out ${THUMB_MAX_H[size]}`}>
         <img
@@ -188,8 +188,8 @@ export function NewsPage() {
         ) : items.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-zinc-500 text-sm">No articles found</div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <BentoGrid className="h-full lg:grid-rows-3 [&>*]:bg-[#181D21] [&>*]:dark:[box-shadow:none] [&>*]:dark:[border:1px_solid_rgb(39_39_42)]">
+          <div className="flex-1 min-h-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800">
+            <BentoGrid className="h-full gap-px lg:grid-rows-3 [&>*]:bg-[#181D21] [&>*]:rounded-none [&>*]:dark:[box-shadow:none] [&>*]:dark:border-0">
               {current.slice(0, 6).map((item, i) => {
                 const size = CARD_SIZES[i] ?? "small"
                 return (

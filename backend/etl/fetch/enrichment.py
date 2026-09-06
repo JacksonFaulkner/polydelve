@@ -267,6 +267,86 @@ async def fetch_mal_advisory(
     return False
 
 
+_OSV_BATCH_SIZE = 500  # OSV /v1/querybatch caps at 1000 queries/request
+
+
+async def fetch_cve_and_mal_batch(
+    client: httpx.AsyncClient, rows: list[tuple[str, str]]
+) -> dict[tuple[str, str], tuple[list[str], bool]]:
+    """Bulk-fetch CVE ids + MAL advisory status for many (name, ecosystem) pairs.
+
+    Uses OSV's POST /v1/querybatch (up to 1000 queries/call, ids only), then
+    resolves CVE aliases for any non-"CVE-" ids (GHSA-/PYSEC-/etc.) via
+    GET /v1/vulns/{id}, deduped across the whole batch so shared advisories
+    (e.g. a GHSA hitting many packages) only get looked up once.
+    """
+    osv_eco_map = {"npm": "npm", "PyPI": "PyPI", "composer": "Packagist"}
+    queryable = [(n, e) for n, e in rows if e in osv_eco_map]
+    result: dict[tuple[str, str], tuple[list[str], bool]] = {
+        (n, e): ([], False) for n, e in rows
+    }
+
+    pkg_vuln_ids: dict[tuple[str, str], list[str]] = {}
+    for i in range(0, len(queryable), _OSV_BATCH_SIZE):
+        chunk = queryable[i : i + _OSV_BATCH_SIZE]
+        try:
+            r = await client.post(
+                "https://api.osv.dev/v1/querybatch",
+                json={
+                    "queries": [
+                        {"package": {"name": n, "ecosystem": osv_eco_map[e]}}
+                        for n, e in chunk
+                    ]
+                },
+                timeout=30,
+            )
+            r.raise_for_status()
+            batch_results = r.json().get("results", [])
+        except Exception:
+            continue
+        for (n, e), item in zip(chunk, batch_results):
+            pkg_vuln_ids[(n, e)] = [v.get("id", "") for v in item.get("vulns", [])]
+
+    # Resolve CVE aliases for any id that isn't already CVE-prefixed.
+    needs_alias = sorted({
+        vid
+        for ids in pkg_vuln_ids.values()
+        for vid in ids
+        if vid and not vid.startswith("CVE-") and not vid.startswith("MAL-")
+    })
+
+    alias_map: dict[str, list[str]] = {}
+
+    async def _resolve(vuln_id: str) -> None:
+        try:
+            r = await client.get(f"https://api.osv.dev/v1/vulns/{vuln_id}", timeout=10)
+            if r.status_code == 200:
+                aliases = [a for a in r.json().get("aliases", []) if a.startswith("CVE-")]
+                alias_map[vuln_id] = aliases
+        except Exception:
+            alias_map[vuln_id] = []
+
+    sem = asyncio.Semaphore(20)
+
+    async def _resolve_bounded(vuln_id: str) -> None:
+        async with sem:
+            await _resolve(vuln_id)
+
+    await asyncio.gather(*[_resolve_bounded(v) for v in needs_alias])
+
+    for key, vuln_ids in pkg_vuln_ids.items():
+        has_mal = any(v.startswith("MAL-") for v in vuln_ids)
+        cve_ids: list[str] = []
+        for v in vuln_ids:
+            if v.startswith("CVE-"):
+                cve_ids.append(v)
+            elif v in alias_map:
+                cve_ids.extend(alias_map[v])
+        result[key] = (sorted(set(cve_ids)), has_mal)
+
+    return result
+
+
 async def fetch_github_org(
     client: httpx.AsyncClient, name: str, ecosystem: str
 ) -> str | None:

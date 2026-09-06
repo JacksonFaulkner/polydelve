@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "ecs_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -10,10 +12,15 @@ data "aws_iam_policy_document" "ecs_assume_role" {
 
 data "aws_iam_policy_document" "ecs_infra_assume_role" {
   statement {
-    actions = ["sts:AssumeRole"]
+    actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
       type        = "Service"
       identifiers = ["ecs.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
     }
   }
 }

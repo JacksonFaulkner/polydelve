@@ -17,7 +17,7 @@ Common Vulnerability Scoring System. A numeric severity score from 0 to 10 assig
 
 ## EPSS
 
-Exploit Prediction Scoring System. A daily probability score between 0 and 1, published by FIRST, expressing the likelihood that a CVE will be exploited in the wild within the next 30 days. Polydelve sources EPSS data from BigQuery and uses it to price contracts and calculate user scoring calibration.
+Exploit Prediction Scoring System. A daily probability score between 0 and 1, published by FIRST, expressing the likelihood that a CVE will be exploited in the wild within the next 30 days. Polydelve refreshes current scores from FIRST's daily bulk file, backfills history from BigQuery, and uses EPSS to price contracts and as an independent contract win condition (see [Market Resolution](/docs/concepts/market-resolution)).
 
 ## EPSS History
 
@@ -37,7 +37,7 @@ The payout-to-cost ratio for a contract. A multiplier of 3 means a 10 Schmeckle 
 
 ## OSV
 
-Open Source Vulnerabilities. A database aggregating vulnerability advisories across ecosystems (PyPI, npm, Go, etc.). OSV is Polydelve's source of truth for contract resolution — a contract resolves YES when a matching OSV advisory is confirmed.
+Open Source Vulnerabilities. A database aggregating vulnerability advisories across ecosystems (npm, PyPI, Composer, etc.). OSV is Polydelve's source of truth for the tracked package universe and CVE history, but it is not the only resolution path — contracts can also resolve on an EPSS-threshold crossing or a MAL advisory, independent of OSV CVE data (see [Market Resolution](/docs/concepts/market-resolution)).
 
 ## relevancy_score
 
@@ -45,4 +45,4 @@ An internal numeric field on featured contracts used to rank which contracts sur
 
 ## Schmeckle
 
-Polydelve's in-app currency. Schmeckles are awarded on signup and earned by correctly predicting contract outcomes. They have no real-world monetary value and exist solely for ranking and gameplay purposes.
+Polydelve's in-app currency. New users start with 1000 Schmeckles; balance changes only from buying contracts and collecting payouts on wins. They have no real-world monetary value and exist solely for ranking and gameplay purposes.

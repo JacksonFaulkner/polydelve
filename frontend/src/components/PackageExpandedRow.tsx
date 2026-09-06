@@ -80,9 +80,10 @@ interface Props {
   name: string
   ecosystem: string
   colSpan: number
+  tourTag?: string
 }
 
-export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
+export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props) {
   const { authFetch } = useApi()
   const [detail, setDetail] = useState<PackageDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,7 +113,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan }: Props) {
   })() : null
 
   return (
-    <tr>
+    <tr data-tour={tourTag}>
       <td colSpan={colSpan} className="p-0">
         <AnimatePresence>
           <motion.div

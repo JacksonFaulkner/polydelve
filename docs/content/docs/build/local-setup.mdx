@@ -9,16 +9,19 @@ description: "Environment setup, make targets, and database tooling for running 
 - Node.js 20+, npm
 - Docker (for local Postgres)
 
-## Install
+<Steps>
+
+<Step>
+**Install dependencies:**
 
 ```bash
 make be-install    # backend deps via uv
 make fe-install    # frontend deps via npm
 ```
+</Step>
 
-## Environment variables
-
-Copy the secrets template and fill in keys:
+<Step>
+**Set environment variables.** Copy the secrets template and fill in keys:
 
 ```bash
 cp backend/secrets/.env.example backend/secrets/.env
@@ -33,8 +36,18 @@ cp backend/secrets/.env.example backend/secrets/.env
 | `OPENAI_API_KEY` | OpenAI | Sector classification fallback |
 
 For local dev the app runs against a local Postgres instance — no cloud DB token needed.
+</Step>
 
-## Run
+<Step>
+**Run migrations** against local Postgres (after first clone):
+
+```bash
+cd backend && uv run alembic upgrade head
+```
+</Step>
+
+<Step>
+**Start the app:**
 
 ```bash
 make dev     # backend (port 8000) + frontend (port 5173) concurrently
@@ -42,29 +55,23 @@ make be      # backend only
 make fe      # frontend only
 ```
 
-## Local Postgres
-
-`make dev` starts a Dockerized Postgres 16 instance automatically and stops it on Ctrl-C.
+`make dev` starts a Dockerized Postgres 16 instance automatically and stops it on Ctrl-C:
 
 ```
 postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev
 ```
+</Step>
 
-Schema is managed by Alembic. Run migrations after first clone:
-
-```bash
-cd backend && uv run alembic upgrade head
-```
+</Steps>
 
 ## Useful make targets
 
 ```
-make news-update            fetch and store latest security news
-make build-cve-history      pull CVE data from OSV for all packages
-make enrich-packages        add download stats and descriptions
-make enrich-sectors         heuristic sector classification
-make classify-sectors-llm   LLM sector classification (slower)
-make refresh-epss           update EPSS scores + resolve contracts
+make etl-news               fetch news, generate + rerank featured contracts
+make build-cve-history      pull CVE data from OSV for all tracked packages
+make etl-packages           refresh package metadata (downloads, risk score)
+make etl-epss               update EPSS scores from the daily bulk file
+make resolve-contracts      resolve open contracts (wins + expiries)
 make be-test                run backend test suite
 make lint                   lint frontend TypeScript
 ```
@@ -104,4 +111,6 @@ When RDS is provisioned, temporarily allowlist your IP in the RDS security group
 },
 ```
 
-Revoke the security group rule when done.
+<Callout type="warn">
+  Revoke the security group rule when done — never leave port 5432 open to a public IP.
+</Callout>

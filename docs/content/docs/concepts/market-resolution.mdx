@@ -5,47 +5,48 @@ description: "How and when contracts settle."
 
 ## Resolution outcomes
 
-Every contract asks: will a CVE be published for this package before the deadline?
+Every contract has one of three independent win conditions, checked by `scripts/resolve_contracts.py`:
 
-- **YES** — OSV confirms a CVE against the package before or on the contract deadline. The advisory must name the package directly (not a transitive dependency) and carry a valid CVE ID.
-- **NO** — The deadline passes with no qualifying OSV advisory. Shares on the NO side pay out.
+- **CVE win** — a new CVE with `cvss_score >= cvss_threshold` was published (per `cve_history`) after the contract was created (requires `cvss_threshold` set).
+- **EPSS win** — `epss_history` recorded a score `>= epss_threshold` after `created_at` (requires `epss_threshold` set).
+- **MAL win** — a non-withdrawn MAL advisory was published for the package after `created_at`.
+
+Any one of these triggers a **won** contract; the deadline passing with none met resolves it **expired**, with no payout.
 
 ## How resolution is triggered
 
-The resolution job queries OSV for each open contract whose deadline has passed or whose package has newly appeared in OSV data. It does not rely on webhooks — it polls OSV directly.
+`resolve_contracts.py` does not poll OSV live per contract. It reads from tables already populated by upstream ETL jobs:
 
-Steps:
+- `cve_history` — populated by the `cve` job (OSV bulk data)
+- `epss_history` — populated by `epss-history` / daily `epss` refresh
+- `mal_advisories` — populated by the `mal` job
 
-1. Fetch the current OSV advisory set for the tracked package (`ecosystem` + `package name`).
-2. Check whether any advisory carries a CVE ID with a `published` date on or before the contract deadline.
-3. If yes → resolve YES. If no → resolve NO (deadline must have passed).
-
-Scoring and payout math live in `features/probability.py`.
+For each open contract, it checks these tables for a qualifying row created after the contract's `created_at`. Won contracts get `status='won'` and `schmeckles += max_payout`; expired contracts get `status='expired'` with no payout.
 
 ## Timing and cadence
 
-The resolution job runs as part of the daily ETL cycle, triggered by EventBridge Scheduler every 2 hours. Contracts are not resolved in real time — there is a lag between an OSV advisory going live and resolution being recorded. Users should treat the resolution timestamp as an approximation, not an exact match to the OSV publish date.
+Resolution runs via `make resolve-contracts`, invoked as part of the daily ETL cycle. The scheduled Fargate task (EventBridge Scheduler) runs at **9am, 12pm, and 5pm ET** — not on a fixed interval. Contracts are not resolved in real time; there is a lag between an underlying advisory/score update landing in the database and resolution being recorded.
 
-EPSS and CVSS data refreshes independently of resolution (see [Vulnerability Tracking](/docs/concepts/vulnerability-tracking)).
+EPSS and CVE data refresh independently of resolution (see [Vulnerability Tracking](/docs/concepts/vulnerability-tracking)).
 
 ## Edge cases
 
-### CVE published after deadline
+<Accordions>
 
-If OSV shows a `published` date after the contract deadline, the contract resolves NO regardless of whether a CVE now exists. The question is scoped to the deadline window.
+<Accordion title="Multiple qualifying conditions">
+If a contract has both `cvss_threshold` and `epss_threshold` set, either one alone is sufficient to resolve YES — they are not both required.
+</Accordion>
 
-### Disputed or withdrawn advisories
+<Accordion title="Disputed or withdrawn advisories">
+The system does not automatically re-open or reverse a resolved contract — resolution is final at the time the job runs.
+</Accordion>
 
-If an OSV advisory is later withdrawn or the CVE is rejected (CVE ID marked REJECTED by NVD), the contract remains settled. The system does not automatically re-open or reverse a resolved contract — resolution is final at the time the job runs.
+<Accordion title="Package removed from tracking">
+If a package is removed from Polydelve's tracked universe after a contract opens, the contract continues to run against the last known data until the deadline.
+</Accordion>
 
-### Package removed from tracking
+<Accordion title="Data lag">
+Upstream sources (OSV, EPSS bulk file, MAL advisories) can lag their own publish times by hours to days depending on ETL cadence. Resolution is always based on Polydelve's ingested tables, not a live upstream call.
+</Accordion>
 
-If a package is removed from Polydelve's tracked universe after a contract opens, the contract continues to run against the last known OSV state until the deadline. No new OSV data will be fetched for untracked packages.
-
-### Multiple CVEs for one package
-
-If a package has more than one CVE, any single qualifying advisory is sufficient to resolve YES. The contract does not require all CVEs — just one published on or before the deadline.
-
-### OSV data lag
-
-OSV bulk data can lag the upstream NVD or GitHub Advisory Database by hours to days. A CVE may exist in NVD before it appears in OSV. Resolution is always based on OSV, not NVD directly.
+</Accordions>

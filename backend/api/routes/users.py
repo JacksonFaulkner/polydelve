@@ -124,16 +124,17 @@ def update_me(
 def get_leaderboard(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
+    search: str | None = Query(None),
     conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> LeaderboardResponse:
-    cache_key = f"leaderboard:{page}:{page_size}"
+    cache_key = f"leaderboard:{page}:{page_size}:{search or ''}"
     if cached := cache_get(cache_key):
         return cached
 
     offset = (page - 1) * page_size
-    total = count_users(conn)
-    ranked = get_ranked_users(conn, page_size, offset)
+    total = count_users(conn, search)
+    ranked = get_ranked_users(conn, page_size, offset, search)
 
     if not ranked:
         return LeaderboardResponse(total=total, page=page, page_size=page_size, users=[])

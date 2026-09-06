@@ -126,6 +126,125 @@ def resolve_expired(conn: Any, c: OpenContract) -> None:
     print(f"  EXP  {c.id[:8]}  {c.package_name}/{c.package_ecosystem}  (expired {c.expires_at})")
 
 
+@dataclass
+class OpenEtfMember:
+    id: str
+    package_name: str
+    package_ecosystem: str
+    cvss_threshold: float | None
+    epss_threshold: float | None
+    won: bool
+    created_at: datetime
+
+
+@dataclass
+class OpenEtf:
+    id: str
+    user_id: str
+    threshold_count: int
+    purchase_price: int
+    max_payout: int
+    expires_at: date
+    created_at: datetime
+    members: list[OpenEtfMember]
+
+
+def fetch_open_etf_contracts(conn: Any) -> list[OpenEtf]:
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, user_id, threshold_count, purchase_price, max_payout, expires_at, created_at
+        FROM etf_contracts WHERE status = 'open'
+    """)
+    rows = cur.fetchall()
+    result = []
+    for r in rows:
+        cur.execute("""
+            SELECT id, package_name, package_ecosystem, cvss_threshold, epss_threshold, won
+            FROM etf_contract_members WHERE etf_contract_id = %s
+        """, [r[0]])
+        member_rows = cur.fetchall()
+        created_at = r[6] if isinstance(r[6], datetime) else datetime.fromisoformat(str(r[6]))
+        members = [
+            OpenEtfMember(
+                id=m[0], package_name=m[1], package_ecosystem=m[2],
+                cvss_threshold=m[3], epss_threshold=m[4], won=m[5],
+                created_at=created_at,
+            )
+            for m in member_rows
+        ]
+        result.append(OpenEtf(
+            id=r[0], user_id=r[1], threshold_count=r[2], purchase_price=r[3],
+            max_payout=r[4],
+            expires_at=r[5] if isinstance(r[5], date) else date.fromisoformat(str(r[5])),
+            created_at=created_at, members=members,
+        ))
+    return result
+
+
+def _check_member_win(conn: Any, m: OpenEtfMember) -> bool:
+    fake = OpenContract(
+        id=m.id, user_id="", package_name=m.package_name, package_ecosystem=m.package_ecosystem,
+        cvss_threshold=m.cvss_threshold, epss_threshold=m.epss_threshold,
+        purchase_price=0, max_payout=0, expires_at=date.today(), created_at=m.created_at,
+    )
+    return check_cve_win(conn, fake) or check_epss_win(conn, fake) or check_mal_win(conn, fake)
+
+
+def resolve_etf_won(conn: Any, c: OpenEtf) -> None:
+    now = datetime.now(timezone.utc)
+    cur = conn.cursor()
+    cur.execute("UPDATE etf_contracts SET status = 'won', resolved_at = %s WHERE id = %s", [now, c.id])
+    cur.execute("UPDATE users SET schmeckles = schmeckles + %s WHERE id = %s", [c.max_payout, c.user_id])
+    print(f"  WON  {c.id[:8]}  ETF basket ({c.threshold_count}/{len(c.members)})  +{c.max_payout} sch")
+
+
+def resolve_etf_expired(conn: Any, c: OpenEtf) -> None:
+    now = datetime.now(timezone.utc)
+    cur = conn.cursor()
+    cur.execute("UPDATE etf_contracts SET status = 'expired', resolved_at = %s WHERE id = %s", [now, c.id])
+    print(f"  EXP  {c.id[:8]}  ETF basket  (expired {c.expires_at})")
+
+
+def run_etf(conn: Any, dry_run: bool = False) -> None:
+    today = date.today()
+    baskets = fetch_open_etf_contracts(conn)
+    print(f"Resolving ETF baskets — {len(baskets)} open, date={today}")
+
+    won = 0
+    expired = 0
+    for c in baskets:
+        now = datetime.now(timezone.utc)
+        for m in c.members:
+            if not m.won and _check_member_win(conn, m):
+                m.won = True
+                if not dry_run:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE etf_contract_members SET won = true, won_at = %s WHERE id = %s",
+                        [now, m.id],
+                    )
+
+        win_count = sum(1 for m in c.members if m.won)
+        if win_count >= c.threshold_count:
+            if not dry_run:
+                resolve_etf_won(conn, c)
+            else:
+                print(f"  [dry] WON  {c.id[:8]}  ETF basket ({win_count}/{len(c.members)})")
+            won += 1
+        elif c.expires_at <= today:
+            if not dry_run:
+                resolve_etf_expired(conn, c)
+            else:
+                print(f"  [dry] EXP  {c.id[:8]}  ETF basket")
+            expired += 1
+
+    if dry_run:
+        conn.rollback()
+    else:
+        conn.commit()
+    print(f"Done — {won} won, {expired} expired, {len(baskets) - won - expired} still open")
+
+
 def run(conn: Any, dry_run: bool = False) -> None:
     today = date.today()
     contracts = fetch_open_contracts(conn)
@@ -163,6 +282,8 @@ def run(conn: Any, dry_run: bool = False) -> None:
         conn.commit()
 
     print(f"Done — {won} won, {expired} expired, {len(contracts) - won - expired} still open")
+
+    run_etf(conn, dry_run=dry_run)
 
 
 if __name__ == "__main__":

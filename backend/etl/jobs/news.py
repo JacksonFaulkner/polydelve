@@ -1,4 +1,5 @@
 """Daily news ingest job."""
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -9,7 +10,7 @@ from features.news_repository import ingest_many
 
 async def run(conn: Any, days_back: int = 1) -> None:
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    totals: dict[str, int] = {"inserted": 0, "url_duplicate": 0, "semantic_duplicate": 0}
+    totals: dict[str, int] = defaultdict(int)
 
     for offset in range(days_back, 0, -1):
         start = today - timedelta(days=offset)
@@ -28,9 +29,9 @@ async def run(conn: Any, days_back: int = 1) -> None:
         for k, v in counts.items():
             totals[k] += v
         print(
-            f"inserted={counts['inserted']} "
-            f"url_dup={counts['url_duplicate']} "
-            f"sem_dup={counts['semantic_duplicate']}",
+            f"inserted={counts.get('inserted', 0)} "
+            f"url_dup={counts.get('url_duplicate', 0)} "
+            f"sem_dup={counts.get('semantic_duplicate', 0)}",
             flush=True,
         )
 

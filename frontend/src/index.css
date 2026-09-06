@@ -2,8 +2,49 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@tour-kit/react/styles.css";
+@import "@tour-kit/react/components.css";
+/* TourKit components are built from Tailwind utilities (bg-popover, text-muted-foreground…);
+   without this @source the classes never get generated and the card renders transparent. */
+@source "../node_modules/@tour-kit/react/dist";
 
 @custom-variant dark (&:is(.dark *));
+
+/* TourKit portals mount at <body>, outside the app's dark styling, so the shadcn
+   tokens resolve to their light :root values. Re-scope them dark on tour elements. */
+.site-tour {
+  --popover: #1c2229;
+  --popover-foreground: #e4e4e7;
+  --border: #3f3f46;
+  --primary: #fde832;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #e4e4e7;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --ring: #fde832;
+}
+
+/* TourKit theme — match the app's dark palette + schmeckle yellow */
+:root {
+  --tour-overlay-bg: rgba(0, 0, 0, 0.65);
+  --tour-card-bg: #1c2229;
+  --tour-card-fg: #e4e4e7;
+  --tour-card-border: #3f3f46;
+  --tour-card-radius: 0.75rem;
+  --tour-card-shadow: 0 20px 40px -12px rgb(0 0 0 / 0.6);
+  --tour-primary: #fde832;
+  --tour-primary-fg: #18181b;
+  --tour-primary-hover: #fde047;
+  --tour-secondary-bg: transparent;
+  --tour-secondary-fg: #d4d4d8;
+  --tour-secondary-border: #3f3f46;
+  --tour-secondary-hover: #27272a;
+  --tour-muted-fg: #71717a;
+  --tour-ring: #fde832;
+}
 
 :root {
   --background: oklch(1 0 0);

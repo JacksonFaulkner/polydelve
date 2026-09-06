@@ -20,18 +20,16 @@ A contract is a bet that a target package will receive a CVE meeting specific cr
 
 ### Resolution
 
-Contracts resolve **YES** when OSV records a new CVE against the package that meets the CVSS/EPSS thresholds before the deadline. Resolution runs on the EPSS refresh cycle.
+Contracts resolve **YES** on any one of three independent conditions: a new CVE meeting `cvss_threshold`, an EPSS score crossing `epss_threshold`, or a new MAL advisory for the package. See [Market Resolution](/docs/concepts/market-resolution) for the full mechanics.
 
-Contracts expire **NO** if the deadline passes without a qualifying CVE.
+Contracts expire **NO** if the deadline passes with none of those conditions met.
 
 ## Pricing
 
-Contract price is calculated in `features/contract_pricing.py`. Inputs:
+Contract price is calculated in `features/contract_pricing.py`. It computes a `grade` from CVE count, EPSS, MAL status, and CVSS, then prices the CVSS/EPSS/MAL win conditions as separate probabilities (a hazard/logit-based model for EPSS) before combining them. Download volume feeds `risk_score` for package ranking, not contract price directly.
 
-- **Base EPSS score** — higher exploitation probability → higher cost
-- **CVE history weight** — packages with frequent past CVEs cost more
-- **Download weight** — widely-used packages carry higher demand premium
-- **Multiplier** — payout = `purchase_price × multiplier`
+- **Higher exploitation probability → higher cost.** As implied probability rises, price rises.
+- **Multiplier** — payout = `purchase_price × multiplier`, capped at `MAX_MULTIPLIER = 50`.
 
 The multiplier is inversely proportional to probability: low-risk packages pay more per Schmeckle.
 

@@ -1,17 +1,18 @@
 """CLI entrypoint for ETL jobs.
 
 Usage:
+    python -m etl.run cve
     python -m etl.run news [--days-back N]
     python -m etl.run epss
     python -m etl.run mal
     python -m etl.run packages
-    python -m etl.run hourly
+    python -m etl.run refresh
     python -m etl.run seed
 """
 import argparse
 import asyncio
 import time
-from etl.jobs import epss, mal, news, packages
+from etl.jobs import cve, epss, mal, news, packages
 from features.db import DATABASE_URL, get_db_conn
 
 
@@ -20,16 +21,16 @@ def _timed(label: str):
     class _T:
         def __enter__(self):
             self._t = time.monotonic()
-            print(f"[hourly] >> {label}", flush=True)
+            print(f"[refresh] >> {label}", flush=True)
             return self
         def __exit__(self, *_):
-            print(f"[hourly] << {label} ({time.monotonic() - self._t:.1f}s)", flush=True)
+            print(f"[refresh] << {label} ({time.monotonic() - self._t:.1f}s)", flush=True)
     return _T()
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Run a Polydelve ETL job.")
-    parser.add_argument("job", choices=["news", "epss", "mal", "packages", "hourly", "seed", "epss-history"])
+    parser.add_argument("job", choices=["news", "epss", "mal", "packages", "refresh", "seed", "epss-history", "cve"])
     parser.add_argument("--days-back", type=int, default=1, help="news only: days of history to fetch")
     parser.add_argument("--skip-download", action="store_true", help="mal only: use cached zips")
     args = parser.parse_args()
@@ -37,7 +38,9 @@ async def main() -> None:
     print(f"[etl] job={args.job} db={DATABASE_URL}", flush=True)
     conn = get_db_conn(autocommit=True)
     try:
-        if args.job == "news":
+        if args.job == "cve":
+            await cve.run(conn)
+        elif args.job == "news":
             await news.run(conn, days_back=args.days_back)
         elif args.job == "epss":
             await epss.run(conn)
@@ -73,7 +76,7 @@ async def main() -> None:
             )
             if result.returncode != 0:
                 raise SystemExit(result.returncode)
-        elif args.job == "hourly":
+        elif args.job == "refresh":
             t0 = time.monotonic()
             with _timed("epss"):
                 await epss.run(conn)
@@ -81,7 +84,7 @@ async def main() -> None:
                 await news.run(conn, days_back=args.days_back)
             with _timed("mal"):
                 await mal.run(conn, skip_download=args.skip_download)
-            print(f"[hourly] total={time.monotonic() - t0:.1f}s", flush=True)
+            print(f"[refresh] total={time.monotonic() - t0:.1f}s", flush=True)
     finally:
         conn.close()
 

@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/${var.app_name}/backend"
-  retention_in_days = 30
+  retention_in_days = 7
 }
 
 resource "aws_ecs_cluster" "main" {
@@ -8,7 +8,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_ecs_express_gateway_service" "backend" {
-  service_name            = "${var.app_name}-backend-v2"
+  service_name            = "${var.app_name}-backend-v3"
   cluster                 = aws_ecs_cluster.main.name
   execution_role_arn      = aws_iam_role.execution.arn
   task_role_arn           = aws_iam_role.task.arn
@@ -37,6 +37,16 @@ resource "aws_ecs_express_gateway_service" "backend" {
       value = var.aws_region
     }
 
+    environment {
+      name  = "AUTH0_DOMAIN"
+      value = var.auth0_domain
+    }
+
+    environment {
+      name  = "AUTH0_AUDIENCE"
+      value = var.auth0_audience
+    }
+
     secret {
       name       = "DATABASE_URL"
       value_from = aws_secretsmanager_secret.db_url.arn
@@ -55,16 +65,6 @@ resource "aws_ecs_express_gateway_service" "backend" {
     secret {
       name       = "GCP_SA_JSON"
       value_from = aws_secretsmanager_secret.app["gcp_sa_json"].arn
-    }
-
-    secret {
-      name       = "AUTH0_DOMAIN"
-      value_from = aws_secretsmanager_secret.app["auth0_domain"].arn
-    }
-
-    secret {
-      name       = "AUTH0_AUDIENCE"
-      value_from = aws_secretsmanager_secret.app["auth0_audience"].arn
     }
   }
 

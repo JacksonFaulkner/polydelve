@@ -282,6 +282,88 @@ class SellResponse(BaseModel):
     )
 
 
+# ── ETF (basket) contracts ────────────────────────────────────────────────────
+
+
+class EtfMemberRequest(BaseModel):
+    package_name: str = Field(description="Package in the basket.")
+    ecosystem: Ecosystem = Field(description="Registry the package belongs to.")
+    cvss_threshold: float | None = Field(default=None, ge=0, le=10)
+    epss_threshold: float | None = Field(default=None, ge=0, le=1)
+
+
+class EtfBase(BaseModel):
+    members: list[EtfMemberRequest] = Field(
+        min_length=2, description="Packages in the basket. At least 2."
+    )
+    threshold_count: int = Field(
+        ge=1, description="Number of members that must trigger their win condition."
+    )
+    purchase_price: int = Field(ge=10, description="Schmeckles paid upfront.")
+    duration_days: ContractDuration = Field(default=30)
+
+
+class EtfQuoteRequest(EtfBase):
+    pass
+
+
+class EtfBuyRequest(EtfBase):
+    pass
+
+
+class EtfSimulateRequest(EtfBase):
+    pass
+
+
+class EtfQuoteResponse(BaseModel):
+    threshold_count: int
+    member_count: int
+    purchase_price: int
+    max_payout: int
+    combined_probability: float = Field(description="P(at least threshold_count of member_count win).")
+    avg_grade: float
+    expires_at: str
+    multiplier: float
+
+
+class EtfBuyResponse(BaseModel):
+    id: str
+    max_payout: int
+    combined_probability: float
+    avg_grade: float
+    expires_at: str
+    multiplier: float
+
+
+class EtfMemberDetail(BaseModel):
+    package_name: str
+    ecosystem: str
+    cvss_threshold: float | None
+    epss_threshold: float | None
+    opening_probability: float
+    opening_epss: float | None
+    won: bool
+    won_at: str | None
+
+
+class EtfContractDetail(BaseModel):
+    id: str
+    threshold_count: int
+    member_count: int
+    purchase_price: int
+    max_payout: int
+    combined_probability: float
+    avg_grade: float
+    expires_at: str
+    status: ContractStatus
+    resolved_at: str | None
+    sell_price: int | None
+    created_at: str
+    current_sell_value: int | None
+    multiplier: float
+    members: list[EtfMemberDetail]
+
+
 # ── Leaderboard ───────────────────────────────────────────────────────────────
 
 

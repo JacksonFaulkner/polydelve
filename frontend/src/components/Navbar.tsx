@@ -47,11 +47,17 @@ interface NavbarProps {
   activeSector: Sector;
 }
 
+const TOUR_NAV_ID: Partial<Record<Sector, string>> = {
+  PyPI: "nav-pypi",
+  Predict: "nav-predict",
+};
+
 function Tab({ s, active, onClick }: { s: Sector; active: boolean; onClick?: () => void }) {
   const isPredict = s === "Predict";
   return (
     <a
       href={SECTOR_PATH[s]}
+      data-tour={TOUR_NAV_ID[s]}
       onClick={(e) => {
         e.preventDefault();
         window.history.pushState({}, "", SECTOR_PATH[s]);
@@ -105,8 +111,14 @@ export function Navbar({ user, activeSector }: NavbarProps) {
             className="flex shrink-0 items-center gap-2"
           >
             <img src="/logo.png" alt="Polydelve" width={28} height={28} className="h-7 object-contain invert" />
-            <span className="text-base font-bold tracking-tight text-white">Polydelve</span>
           </a>
+
+          {/* Desktop tab strip — inline w/ logo + sign in */}
+          <nav className="hidden sm:flex items-stretch overflow-x-auto scrollbar-none ml-2">
+            {visibleTabs.map((s) => (
+              <Tab key={s} s={s} active={activeSector === s} />
+            ))}
+          </nav>
 
           <div className="ml-auto flex items-center gap-2">
             {/* Schmeckles — hidden on mobile */}
@@ -178,15 +190,6 @@ export function Navbar({ user, activeSector }: NavbarProps) {
               </button>
             )}
           </div>
-        </div>
-
-        {/* Desktop tab strip */}
-        <div className="hidden sm:block relative overflow-x-auto scrollbar-none border-t border-zinc-800/60">
-          <nav className="mx-auto flex max-w-7xl items-stretch px-4 md:min-w-0 md:justify-center">
-            {visibleTabs.map((s) => (
-              <Tab key={s} s={s} active={activeSector === s} />
-            ))}
-          </nav>
         </div>
       </header>
 

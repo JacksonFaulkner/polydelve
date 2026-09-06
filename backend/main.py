@@ -12,6 +12,7 @@ from slowapi.util import get_remote_address
 from api.middleware.cors import add_cors
 from api.routes.health import router as health_router
 from api.routes.contracts import router as contracts_router
+from api.routes.etf import router as etf_router
 from api.routes.packages import router as packages_router
 from api.routes.prediction_market import public_router as pm_public_router
 from api.routes.prediction_market import router as pm_router
@@ -71,6 +72,7 @@ app.include_router(pm_public_router)
 app.include_router(pm_router)
 app.include_router(packages_router)
 app.include_router(contracts_router)
+app.include_router(etf_router)
 app.include_router(featured_router)
 
 

@@ -5,11 +5,10 @@ import httpx
 from tqdm.asyncio import tqdm
 
 from etl.fetch.enrichment import (
-    fetch_cve_ids,
+    fetch_cve_and_mal_batch,
     fetch_downloads_bulk,
     fetch_github_avatar,
     fetch_github_org,
-    fetch_mal_advisory,
 )
 from etl.fetch.sectors import classify_sectors_llm, fetch_package_sectors
 from etl.utils import bounded_gather
@@ -63,37 +62,35 @@ async def _pass_downloads(conn: Any) -> None:
 
 
 async def _pass_cves_and_mal(conn: Any, client: httpx.AsyncClient) -> None:
+    """Re-check every tracked package for CVEs/MAL advisories via OSV's bulk
+    querybatch endpoint. Re-scans all packages each run (not just unseen ones)
+    since batching makes this cheap, and CVEs/advisories get published after
+    a package was first enriched."""
     cur = conn.cursor()
-    cur.execute("""
-        SELECT name, ecosystem, cve_ids FROM packages
-        WHERE ecosystem IN ('npm', 'PyPI') AND epss_score IS NULL
-    """)
+    cur.execute("SELECT name, ecosystem FROM packages WHERE ecosystem IN ('npm', 'PyPI')")
     rows = cur.fetchall()
     if not rows:
         print("  cves/mal: nothing to fetch", flush=True)
         return
     print(f"  cves/mal: fetching for {len(rows)} packages...", flush=True)
 
-    async def fetch_one(
-        name: str, eco: str, existing: list[str]
-    ) -> tuple[str, str, list[str], bool]:
-        cve_ids = existing or await fetch_cve_ids(client, name, eco)
-        has_mal = await fetch_mal_advisory(client, name, eco)
-        return name, eco, cve_ids, has_mal
+    results = await fetch_cve_and_mal_batch(client, [(name, eco) for name, eco in rows])
 
-    results = await bounded_gather(
-        [fetch_one(name, eco, list(cves or [])) for name, eco, cves in rows],
-        concurrency=20,
-        desc="  fetching cves/mal",
-    )
-    for name, eco, cve_ids, has_mal in results:
+    updated_cves = updated_mal = 0
+    for (name, eco), (cve_ids, has_mal) in results.items():
         cur.execute(
             """UPDATE packages SET
-               cve_ids = CASE WHEN %s THEN %s ELSE cve_ids END,
-               has_mal_advisory = CASE WHEN %s THEN TRUE ELSE has_mal_advisory END
-               WHERE name = %s AND ecosystem = %s""",
-            [len(cve_ids) > 0, cve_ids, has_mal, name, eco],
+               cve_ids = %s,
+               has_mal_advisory = %s
+               WHERE name = %s AND ecosystem = %s
+               AND (cve_ids IS DISTINCT FROM %s OR has_mal_advisory IS DISTINCT FROM %s)""",
+            [cve_ids or None, has_mal, name, eco, cve_ids or None, has_mal],
         )
+        if cur.rowcount:
+            updated_cves += 1
+            if has_mal:
+                updated_mal += 1
+    print(f"  cves/mal: {len(results)} checked, {updated_cves} changed ({updated_mal} with MAL)", flush=True)
 
 
 async def _pass_logos(conn: Any, client: httpx.AsyncClient) -> None:

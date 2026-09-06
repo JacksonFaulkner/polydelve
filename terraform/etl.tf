@@ -2,7 +2,7 @@
 
 resource "aws_cloudwatch_log_group" "etl" {
   name              = "/ecs/${var.app_name}/etl"
-  retention_in_days = 14
+  retention_in_days = 7
 }
 
 resource "aws_ecs_task_definition" "etl" {
@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "etl" {
     essential = true
 
     # Default command — overridden per run via ECS command override
-    command = ["python", "-m", "etl.run", "hourly"]
+    command = ["python", "-m", "etl.run", "refresh"]
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -46,7 +46,7 @@ resource "aws_ecs_task_definition" "etl" {
   }])
 }
 
-# ── EventBridge scheduled rule (every 2 hours) ────────────────────────────────
+# ── EventBridge scheduled rule (9am, 12pm, 5pm ET) ────────────────────────────
 
 resource "aws_iam_role" "eventbridge_etl" {
   name = "${var.app_name}-eventbridge-etl"
@@ -85,8 +85,8 @@ resource "aws_iam_role_policy" "eventbridge_etl_run_task" {
   })
 }
 
-resource "aws_scheduler_schedule" "etl_hourly" {
-  name       = "${var.app_name}-etl-hourly"
+resource "aws_scheduler_schedule" "etl_refresh" {
+  name       = "${var.app_name}-etl-refresh"
   group_name = "default"
 
   flexible_time_window {
@@ -94,7 +94,8 @@ resource "aws_scheduler_schedule" "etl_hourly" {
     maximum_window_in_minutes = 10
   }
 
-  schedule_expression = "rate(2 hours)"
+  schedule_expression          = "cron(0 9,12,17 * * ? *)"
+  schedule_expression_timezone = "America/New_York"
 
   target {
     arn      = aws_ecs_cluster.main.arn

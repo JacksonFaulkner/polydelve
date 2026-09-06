@@ -107,25 +107,21 @@ export function HowItWorksPage() {
         {/* Event types */}
         <section className="space-y-3 lg:flex lg:flex-col">
           <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Event types</h2>
-          {/* mobile / sm: individual cards in a row; desktop: flush grouped list */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:hidden">
-            {EVENT_TYPES.map((e) => (
-              <div key={e.label} className={`rounded-xl border ${e.border} bg-[#181D21] px-4 py-4`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`w-2 h-2 rounded-full ${e.dot}`} />
-                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
-                </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="hidden lg:flex lg:flex-col lg:flex-1 rounded-xl border border-zinc-800 bg-[#181D21] overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 lg:gap-0 lg:flex-1 lg:rounded-xl lg:border lg:border-zinc-800 lg:bg-[#181D21] lg:overflow-hidden">
             {EVENT_TYPES.map((e, i) => (
-              <div key={e.label} className={`flex gap-3 px-4 py-4 flex-1${i < EVENT_TYPES.length - 1 ? " border-b border-zinc-800/60" : ""}`}>
-                <span className={`w-1 self-stretch rounded-full flex-shrink-0 ${e.dot} opacity-80`} />
-                <div>
-                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
-                  <p className="text-xs text-zinc-400 leading-relaxed mt-1">{e.desc}</p>
+              <div
+                key={e.label}
+                className={`flex gap-3 rounded-xl border ${e.border} bg-[#181D21] px-4 py-4 lg:rounded-none lg:border-0 lg:bg-transparent${
+                  i < EVENT_TYPES.length - 1 ? " lg:border-b lg:border-zinc-800/60" : ""
+                }`}
+              >
+                <span className={`hidden lg:block w-1 self-stretch rounded-full flex-shrink-0 ${e.dot} opacity-80`} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 lg:mb-1 lg:gap-0">
+                    <span className={`w-2 h-2 rounded-full ${e.dot} lg:hidden`} />
+                    <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
                 </div>
               </div>
             ))}

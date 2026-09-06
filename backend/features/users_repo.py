@@ -35,25 +35,43 @@ def set_avatar_url(conn: Any, user_id: str, avatar_url: str) -> None:
     cur.execute("UPDATE users SET avatar_url = %s WHERE id = %s", [avatar_url, user_id])
 
 
-def count_users(conn: Any) -> int:
+def count_users(conn: Any, search: str | None = None) -> int:
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM users")
+    if search:
+        cur.execute("SELECT COUNT(*) FROM users WHERE username ILIKE %s", [f"%{search}%"])
+    else:
+        cur.execute("SELECT COUNT(*) FROM users")
     row = cur.fetchone()
     return (row or (0,))[0]
 
 
-def get_ranked_users(conn: Any, limit: int, offset: int) -> list[tuple]:
+def get_ranked_users(conn: Any, limit: int, offset: int, search: str | None = None) -> list[tuple]:
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, username, schmeckles,
-               ROW_NUMBER() OVER (ORDER BY schmeckles DESC) AS rank
-        FROM users
-        ORDER BY schmeckles DESC
-        LIMIT %s OFFSET %s
-        """,
-        [limit, offset],
-    )
+    if search:
+        cur.execute(
+            """
+            SELECT id, username, schmeckles, rank FROM (
+                SELECT id, username, schmeckles,
+                       ROW_NUMBER() OVER (ORDER BY schmeckles DESC) AS rank
+                FROM users
+            ) ranked
+            WHERE username ILIKE %s
+            ORDER BY schmeckles DESC
+            LIMIT %s OFFSET %s
+            """,
+            [f"%{search}%", limit, offset],
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id, username, schmeckles,
+                   ROW_NUMBER() OVER (ORDER BY schmeckles DESC) AS rank
+            FROM users
+            ORDER BY schmeckles DESC
+            LIMIT %s OFFSET %s
+            """,
+            [limit, offset],
+        )
     return cur.fetchall()
 
 
