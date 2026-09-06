@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table"
+import { Search } from "lucide-react"
 import type { LeaderboardUser, LeaderboardResponse } from "@/types"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 import { UserExpandedRow } from "./UserExpandedRow"
 import { useApi } from "@/lib/api"
 const PAGE_SIZE = 50
@@ -40,14 +41,14 @@ const columns = [
       )
     },
   }),
-  col.accessor("schmeckles", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Schmeckles</span>,
+  col.accessor("bits", {
+    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Bits</span>,
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue()
       return (
         <div className="flex items-center gap-1.5">
-          <SchmeckleIcon className="h-3.5 w-3.5 text-[#FDE832]" />
+          <BitIcon className="h-3.5 w-3.5 text-[#FDE832]" />
           <span className="tabular-nums text-sm text-zinc-200 font-medium">{v.toLocaleString()}</span>
         </div>
       )
@@ -111,15 +112,25 @@ export function LeaderboardTable() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
 
   function toggleRow(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(t)
+  }, [search])
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authFetch(`/users/leaderboard?page=${page}&page_size=${PAGE_SIZE}`)
+      const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
+      if (debouncedSearch) params.set("search", debouncedSearch)
+      const res = await authFetch(`/users/leaderboard?${params}`)
       const json: LeaderboardResponse = await res.json()
       setData(json.users)
       setTotal(json.total)
@@ -128,9 +139,10 @@ export function LeaderboardTable() {
     } finally {
       setLoading(false)
     }
-  }, [page, authFetch])
+  }, [page, debouncedSearch, authFetch])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { setPage(1) }, [debouncedSearch])
 
   const table = useReactTable({
     data,
@@ -145,7 +157,31 @@ export function LeaderboardTable() {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-zinc-800">
+      <div className="overflow-hidden rounded-lg border border-zinc-800">
+        <div className="flex items-center gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search players…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => { setSearch(""); searchRef.current?.focus() }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <span className="shrink-0 text-xs text-zinc-500 pr-1">{total.toLocaleString()} players</span>
+        </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
@@ -207,6 +243,7 @@ export function LeaderboardTable() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="flex items-center justify-between text-xs text-zinc-500">

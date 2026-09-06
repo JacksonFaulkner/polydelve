@@ -21,7 +21,7 @@ from features.markets_repo import (
     place_bet as repo_place_bet,
 )
 from features.prediction_market import calculate_payout
-from features.users_repo import get_user_schmeckles
+from features.users_repo import get_user_bits
 
 public_router = APIRouter()
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -205,11 +205,11 @@ def place_bet(
         raise HTTPException(status_code=409, detail="Market is not open")
 
     price = market[0]
-    schmeckles = get_user_schmeckles(conn, user_id)
-    if schmeckles is None:
+    bits = get_user_bits(conn, user_id)
+    if bits is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if schmeckles < price:
-        raise HTTPException(status_code=409, detail="Insufficient schmeckles")
+    if bits < price:
+        raise HTTPException(status_code=409, detail="Insufficient bits")
 
     bet_id = str(uuid.uuid4())
     try:
@@ -233,4 +233,4 @@ def get_user(
     row = get_user_basic(conn, user_id)
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": row[0], "username": row[1], "schmeckles": row[2]}
+    return {"id": row[0], "username": row[1], "bits": row[2]}

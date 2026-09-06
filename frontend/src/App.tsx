@@ -8,15 +8,28 @@ import { PackagesTable } from "./components/PackagesTable";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 import { NewsPage } from "./components/NewsPage";
 import { PredictPage } from "./components/PredictPage";
+import { EventsPage } from "./components/EventsPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { HowItWorksPage } from "./components/HowItWorksPage";
+import { AdBanner } from "./components/AdBanner";
 import { UsernameModal } from "./components/UsernameModal";
 import { SignupPrompt } from "./components/SignupPrompt";
+import { TourProvider } from "@tour-kit/core";
+import { SiteTour } from "./components/SiteTour";
+import { TourPrompt } from "./components/TourPrompt";
 import type { Market, NewsItem, User } from "./types";
 import { useApi } from "@/lib/api";
 
 export default function App() {
+  return (
+    <TourProvider>
+      <AppInner />
+    </TourProvider>
+  );
+}
+
+function AppInner() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showSignup, setShowSignup] = useState(false);
   const { authFetch } = useApi();
@@ -99,15 +112,16 @@ export default function App() {
         return;
       }
       const data = await res.json();
-      alert(`Contract bought! Max payout: ${data.max_payout} sch · ${Number(data.multiplier).toFixed(1)}×`);
+      alert(`Contract bought! Max payout: ${data.max_payout} bits · ${Number(data.multiplier).toFixed(1)}×`);
       authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {});
     } catch {
       alert("Network error. is the backend running?");
     }
   }
 
-  const isHome = !["News", "Dashboard", "Predict", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
+  const isHome = !["News", "Dashboard", "Predict", "Events", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
   const isFullHeight = isHome || activeSector === "News" || activeSector === "Predict";
+  const showAd = !isHome && activeSector !== "How";
 
   return (
     <div
@@ -118,7 +132,13 @@ export default function App() {
 
       {needsUsername && <UsernameModal onComplete={(user) => setMe(user)} />}
       <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
-      <main className={isFullHeight ? "mx-auto w-full max-w-7xl min-h-0 flex-1 overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}>
+      <SiteTour />
+      {isHome && <TourPrompt />}
+      <main
+        className={isFullHeight ? "mx-auto flex w-full max-w-7xl min-h-0 flex-1 flex-col overflow-hidden px-4 py-4" : `mx-auto max-w-7xl px-4 py-6${showAd ? " pb-20" : ""}`}
+        style={isFullHeight && showAd ? { paddingBottom: 68 } : undefined}
+      >
+        <div className={isFullHeight ? "min-h-0 flex-1 overflow-hidden" : ""}>
         {activeSector === "Settings" ? (
           <SettingsPage user={me} onUsernameChange={(u) => setMe(u)} />
         ) : activeSector === "News" ? (
@@ -127,6 +147,8 @@ export default function App() {
           <DashboardPage />
         ) : activeSector === "Predict" ? (
           <PredictPage onBuy={() => authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {})} />
+        ) : activeSector === "Events" ? (
+          <EventsPage />
         ) : activeSector === "How" ? (
           <HowItWorksPage />
         ) : activeSector === "Leaderboard" ? (
@@ -158,7 +180,15 @@ export default function App() {
             </div>
           </div>
         )}
+        </div>
       </main>
+      {showAd && (
+        <div className="fixed inset-x-0 bottom-0 z-30 px-4">
+          <div className="mx-auto max-w-7xl">
+            <AdBanner seed={activeSector} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

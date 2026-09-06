@@ -270,6 +270,7 @@ def price_contract(
     epss_threshold: float | None,
     purchase_price: int,
     duration_days: int = 30,
+    direction: str = "yes",
 ) -> ContractTerms:
     cur = conn.cursor()
     cur.execute(
@@ -320,6 +321,23 @@ def price_contract(
     exploit_in_news = bool(news_row[1]) if news_row else False
 
     grade = compute_grade(num_cves, epss_score, bool(has_mal_advisory), max_cvss)
+
+    if direction == "no":
+        # NO bets are CVSS-only: "this package will NOT get a new qualifying
+        # CVE before expiry." EPSS/MAL don't factor in — inverting a blended
+        # probability that includes unrelated conditions would misprice it.
+        cvss_prob = compute_cvss_probability(recent_cves, max(num_cves, 1), max_cvss, cvss_threshold or 7.0)
+        no_prob = round(_clamp(1.0 - cvss_prob, 0.01, 0.999), 4)
+        no_payout = compute_payout(purchase_price, no_prob, grade, duration_days)
+        return ContractTerms(
+            opening_probability=no_prob,
+            package_grade=grade,
+            max_payout=no_payout,
+            epss_payout=0,
+            cvss_payout=no_payout,
+            mal_payout=0,
+            description=f"NO new CVE ≥ {cvss_threshold or 7.0:g} CVSS in window ({num_cves} CVEs on record, grade {grade}/10)",
+        )
 
     epss_prob = compute_epss_probability(epss_score, epss_threshold, duration_days)
     cvss_prob = compute_cvss_probability(recent_cves, max(num_cves, 1), max_cvss, cvss_threshold or 7.0)

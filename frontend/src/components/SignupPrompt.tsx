@@ -18,7 +18,7 @@ export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => 
         <h2 className="text-lg font-bold text-white">Create a free account to bet</h2>
         <p className="mt-2 text-sm text-zinc-400">
           You can browse packages and run simulations without an account. To place a
-          contract and earn schmeckles, sign up. it takes a few seconds.
+          contract and earn bits, sign up. it takes a few seconds.
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button

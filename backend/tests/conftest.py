@@ -33,8 +33,8 @@ def db_with_data(db):
     # Always reset test data — DO UPDATE ensures balance/state is clean even if row exists from a prior test's commit
     cur.execute(
         """
-        INSERT INTO users (id, username, schmeckles) VALUES (%s, %s, %s)
-        ON CONFLICT (id) DO UPDATE SET schmeckles = EXCLUDED.schmeckles, username = EXCLUDED.username
+        INSERT INTO users (id, username, bits) VALUES (%s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET bits = EXCLUDED.bits, username = EXCLUDED.username
         """,
         ("auth0|testuser123", "tester", 1000),
     )

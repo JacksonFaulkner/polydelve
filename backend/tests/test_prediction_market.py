@@ -39,7 +39,7 @@ def _build_summary() -> str:
 def test_payout_table(capsys):
     with capsys.disabled():
         print(f"\n{'='*60}")
-        print(f"  SUPPLY CHAIN ATTACK ODDS  (price = {PRICE} schmeckles)")
+        print(f"  SUPPLY CHAIN ATTACK ODDS  (price = {PRICE} bits)")
         print("  short contract = rare event = high payout")
         print(f"{'='*60}")
         print(_build_table())

@@ -1,5 +1,5 @@
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 import type { Market } from "@/types"
 
 interface Props {
@@ -42,7 +42,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
         </div>
         <div>
           <p className="text-zinc-500 text-xs">Price</p>
-          <p className="text-lg font-semibold text-white">{purchase_price} <SchmeckleIcon /></p>
+          <p className="text-lg font-semibold text-white">{purchase_price} <BitIcon /></p>
         </div>
         <div className="ml-auto">
           <p className="text-zinc-500 text-xs">Duration</p>
@@ -68,7 +68,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
           onClick={() => onBet(market)}
           className="rounded-lg bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
         >
-          Bet {purchase_price} <SchmeckleIcon />
+          Bet {purchase_price} <BitIcon />
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 
 export function LandingPage() {
   const { loginWithRedirect } = useAuth()
@@ -14,7 +14,7 @@ export function LandingPage() {
       <div className="max-w-lg text-center space-y-4 mb-10">
         <h1 className="text-2xl font-bold text-white">
           Predict software security events.{" "}
-          <span className="text-[#FDE832]">Earn schmeckles.</span>
+          <span className="text-[#FDE832]">Earn bits.</span>
         </h1>
         <p className="text-zinc-400 text-sm leading-relaxed">
           Trade prediction contracts on CVEs and EPSS scores for the top 500 open source packages.
@@ -44,8 +44,8 @@ export function LandingPage() {
       </button>
 
       <div className="mt-8 flex items-center gap-1.5 text-xs text-zinc-600">
-        <SchmeckleIcon className="h-4 w-4" />
-        <span>1,000 schmeckles on signup</span>
+        <BitIcon className="h-4 w-4" />
+        <span>1,000 bits on signup</span>
       </div>
 
     </div>

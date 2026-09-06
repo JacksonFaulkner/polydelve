@@ -15,7 +15,7 @@ const STEPS = [
   },
   {
     number: "03",
-    title: "Stake schmeckles",
+    title: "Stake bits",
     icon: <Coins className="w-5 h-5" />,
     body: "Pick how much to stake and your contract duration (7, 14, or 30 days). The simulated returns panel shows your potential payout for each event type before you commit.",
   },
@@ -29,7 +29,7 @@ const STEPS = [
     number: "05",
     title: "Climb the leaderboard",
     icon: <Trophy className="w-5 h-5" />,
-    body: "Schmeckles earned from winning contracts boost your rank. The leaderboard resets weekly. consistent good calls beat lucky one-offs.",
+    body: "Bits earned from winning contracts boost your rank. The leaderboard resets weekly. consistent good calls beat lucky one-offs.",
   },
 ]
 
@@ -58,7 +58,7 @@ const EVENT_TYPES = [
 ]
 
 const GLOSSARY = [
-  { term: "Schmeckles (sch)", def: "The in-app currency. You start with 1,000. Earn more by winning contracts." },
+  { term: "Bits", def: "The in-app currency. You start with 1,000. Earn more by winning contracts." },
   { term: "EPSS", def: "Exploit Prediction Scoring System. a 0–100% daily probability that a CVE will be exploited in the next 30 days." },
   { term: "CVSS", def: "Common Vulnerability Scoring System. 0–10 severity score for a vulnerability. ≥7 is High, ≥9 is Critical." },
   { term: "MAL advisory", def: "A published notice that a specific package version contained intentionally malicious code." },
@@ -75,7 +75,7 @@ export function HowItWorksPage() {
       <div className="lg:flex lg:items-end lg:justify-between lg:gap-12">
         <div className="space-y-2">
           <h1 className="text-xs font-bold uppercase tracking-widest text-[#FDE832]">How it works</h1>
-          <p className="text-2xl lg:text-3xl font-bold text-zinc-100">Predict security events.<br className="hidden lg:block" /> Earn schmeckles.</p>
+          <p className="text-2xl lg:text-3xl font-bold text-zinc-100">Predict security events.<br className="hidden lg:block" /> Earn bits.</p>
           <p className="text-sm text-zinc-400 max-w-xl">
             Polydelve is a prediction market for open-source security. You stake in-app currency on whether a package will be hit by a security event before your contract expires.
           </p>
@@ -107,25 +107,21 @@ export function HowItWorksPage() {
         {/* Event types */}
         <section className="space-y-3 lg:flex lg:flex-col">
           <h2 className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Event types</h2>
-          {/* mobile / sm: individual cards in a row; desktop: flush grouped list */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:hidden">
-            {EVENT_TYPES.map((e) => (
-              <div key={e.label} className={`rounded-xl border ${e.border} bg-[#181D21] px-4 py-4`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`w-2 h-2 rounded-full ${e.dot}`} />
-                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
-                </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="hidden lg:flex lg:flex-col lg:flex-1 rounded-xl border border-zinc-800 bg-[#181D21] overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 lg:gap-0 lg:flex-1 lg:rounded-xl lg:border lg:border-zinc-800 lg:bg-[#181D21] lg:overflow-hidden">
             {EVENT_TYPES.map((e, i) => (
-              <div key={e.label} className={`flex gap-3 px-4 py-4 flex-1${i < EVENT_TYPES.length - 1 ? " border-b border-zinc-800/60" : ""}`}>
-                <span className={`w-1 self-stretch rounded-full flex-shrink-0 ${e.dot} opacity-80`} />
-                <div>
-                  <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
-                  <p className="text-xs text-zinc-400 leading-relaxed mt-1">{e.desc}</p>
+              <div
+                key={e.label}
+                className={`flex gap-3 rounded-xl border ${e.border} bg-[#181D21] px-4 py-4 lg:rounded-none lg:border-0 lg:bg-transparent${
+                  i < EVENT_TYPES.length - 1 ? " lg:border-b lg:border-zinc-800/60" : ""
+                }`}
+              >
+                <span className={`hidden lg:block w-1 self-stretch rounded-full flex-shrink-0 ${e.dot} opacity-80`} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 lg:mb-1 lg:gap-0">
+                    <span className={`w-2 h-2 rounded-full ${e.dot} lg:hidden`} />
+                    <span className={`text-xs font-bold ${e.color}`}>{e.label}</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{e.desc}</p>
                 </div>
               </div>
             ))}
@@ -191,7 +187,7 @@ export function HowItWorksPage() {
       <div className="rounded-lg bg-zinc-900/60 border border-zinc-700/40 px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-4 h-4 text-[#FDE832] flex-shrink-0 mt-0.5" />
         <p className="text-xs text-zinc-400">
-          Schmeckles are play money. there is no real financial value. Predictions are for educational and entertainment purposes only.
+          Bits are play money. there is no real financial value. Predictions are for educational and entertainment purposes only.
         </p>
       </div>
 
@@ -199,7 +195,7 @@ export function HowItWorksPage() {
       <div className="rounded-xl border border-[#FDE832]/20 bg-[#FDE832]/5 px-6 py-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-zinc-100">Ready to make your first prediction?</p>
-          <p className="text-xs text-zinc-500 mt-0.5">You start with 1,000 schmeckles. no deposit needed.</p>
+          <p className="text-xs text-zinc-500 mt-0.5">You start with 1,000 bits. no deposit needed.</p>
         </div>
         <button
           onClick={() => { history.pushState({}, "", "/predict"); window.dispatchEvent(new PopStateEvent("popstate")) }}

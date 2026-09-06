@@ -54,11 +54,11 @@ def seed(conn) -> None:
         adj = random.choice(FAKE_USERNAMES)
         noun = random.choice(FAKE_USERNAMES)
         username = f"{adj}_{noun}_{i}"
-        schmeckles = random.randint(200, 5000)
+        bits = random.randint(200, 5000)
 
         conn.execute(
-            "INSERT INTO users (id, email, username, schmeckles) VALUES (?, ?, ?, ?)",
-            [uid, f"{username}@seed.test", username, schmeckles],
+            "INSERT INTO users (id, email, username, bits) VALUES (?, ?, ?, ?)",
+            [uid, f"{username}@seed.test", username, bits],
         )
         users_inserted += 1
 

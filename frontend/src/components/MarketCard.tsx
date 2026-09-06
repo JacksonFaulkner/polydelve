@@ -1,4 +1,4 @@
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 import type { Market } from "@/types"
 
 function fmtDownloads(n: number | null): string {
@@ -57,7 +57,7 @@ export function MarketCard({ market, onBet }: Props) {
           onClick={() => onBet(market)}
           className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors"
         >
-          Bet {market.contract.purchase_price} <SchmeckleIcon className="h-3.5 w-3.5" />
+          Bet {market.contract.purchase_price} <BitIcon className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

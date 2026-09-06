@@ -34,13 +34,13 @@ This worked well for solo development. It stopped working the moment we prepared
 
 ## Decision
 
-Migrate the transactional database to **PostgreSQL 16** (RDS `db.t4g.micro` in production, Docker locally) and manage schema with **Alembic**.
+Migrate the transactional database to **PostgreSQL 16** (RDS `db.t3.micro` in production, Docker locally) and manage schema with **Alembic**.
 
 ### Why Postgres
 
 - Multi-writer, ACID, handles concurrent users without application-level locking
 - RDS handles automated backups, failover, and parameter tuning
-- `db.t4g.micro` (~$13/mo) is predictable cost — no autoscaling surprises
+- `db.t3.micro` (~$13/mo) is predictable cost — no autoscaling surprises
 - Standard SQL; every DuckDB query translates with minor changes (`?` → `%s`, `list_contains` → `= ANY(...)`, `FLOAT[]` → `FLOAT[]`)
 - Native AWS integration: VPC, IAM auth, Secrets Manager
 
@@ -98,5 +98,4 @@ datediff('day', a, b)        →   b - a (interval arithmetic)
 
 **Negative**
 - Local dev requires Docker running (vs. just a file)
-- DuckDB's analytical query sugar (`list_cosine_similarity`, `list_contains`) needs to be rewritten or replaced with pgvector / Postgres array operators
-- `news_repository.py` uses `list_cosine_similarity` for semantic dedup — needs `pgvector` or a Python-side cosine similarity fallback before that path works on Postgres
+- DuckDB's analytical query sugar (`list_cosine_similarity`, `list_contains`) required rewriting; `features/news_repository.py` now uses the `pgvector` extension's `<=>` cosine-distance operator for semantic dedup instead

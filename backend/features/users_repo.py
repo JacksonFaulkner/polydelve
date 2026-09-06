@@ -4,7 +4,7 @@ from typing import Any
 def get_user(conn: Any, user_id: str) -> tuple | None:
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, schmeckles, avatar_url FROM users WHERE id = %s", [user_id]
+        "SELECT id, email, username, bits, avatar_url FROM users WHERE id = %s", [user_id]
     )
     return cur.fetchone()
 
@@ -12,7 +12,7 @@ def get_user(conn: Any, user_id: str) -> tuple | None:
 def upsert_user(conn: Any, user_id: str, email: str | None) -> None:
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO users (id, email, username, schmeckles) VALUES (%s, %s, NULL, 1000) ON CONFLICT (id) DO NOTHING",
+        "INSERT INTO users (id, email, username, bits) VALUES (%s, %s, NULL, 1000) ON CONFLICT (id) DO NOTHING",
         [user_id, email],
     )
 
@@ -35,25 +35,43 @@ def set_avatar_url(conn: Any, user_id: str, avatar_url: str) -> None:
     cur.execute("UPDATE users SET avatar_url = %s WHERE id = %s", [avatar_url, user_id])
 
 
-def count_users(conn: Any) -> int:
+def count_users(conn: Any, search: str | None = None) -> int:
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM users")
+    if search:
+        cur.execute("SELECT COUNT(*) FROM users WHERE username ILIKE %s", [f"%{search}%"])
+    else:
+        cur.execute("SELECT COUNT(*) FROM users")
     row = cur.fetchone()
     return (row or (0,))[0]
 
 
-def get_ranked_users(conn: Any, limit: int, offset: int) -> list[tuple]:
+def get_ranked_users(conn: Any, limit: int, offset: int, search: str | None = None) -> list[tuple]:
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, username, schmeckles,
-               ROW_NUMBER() OVER (ORDER BY schmeckles DESC) AS rank
-        FROM users
-        ORDER BY schmeckles DESC
-        LIMIT %s OFFSET %s
-        """,
-        [limit, offset],
-    )
+    if search:
+        cur.execute(
+            """
+            SELECT id, username, bits, rank FROM (
+                SELECT id, username, bits,
+                       ROW_NUMBER() OVER (ORDER BY bits DESC) AS rank
+                FROM users
+            ) ranked
+            WHERE username ILIKE %s
+            ORDER BY bits DESC
+            LIMIT %s OFFSET %s
+            """,
+            [f"%{search}%", limit, offset],
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id, username, bits,
+                   ROW_NUMBER() OVER (ORDER BY bits DESC) AS rank
+            FROM users
+            ORDER BY bits DESC
+            LIMIT %s OFFSET %s
+            """,
+            [limit, offset],
+        )
     return cur.fetchall()
 
 
@@ -76,9 +94,9 @@ def get_contracts_for_users(conn: Any, user_ids: list[str]) -> list[tuple]:
     return cur.fetchall()
 
 
-def get_user_schmeckles(conn: Any, user_id: str) -> int | None:
+def get_user_bits(conn: Any, user_id: str) -> int | None:
     cur = conn.cursor()
-    cur.execute("SELECT schmeckles FROM users WHERE id = %s", [user_id])
+    cur.execute("SELECT bits FROM users WHERE id = %s", [user_id])
     row = cur.fetchone()
     return row[0] if row else None
 
@@ -101,6 +119,6 @@ def get_user_contract_history(conn: Any, user_id: str) -> list[tuple]:
 def get_user_basic(conn: Any, user_id: str) -> tuple | None:
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, username, schmeckles FROM users WHERE id = %s", [user_id]
+        "SELECT id, username, bits FROM users WHERE id = %s", [user_id]
     )
     return cur.fetchone()

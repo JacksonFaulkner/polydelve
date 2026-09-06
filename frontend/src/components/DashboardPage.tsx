@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, Fragment } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { useApi } from "@/lib/api"
-import { SchmeckleTimeline } from "./SchmeckleTimeline"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitTimeline } from "./BitTimeline"
+import { BitIcon } from "./BitIcon"
 import { ContractSimChart } from "./ContractSimChart"
-import type { SchmecklePoint } from "@/types"
+import type { BitPoint } from "@/types"
 
 interface UserContract {
   id: string
@@ -18,7 +18,7 @@ interface UserContract {
   opening_probability: number
   package_grade: number | null
   expires_at: string
-  status: "open" | "won" | "sold" | "expired"
+  status: "open" | "won" | "sold" | "expired" | "lost"
   resolved_at: string | null
   sell_price: number | null
   created_at: string
@@ -31,6 +31,7 @@ const STATUS_STYLE: Record<string, string> = {
   won: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
   sold: "text-blue-400 bg-blue-500/10 border-blue-500/30",
   expired: "text-zinc-500 bg-zinc-800 border-zinc-700",
+  lost: "text-red-400 bg-red-500/10 border-red-500/30",
 }
 
 function daysUntil(dateStr: string): number {
@@ -47,7 +48,7 @@ function pnlColor(v: number) {
 export function DashboardPage() {
   const { authFetch } = useApi()
   const [contracts, setContracts] = useState<UserContract[]>([])
-  const [timeline, setTimeline] = useState<SchmecklePoint[]>([])
+  const [timeline, setTimeline] = useState<BitPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [selling, setSelling] = useState<string | null>(null)
 
@@ -108,11 +109,11 @@ export function DashboardPage() {
       {/* Header stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Open contracts" value={open.length.toString()} />
-        <StatCard label="Total invested" value={`${totalInvested.toLocaleString()} sch`} icon />
-        <StatCard label="Current value" value={`${totalSellValue.toLocaleString()} sch`} icon />
+        <StatCard label="Total invested" value={`${totalInvested.toLocaleString()} bits`} icon />
+        <StatCard label="Current value" value={`${totalSellValue.toLocaleString()} bits`} icon />
         <StatCard
           label="Unrealized P&L"
-          value={`${unrealizedPnl >= 0 ? "+" : ""}${unrealizedPnl.toLocaleString()} sch`}
+          value={`${unrealizedPnl >= 0 ? "+" : ""}${unrealizedPnl.toLocaleString()} bits`}
           valueClass={pnlColor(unrealizedPnl)}
           icon
         />
@@ -122,7 +123,7 @@ export function DashboardPage() {
       <section>
         <h2 className="mb-3 text-sm font-semibold text-zinc-400">Balance over time</h2>
         <div className="rounded-xl border border-zinc-800 bg-[#1C2229] p-4">
-          <SchmeckleTimeline points={timeline} />
+          <BitTimeline points={timeline} />
         </div>
       </section>
 
@@ -165,7 +166,7 @@ function StatCard({
     <div className="rounded-xl border border-zinc-800 bg-[#1C2229] p-4">
       <p className="text-xs text-zinc-500">{label}</p>
       <p className={`mt-1 flex items-center gap-1 text-lg font-bold tabular-nums ${valueClass ?? "text-white"}`}>
-        {icon && <SchmeckleIcon className="h-4 w-4 shrink-0" />}
+        {icon && <BitIcon className="h-4 w-4 shrink-0" />}
         {value}
       </p>
     </div>
@@ -198,7 +199,7 @@ function ContractCard({
   showSell: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
-  const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : (c.current_sell_value ?? c.purchase_price)
+  const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : c.status === "lost" ? 0 : (c.current_sell_value ?? c.purchase_price)
   const pnl = sellVal - c.purchase_price
   const days = daysUntil(c.expires_at)
 
@@ -329,7 +330,7 @@ function ContractTable({
           </thead>
           <tbody className="divide-y divide-zinc-800/60">
             {contracts.map((c) => {
-              const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : (c.current_sell_value ?? c.purchase_price)
+              const sellVal = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : c.status === "lost" ? 0 : (c.current_sell_value ?? c.purchase_price)
               const pnl = sellVal - c.purchase_price
               const days = daysUntil(c.expires_at)
               const isOpen = expanded.has(c.id)

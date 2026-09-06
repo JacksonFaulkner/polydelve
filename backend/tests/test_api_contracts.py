@@ -130,7 +130,7 @@ def test_simulate_returns_full_curve(client):
 
 # ── Buy ───────────────────────────────────────────────────────────────────────
 
-def test_buy_deducts_schmeckles(client, db_with_data):
+def test_buy_deducts_bits(client, db_with_data):
     r = client.post("/contracts", json={
         "package_name": "requests",
         "ecosystem": "PyPI",
@@ -139,14 +139,14 @@ def test_buy_deducts_schmeckles(client, db_with_data):
     })
     assert r.status_code == 201
     cur = db_with_data.cursor()
-    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    cur.execute("SELECT bits FROM users WHERE id = 'auth0|testuser123'")
     bal = cur.fetchone()[0]
     assert bal == 900
 
 
-def test_buy_insufficient_schmeckles(client, db_with_data):
+def test_buy_insufficient_bits(client, db_with_data):
     db_with_data.cursor().execute(
-        "UPDATE users SET schmeckles = 10 WHERE id = 'auth0|testuser123'"
+        "UPDATE users SET bits = 10 WHERE id = 'auth0|testuser123'"
     )
     r = client.post("/contracts", json={
         "package_name": "requests",
@@ -179,7 +179,7 @@ def test_sell_open_contract_credits_user(client, db_with_data):
     assert body["status"] == "sold"
     assert body["sell_price"] >= 0
     cur = db_with_data.cursor()
-    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    cur.execute("SELECT bits FROM users WHERE id = 'auth0|testuser123'")
     bal = cur.fetchone()[0]
     assert bal > 1000  # refunded some value
 

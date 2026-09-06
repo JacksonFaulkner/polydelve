@@ -189,7 +189,7 @@ export function AdminPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-zinc-500">Price (sch)</label>
+              <label className="text-xs text-zinc-500">Price (bits)</label>
               <input
                 className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
                 value={form.purchasePrice}
@@ -277,10 +277,10 @@ export function AdminPage() {
                   {m.contract.duration_days}d
                 </td>
                 <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
-                  {m.contract.purchase_price} sch
+                  {m.contract.purchase_price} bits
                 </td>
                 <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
-                  {m.max_payout} sch
+                  {m.max_payout} bits
                 </td>
                 <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
                   {m.bet_count.toLocaleString()}

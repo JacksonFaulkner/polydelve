@@ -12,6 +12,8 @@ from slowapi.util import get_remote_address
 from api.middleware.cors import add_cors
 from api.routes.health import router as health_router
 from api.routes.contracts import router as contracts_router
+from api.routes.etf import router as etf_router
+from api.routes.events import router as events_router
 from api.routes.packages import router as packages_router
 from api.routes.prediction_market import public_router as pm_public_router
 from api.routes.prediction_market import router as pm_router
@@ -20,6 +22,7 @@ from api.routes.users import router as users_router
 from api.routes.featured import router as featured_router
 from api.routes.auth_guest import public_router as auth_guest_router
 from api.auth import _auth0
+from api.otel import setup_otel
 from features.db import seed_companies, get_db_conn
 
 
@@ -71,7 +74,11 @@ app.include_router(pm_public_router)
 app.include_router(pm_router)
 app.include_router(packages_router)
 app.include_router(contracts_router)
+app.include_router(etf_router)
 app.include_router(featured_router)
+app.include_router(events_router)
+
+setup_otel(app)
 
 
 def dev() -> None:

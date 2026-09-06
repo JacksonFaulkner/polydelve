@@ -71,15 +71,15 @@ export function ContractSimChart({ packageName, ecosystem, cvssThreshold, purcha
       <div className="grid grid-cols-3 gap-3 mb-3 text-xs">
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
           <p className="text-zinc-600">EPSS spike</p>
-          <p className="font-bold text-emerald-400">+{sim.epss_win.toLocaleString()} sch</p>
+          <p className="font-bold text-emerald-400">+{sim.epss_win.toLocaleString()} bits</p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
           <p className="text-zinc-600">CVSS event</p>
-          <p className="font-bold text-[#FDE832]">+{sim.cvss_win.toLocaleString()} sch</p>
+          <p className="font-bold text-[#FDE832]">+{sim.cvss_win.toLocaleString()} bits</p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
           <p className="text-zinc-600">MAL advisory</p>
-          <p className="font-bold text-rose-400">+{sim.mal_win.toLocaleString()} sch</p>
+          <p className="font-bold text-rose-400">+{sim.mal_win.toLocaleString()} bits</p>
         </div>
       </div>
 
@@ -129,12 +129,12 @@ export function ContractSimChart({ packageName, ecosystem, cvssThreshold, purcha
               return (
                 <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-1">
                   <p className="text-zinc-400 font-medium">{label}</p>
-                  {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} sch</p>}
-                  {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} sch</p>}
-                  {mal  != null && <p className="text-rose-400">MAL advisory → +{mal.toLocaleString()} sch</p>}
+                  {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} bits</p>}
+                  {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} bits</p>}
+                  {mal  != null && <p className="text-rose-400">MAL advisory → +{mal.toLocaleString()} bits</p>}
                   {sell != null && (
                     <p className={`font-medium border-t border-zinc-800 pt-1 mt-1 ${sell >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      Sell now → {sell >= 0 ? "+" : ""}{sell.toLocaleString()} sch
+                      Sell now → {sell >= 0 ? "+" : ""}{sell.toLocaleString()} bits
                     </p>
                   )}
                 </div>

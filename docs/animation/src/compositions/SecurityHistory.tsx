@@ -543,8 +543,8 @@ function VideoScene() {
 
           <TransitionSeries.Sequence durationInFrames={PHASE2_DUR}>
             <TitlePhase
-              eyebrow="Step 2 — Place your bet"
-              headline="Gamble on the prediction market."
+              eyebrow="Step 2 — Make your prediction"
+              headline="Trade on the prediction market."
               accent="Win schmeckles."
               mirror
               enterFromRight

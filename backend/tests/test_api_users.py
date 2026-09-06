@@ -16,7 +16,7 @@ def test_me_returns_user(client):
     assert r.status_code == 200
     body = r.json()
     assert body["id"] == "auth0|testuser123"
-    assert body["schmeckles"] == 1000
+    assert body["bits"] == 1000
 
 
 def test_me_auto_creates_user_if_missing(db):
@@ -26,7 +26,7 @@ def test_me_auto_creates_user_if_missing(db):
     client = _make_client(db, authenticated=True)
     r = client.get("/users/me")
     assert r.status_code == 200
-    assert r.json()["schmeckles"] == 1000
+    assert r.json()["bits"] == 1000
 
 
 # ── /users/leaderboard ────────────────────────────────────────────────────────

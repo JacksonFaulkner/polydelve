@@ -3,32 +3,31 @@ title: ETL Jobs
 description: "Per-job reference: command, inputs, outputs, and scheduling."
 ---
 
-All ETL jobs run via `python -m etl <job>` from the backend container or virtualenv. No AWS orchestration (no EventBridge, no Step Functions) — trigger via external cron or manually.
+All ETL jobs run via `python -m etl.run <job>` from the backend container or virtualenv. Scheduling is via EventBridge Scheduler (see [Infrastructure](/docs/build/infrastructure)) plus manual/CI triggers.
 
 ## Job Reference
 
 | Job | Make target | Command | What it does | Key outputs |
 |-----|-------------|---------|--------------|-------------|
-| `packages` | `make etl-packages` | `python -m etl packages` | Populates/refreshes the package universe for npm and PyPI — fetches CVE associations and current EPSS scores. | `packages` table rows with `epss_score`, CVE links |
-| `epss` | `make refresh-epss` | `python -m etl epss` | Pulls the latest EPSS scores and triggers contract risk resolution. | Updated `epss_score` on `packages`; contract risk recalculated |
-| `epss-history` | `make build-cve-history` | `python -m etl epss-history` | Ingests historical EPSS time-series from BigQuery back to 2021-04-14. Delegates to `scripts/ingest_epss_history.py`. | `epss_history` / `cve_history` tables |
-| `mal` | — | `python -m etl mal [--skip-download]` | Fetches malicious package advisories from the OSV dataset. `--skip-download` reuses cached zip files. | `mal_advisories` table |
-| `news` | `make news-update` | `python -m etl news [--days-back N]` | Fetches recent security news via Exa, then tags articles using Gemini. Defaults to 1 day back. | `news_items` table with tags |
-| `seed` | — | `python -m etl seed` | One-shot bootstrap: runs `packages.run_seed` from CVE/EPSS history, refreshes download counts, then computes `risk_score = weekly_downloads × epss_score`. | Fully populated `packages` table with `risk_score` |
-| `hourly` | — | `python -m etl hourly` | Composite job: runs `epss` → `news` → `mal` in sequence. Intended as the standard recurring job. | Same as constituent jobs above |
+| `cve` | `make build-cve-history` | `python -m etl.run cve` | Builds the tracked npm/PyPI candidate universe from OSV bulk data and upserts CVE history. Prerequisite for `seed` and `epss-history`. | `cve_history` table |
+| `packages` | `make etl-packages` | `python -m etl.run packages` | Refreshes package metadata: download stats (`_pass_downloads`) and CVE/MAL checks (`_pass_cves_and_mal`), then recomputes `risk_score`. Does not fetch EPSS scores. | `packages` table rows updated |
+| `epss` | `make etl-epss` | `python -m etl.run epss` | Downloads the day's EPSS bulk CSV and loads scores for tracked packages. Does not trigger contract resolution. | Updated `epss_score` on `packages`, `epss_history` rows |
+| `epss-history` | — | `python -m etl.run epss-history` | Ingests historical EPSS time-series from BigQuery back to 2021-04-14. Delegates to `scripts/ingest_epss_history.py`. | `epss_history` table |
+| `mal` | `make etl-mal` / `make etl-mal-cached` | `python -m etl.run mal [--skip-download]` | Fetches malicious package advisories from the OSV dataset. `--skip-download` reuses cached zip files. | `mal_advisories` table |
+| `news` | `make etl-news` | `python -m etl.run news [--days-back N]` | Fetches recent security news, generates and reranks featured contracts. Defaults to 1 day back. | `news` table, featured contracts |
+| `seed` | `make etl-seed` | `python -m etl.run seed` | One-shot bootstrap: runs `packages.run_seed` from `cve_history`/`epss_history`, refreshes download counts, then computes `risk_score = weekly_downloads × epss_score`. | Fully populated `packages` table with `risk_score` |
+| `refresh` | — | `python -m etl.run refresh` | Composite job: runs `epss` → `news` → `mal` in sequence. This is what the scheduled EventBridge task runs. | Same as constituent jobs above |
+
+Contract resolution is a separate script, not an ETL job: `scripts/resolve_contracts.py` (`make resolve-contracts`) checks open contracts against `cve_history`, `epss_history`, and `mal_advisories` and credits wins.
 
 ## Scheduling
 
-There is no built-in scheduler. Run jobs via:
+EventBridge Scheduler runs the `refresh` composite job on the schedule below; everything else is manual or CI-triggered.
 
-- **External cron** (e.g., a Kubernetes CronJob or a host crontab)
-- **Manual invocation** against the running backend container
-
-Recommended cadence:
-
-- `hourly` — once per hour (EPSS scores, news, mal advisories)
-- `packages` — daily or on demand after schema/universe changes
-- `epss-history` / `seed` — one-time on fresh deploys; re-run only when rebuilding from scratch
+- `refresh` — 9am, 12pm, 5pm ET (EPSS scores, news, mal advisories)
+- `packages` — weekly or on demand after schema/universe changes
+- `cve`, `epss-history`, `seed` — one-time on fresh deploys; re-run only when rebuilding from scratch
+- `resolve-contracts` — run daily alongside/after `refresh`
 
 <Callout type="warn">
   `epss-history` pulls from BigQuery. Ensure `GOOGLE_APPLICATION_CREDENTIALS` or Workload Identity is configured before running.

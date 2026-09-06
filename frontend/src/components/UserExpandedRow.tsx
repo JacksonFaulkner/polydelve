@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import type { LeaderboardUser, LeaderboardContract, SchmecklePoint } from "@/types"
-import { SchmeckleIcon } from "./SchmeckleIcon"
-import { SchmeckleTimeline } from "./SchmeckleTimeline"
+import type { LeaderboardUser, LeaderboardContract, BitPoint } from "@/types"
+import { BitIcon } from "./BitIcon"
+import { BitTimeline } from "./BitTimeline"
 import { useApi } from "@/lib/api"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -33,7 +33,7 @@ interface Props {
 export function UserExpandedRow({ user, colSpan }: Props) {
   const { authFetch } = useApi()
   const [tab, setTab] = useState<Tab>("Contracts")
-  const [timeline, setTimeline] = useState<SchmecklePoint[] | null>(null)
+  const [timeline, setTimeline] = useState<BitPoint[] | null>(null)
   const [timelineLoading, setTimelineLoading] = useState(false)
 
   useEffect(() => {
@@ -65,10 +65,10 @@ export function UserExpandedRow({ user, colSpan }: Props) {
               {/* Stats strip */}
               <div className="flex flex-wrap items-center gap-6 text-sm mb-4">
                 <div>
-                  <span className="text-xs text-zinc-500">Schmeckles</span>
+                  <span className="text-xs text-zinc-500">Bits</span>
                   <p className="font-medium text-zinc-200 tabular-nums flex items-center gap-1">
-                    <SchmeckleIcon className="h-3.5 w-3.5" />
-                    {user.schmeckles.toLocaleString()}
+                    <BitIcon className="h-3.5 w-3.5" />
+                    {user.bits.toLocaleString()}
                   </p>
                 </div>
                 <div>
@@ -170,7 +170,7 @@ export function UserExpandedRow({ user, colSpan }: Props) {
                 timelineLoading ? (
                   <p className="py-6 text-center text-xs text-zinc-500">Loading…</p>
                 ) : timeline ? (
-                  <SchmeckleTimeline points={timeline} />
+                  <BitTimeline points={timeline} />
                 ) : (
                   <p className="py-6 text-center text-xs text-zinc-600">No data</p>
                 )

@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Boxes, BookOpen, LayoutDashboard, Menu, Newspaper, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
+import { Boxes, BookOpen, LayoutDashboard, ListTree, Menu, Newspaper, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { SchmeckleIcon } from "./SchmeckleIcon";
+import { BitIcon } from "./BitIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Leaderboard", "Dashboard", "Settings", "How"] as const;
+export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "Dashboard", "Settings", "How"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const SECTOR_PATH: Record<Sector, string> = {
@@ -13,6 +13,7 @@ export const SECTOR_PATH: Record<Sector, string> = {
   npm: "/npm",
   News: "/news",
   Predict: "/predict",
+  Events: "/events",
   Leaderboard: "/leaderboard",
   Dashboard: "/dashboard",
   Settings: "/settings",
@@ -31,6 +32,7 @@ const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   npm: <Boxes className="h-3.5 w-3.5" />,
   News: <Newspaper className="h-3.5 w-3.5" />,
   Predict: <TrendingUp className="h-3.5 w-3.5" />,
+  Events: <ListTree className="h-3.5 w-3.5" />,
   Leaderboard: <Trophy className="h-3.5 w-3.5" />,
   Dashboard: <LayoutDashboard className="h-3.5 w-3.5" />,
   Settings: <Settings className="h-3.5 w-3.5" />,
@@ -47,11 +49,17 @@ interface NavbarProps {
   activeSector: Sector;
 }
 
+const TOUR_NAV_ID: Partial<Record<Sector, string>> = {
+  PyPI: "nav-pypi",
+  Predict: "nav-predict",
+};
+
 function Tab({ s, active, onClick }: { s: Sector; active: boolean; onClick?: () => void }) {
   const isPredict = s === "Predict";
   return (
     <a
       href={SECTOR_PATH[s]}
+      data-tour={TOUR_NAV_ID[s]}
       onClick={(e) => {
         e.preventDefault();
         window.history.pushState({}, "", SECTOR_PATH[s]);
@@ -87,7 +95,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // All content pages are browsable logged-out; betting is gated at the action.
-  const visibleTabs: Sector[] = ["PyPI", "npm", "News", "Predict", "Leaderboard", "How"];
+  const visibleTabs: Sector[] = ["PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "How"];
 
   const avatarSrc = user?.avatar_url ?? (auth0User as { picture?: string })?.picture;
 
@@ -105,15 +113,21 @@ export function Navbar({ user, activeSector }: NavbarProps) {
             className="flex shrink-0 items-center gap-2"
           >
             <img src="/logo.png" alt="Polydelve" width={28} height={28} className="h-7 object-contain invert" />
-            <span className="text-base font-bold tracking-tight text-white">Polydelve</span>
           </a>
 
+          {/* Desktop tab strip — inline w/ logo + sign in */}
+          <nav className="hidden sm:flex items-stretch overflow-x-auto scrollbar-none ml-2">
+            {visibleTabs.map((s) => (
+              <Tab key={s} s={s} active={activeSector === s} />
+            ))}
+          </nav>
+
           <div className="ml-auto flex items-center gap-2">
-            {/* Schmeckles — hidden on mobile */}
+            {/* Bits — hidden on mobile */}
             {isAuthenticated && user && (
               <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">
-                <SchmeckleIcon className="h-5 w-5" />
-                <span className="text-sm font-bold text-white">{user.schmeckles.toLocaleString()}</span>
+                <BitIcon className="h-5 w-5" />
+                <span className="text-sm font-bold text-white">{user.bits.toLocaleString()}</span>
               </div>
             )}
 
@@ -179,15 +193,6 @@ export function Navbar({ user, activeSector }: NavbarProps) {
             )}
           </div>
         </div>
-
-        {/* Desktop tab strip */}
-        <div className="hidden sm:block relative overflow-x-auto scrollbar-none border-t border-zinc-800/60">
-          <nav className="mx-auto flex max-w-7xl items-stretch px-4 md:min-w-0 md:justify-center">
-            {visibleTabs.map((s) => (
-              <Tab key={s} s={s} active={activeSector === s} />
-            ))}
-          </nav>
-        </div>
       </header>
 
       {/* Mobile drawer overlay */}
@@ -209,8 +214,8 @@ export function Navbar({ user, activeSector }: NavbarProps) {
                   <div>
                     <p className="text-xs font-semibold text-white">{user.username ?? "Player"}</p>
                     <div className="flex items-center gap-1 text-xs text-zinc-400">
-                      <SchmeckleIcon className="h-3.5 w-3.5" />
-                      <span>{user.schmeckles.toLocaleString()}</span>
+                      <BitIcon className="h-3.5 w-3.5" />
+                      <span>{user.bits.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

@@ -3,7 +3,7 @@ title: "Polydelve"
 description: "Prediction markets for software security events."
 ---
 
-Polydelve lets users bet on whether a CVE will be published for a top npm or PyPI package. Markets resolve automatically when OSV data confirms a vulnerability.
+Polydelve lets users bet on software supply-chain risk — whether a package will get a CVE, cross an EPSS threshold, or pick up a malicious-package advisory. Markets resolve automatically from OSV, EPSS, and MAL data.
 
 <video
   controls
@@ -19,21 +19,23 @@ Polydelve lets users bet on whether a CVE will be published for a top npm or PyP
 
 ## What it does
 
-- **Prediction markets** — buy contracts on packages you believe are at risk. Payout if a CVE lands before expiry.
-- **CVE tracking** — monitors the top 500 npm and PyPI packages against the OSV advisory database.
+- **Prediction markets** — buy contracts on packages you believe are at risk. Payout on a qualifying CVE, EPSS threshold, or MAL advisory before expiry.
+- **ETFs** — basket contracts spanning a manifest of multiple packages, for betting on ecosystem-wide risk rather than a single package.
+- **CVE tracking** — tracks the full npm and PyPI candidate universe against the OSV advisory database (no fixed package cap).
 - **EPSS trend charts** — exploitation probability over time with CVE scatter overlay.
 - **Exploit signals** — PoC flags, active exploit flags, and OSV malicious advisory detection.
-- **Leaderboard** — users ranked by prediction accuracy over resolved markets.
+- **Leaderboard** — users ranked by Schmeckle balance.
 - **Security news** — curated feed of security events tagged by package and sector.
 
 ## Core concepts
 
 | Concept | Description |
 |---------|-------------|
-| **Contract** | A bet that a specific package will receive a CVE above a CVSS threshold before a deadline. |
+| **Contract** | A bet that a specific package meets a win condition (CVE + CVSS threshold, EPSS threshold, or MAL advisory) before a deadline. |
+| **ETF** | A basket contract spanning multiple packages from an uploaded manifest. |
 | **Schmeckles** | In-platform currency. New users start with 1000. |
 | **EPSS** | Exploit Prediction Scoring System — probability a CVE gets exploited in the wild. |
-| **OSV** | Open Source Vulnerability database. The source of truth for CVE resolution. |
+| **OSV** | Open Source Vulnerability database. Source of the tracked package universe and CVE history. |
 | **Market** | A featured contract displayed on the home feed, curated for high-interest packages. |
 
 ## Quick start

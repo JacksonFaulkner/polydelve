@@ -20,14 +20,14 @@ from features.users_repo import (
     get_user,
     get_user_basic,
     get_user_contract_history,
-    get_user_schmeckles,
+    get_user_bits,
     set_avatar_url,
     set_username,
     upsert_user,
 )
 from models.models import (
     LeaderboardContract, LeaderboardResponse, LeaderboardUser,
-    SchmecklePoint, SchmeckleTimeline, User,
+    BitPoint, BitTimeline, User,
 )
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
@@ -64,9 +64,9 @@ def get_me(
     if not row:
         upsert_user(conn, sub, email)
         conn.commit()
-        return User(id=sub, email=email, username=None, schmeckles=1000)
+        return User(id=sub, email=email, username=None, bits=1000)
 
-    return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
+    return User(id=row[0], email=row[1], username=row[2], bits=row[3], avatar_url=row[4])
 
 
 @router.get("/me/avatar-upload-url")
@@ -117,23 +117,24 @@ def update_me(
     if not row:
         raise HTTPException(404, "User not found.")
 
-    return User(id=row[0], email=row[1], username=row[2], schmeckles=row[3], avatar_url=row[4])
+    return User(id=row[0], email=row[1], username=row[2], bits=row[3], avatar_url=row[4])
 
 
 @public_router.get("/leaderboard", response_model=LeaderboardResponse)
 def get_leaderboard(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
+    search: str | None = Query(None),
     conn: Any = Depends(get_db),
     user: dict | None = Depends(get_optional_user),
 ) -> LeaderboardResponse:
-    cache_key = f"leaderboard:{page}:{page_size}"
+    cache_key = f"leaderboard:{page}:{page_size}:{search or ''}"
     if cached := cache_get(cache_key):
         return cached
 
     offset = (page - 1) * page_size
-    total = count_users(conn)
-    ranked = get_ranked_users(conn, page_size, offset)
+    total = count_users(conn, search)
+    ranked = get_ranked_users(conn, page_size, offset, search)
 
     if not ranked:
         return LeaderboardResponse(total=total, page=page, page_size=page_size, users=[])
@@ -162,13 +163,13 @@ def get_leaderboard(
             rank=int(rank),
             id=uid,
             username=username,
-            schmeckles=schmeckles,
+            bits=bits,
             total_contracts=len(contracts_by_user[uid]),
             open_contracts=sum(1 for c in contracts_by_user[uid] if c.status == "open"),
             won_contracts=sum(1 for c in contracts_by_user[uid] if c.status == "won"),
             contracts=contracts_by_user[uid],
         )
-        for uid, username, schmeckles, rank in ranked
+        for uid, username, bits, rank in ranked
     ]
 
     result = LeaderboardResponse(total=total, page=page, page_size=page_size, users=users)
@@ -176,15 +177,15 @@ def get_leaderboard(
     return result
 
 
-@router.get("/leaderboard/{user_id}/timeline", response_model=SchmeckleTimeline)
-def get_schmeckle_timeline(
+@router.get("/leaderboard/{user_id}/timeline", response_model=BitTimeline)
+def get_bit_timeline(
     user_id: str,
     conn: Any = Depends(get_db),
-) -> SchmeckleTimeline:
-    schmeckles = get_user_schmeckles(conn, user_id)
-    if schmeckles is None:
+) -> BitTimeline:
+    bits = get_user_bits(conn, user_id)
+    if bits is None:
         raise HTTPException(404, "User not found")
-    user_row = (schmeckles,)
+    user_row = (bits,)
 
     rows = get_user_contract_history(conn, user_id)
 
@@ -201,7 +202,7 @@ def get_schmeckle_timeline(
 
     today = dt.today().isoformat()
     try:
-        current = int(schmeckles)
+        current = int(bits)
     except (ValueError, TypeError):
         current = 1000
 
@@ -209,16 +210,16 @@ def get_schmeckle_timeline(
     total_delta = sum(delta for _, delta, _ in events)
     starting_balance = current - total_delta
 
-    points: list[SchmecklePoint] = (
-        [SchmecklePoint(date=events[0][0], balance=starting_balance, event=None)] if events else []
+    points: list[BitPoint] = (
+        [BitPoint(date=events[0][0], balance=starting_balance, event=None)] if events else []
     )
     balance = starting_balance
     for event_date, delta, label in events:
         balance += delta
-        points.append(SchmecklePoint(date=event_date, balance=balance, event=label))  # type: ignore[arg-type]
+        points.append(BitPoint(date=event_date, balance=balance, event=label))  # type: ignore[arg-type]
 
     # Always end at today with the real DB balance so the chart's final value is authoritative.
     if not points or points[-1].date != today or points[-1].event is not None:
-        points.append(SchmecklePoint(date=today, balance=current, event=None))
+        points.append(BitPoint(date=today, balance=current, event=None))
 
-    return SchmeckleTimeline(user_id=user_id, points=points)
+    return BitTimeline(user_id=user_id, points=points)

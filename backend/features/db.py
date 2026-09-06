@@ -83,7 +83,7 @@ def init_db(conn) -> None:  # kept for test compat, no-op — schema managed by 
         CREATE TABLE IF NOT EXISTS users (
             id         VARCHAR PRIMARY KEY,
             username   VARCHAR NOT NULL,
-            schmeckles INTEGER NOT NULL DEFAULT 1000
+            bits INTEGER NOT NULL DEFAULT 1000
         )
     """)
     conn.execute("""

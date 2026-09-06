@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from "recharts"
-import type { SchmecklePoint } from "@/types"
+import type { BitPoint } from "@/types"
 
 const EVENT_COLOR: Record<string, string> = {
   won: "#4ade80",
@@ -17,7 +17,7 @@ const EVENT_COLOR: Record<string, string> = {
 
 interface TooltipProps {
   active?: boolean
-  payload?: { payload: SchmecklePoint }[]
+  payload?: { payload: BitPoint }[]
 }
 
 function CustomTooltip({ active, payload }: TooltipProps) {
@@ -26,7 +26,7 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   return (
     <div className="rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs shadow">
       <p className="text-zinc-400">{pt.date}</p>
-      <p className="font-semibold text-[#FDE832] tabular-nums">{pt.balance.toLocaleString()} sch</p>
+      <p className="font-semibold text-[#FDE832] tabular-nums">{pt.balance.toLocaleString()} bits</p>
       {pt.event && (
         <p className="capitalize" style={{ color: EVENT_COLOR[pt.event] ?? "#a1a1aa" }}>
           {pt.event}
@@ -36,7 +36,7 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   )
 }
 
-export function SchmeckleTimeline({ points }: { points: SchmecklePoint[] }) {
+export function BitTimeline({ points }: { points: BitPoint[] }) {
   if (points.length < 2) return (
     <p className="py-6 text-center text-xs text-zinc-600">Not enough history</p>
   )

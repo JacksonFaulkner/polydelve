@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 Ecosystem = Literal["PyPI", "npm", "composer", "other"]
 ContractStatus = Literal["open", "won", "sold", "expired", "lost"]
 MarketType = Literal["all", "epss_threshold", "new_cve"]
+Direction = Literal["yes", "no"]
+NO_BET_ELIGIBILITY_DAYS = 100
 ContractDuration = Literal[7, 14, 30]
 ExploitStatus = Literal["poc_available", "actively_exploited", "patched", "unpatched"]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -36,8 +38,8 @@ class Market(BaseModel):
     grade: Literal["A", "B", "C", "D", "F"] = Field(
         description="Risk grade of the market. A = low risk, F = high risk."
     )
-    price: int = Field(description="Cost in Schmeckles to enter this market.")
-    payout: int = Field(description="Schmeckle payout if the market resolves YES.")
+    price: int = Field(description="Cost in Bits to enter this market.")
+    payout: int = Field(description="Bit payout if the market resolves YES.")
     end_date: datetime = Field(
         description="Deadline for market resolution. Must be within 31 days."
     )
@@ -82,7 +84,7 @@ class User(BaseModel):
     username: str | None = Field(
         default=None, description="Display name chosen by the user."
     )
-    schmeckles: int = Field(
+    bits: int = Field(
         default=1000, description="In-game currency balance. New users start with 1000."
     )
     avatar_url: str | None = Field(
@@ -110,10 +112,18 @@ class ContractBase(BaseModel):
     )
     purchase_price: int = Field(
         ge=10,
-        description="Schmeckles paid upfront to open the contract.",
+        description="Bits paid upfront to open the contract.",
     )
     duration_days: ContractDuration = Field(
         default=30, description="Contract lifetime in days. One of 7, 14, or 30."
+    )
+    direction: Direction = Field(
+        default="yes",
+        description=(
+            "'yes' bets a qualifying event happens before expiry. 'no' bets it doesn't — "
+            f"only offered on packages with a CVE in the last {NO_BET_ELIGIBILITY_DAYS} days, "
+            "and only CVSS is a win condition (epss_threshold is ignored)."
+        ),
     )
 
 
@@ -132,7 +142,7 @@ class SimulateRequest(BaseModel):
         default=None,
         description="CVSS threshold to test as a win condition. Null to exclude.",
     )
-    purchase_price: int = Field(description="Hypothetical Schmeckle cost to simulate.")
+    purchase_price: int = Field(description="Hypothetical Bit cost to simulate.")
     duration_days: ContractDuration = Field(
         default=30, description="Contract duration to simulate: 7, 14, or 30 days."
     )
@@ -141,6 +151,7 @@ class SimulateRequest(BaseModel):
         ge=0,
         description="Multiplier applied to current EPSS to model future drift. 1.0 = no change.",
     )
+    direction: Direction = Field(default="yes", description="'yes' or 'no' bet direction.")
 
 
 class SimCurvePoint(BaseModel):
@@ -148,16 +159,16 @@ class SimCurvePoint(BaseModel):
         description="X-axis label for this point on the payout curve (e.g. day or scenario name)."
     )
     sell_pnl: int = Field(
-        description="Profit/loss in Schmeckles if the contract is sold at this point."
+        description="Profit/loss in Bits if the contract is sold at this point."
     )
     epss_win: int = Field(
-        description="Schmeckle payout if the EPSS win condition triggers at this point."
+        description="Bit payout if the EPSS win condition triggers at this point."
     )
     cvss_win: int = Field(
-        description="Schmeckle payout if the CVSS win condition triggers at this point."
+        description="Bit payout if the CVSS win condition triggers at this point."
     )
     mal_win: int = Field(
-        description="Schmeckle payout if the MAL advisory win condition triggers at this point."
+        description="Bit payout if the MAL advisory win condition triggers at this point."
     )
 
 
@@ -168,10 +179,10 @@ class SimulateResponse(BaseModel):
         description="Max payout if the MAL advisory condition wins."
     )
     epss_win: int = Field(
-        description="Estimated Schmeckle profit on an EPSS win (payout minus purchase price)."
+        description="Estimated Bit profit on an EPSS win (payout minus purchase price)."
     )
-    cvss_win: int = Field(description="Estimated Schmeckle profit on a CVSS win.")
-    mal_win: int = Field(description="Estimated Schmeckle profit on a MAL win.")
+    cvss_win: int = Field(description="Estimated Bit profit on a CVSS win.")
+    mal_win: int = Field(description="Estimated Bit profit on a MAL win.")
     max_win: int = Field(description="Best-case profit across all win conditions.")
     max_loss: int = Field(
         description="Worst-case loss (negative) if the contract expires without winning."
@@ -189,14 +200,15 @@ class QuoteResponse(BaseModel):
     market_type: MarketType = Field(
         description="Win condition type inferred from thresholds."
     )
+    direction: Direction = Field(description="'yes' or 'no' bet direction.")
     cvss_threshold: float | None = Field(
         description="CVSS threshold used in this quote. Null if not applicable."
     )
     epss_threshold: float | None = Field(
         description="EPSS threshold used in this quote. Null if not applicable."
     )
-    purchase_price: int = Field(description="Schmeckle cost to buy this contract.")
-    max_payout: int = Field(description="Maximum Schmeckle payout on a win.")
+    purchase_price: int = Field(description="Bit cost to buy this contract.")
+    max_payout: int = Field(description="Maximum Bit payout on a win.")
     opening_probability: float = Field(
         description="Estimated win probability at quote time (0–1)."
     )
@@ -212,8 +224,9 @@ class QuoteResponse(BaseModel):
 
 class BuyResponse(BaseModel):
     id: str = Field(description="UUID of the newly created contract.")
+    direction: Direction = Field(description="'yes' or 'no' bet direction.")
     max_payout: int = Field(
-        description="Maximum Schmeckle payout if the contract wins."
+        description="Maximum Bit payout if the contract wins."
     )
     opening_probability: float = Field(
         description="Win probability at time of purchase (0–1)."
@@ -233,15 +246,16 @@ class ContractDetail(BaseModel):
     market_type: MarketType = Field(
         description="Win condition type: all, epss_threshold, or new_cve."
     )
+    direction: Direction = Field(default="yes", description="'yes' or 'no' bet direction.")
     cvss_threshold: float | None = Field(
         description="CVSS threshold for a win. Null if not applicable."
     )
     epss_threshold: float | None = Field(
         description="EPSS threshold for a win. Null if not applicable."
     )
-    purchase_price: int = Field(description="Schmeckles paid to open this contract.")
+    purchase_price: int = Field(description="Bits paid to open this contract.")
     max_payout: int = Field(
-        description="Maximum Schmeckle payout if the contract wins."
+        description="Maximum Bit payout if the contract wins."
     )
     opening_probability: float = Field(
         description="Estimated win probability at time of purchase (0–1)."
@@ -259,14 +273,14 @@ class ContractDetail(BaseModel):
         description="ISO datetime of resolution. Null if still open."
     )
     sell_price: int | None = Field(
-        description="Schmeckles received if the contract was sold early. Null otherwise."
+        description="Bits received if the contract was sold early. Null otherwise."
     )
     created_at: str = Field(description="ISO datetime when the contract was purchased.")
     opening_epss: float | None = Field(
         default=None, description="EPSS score of the package at time of purchase."
     )
     current_sell_value: int | None = Field(
-        description="Current early-exit sell value in Schmeckles. Null if not open."
+        description="Current early-exit sell value in Bits. Null if not open."
     )
     multiplier: float = Field(
         description="Payout multiplier applied at purchase based on risk and duration."
@@ -275,11 +289,93 @@ class ContractDetail(BaseModel):
 
 class SellResponse(BaseModel):
     sell_price: int = Field(
-        description="Schmeckles credited to the user for selling early."
+        description="Bits credited to the user for selling early."
     )
     status: ContractStatus = Field(
         description="Contract status after the sell, always 'sold'."
     )
+
+
+# ── ETF (basket) contracts ────────────────────────────────────────────────────
+
+
+class EtfMemberRequest(BaseModel):
+    package_name: str = Field(description="Package in the basket.")
+    ecosystem: Ecosystem = Field(description="Registry the package belongs to.")
+    cvss_threshold: float | None = Field(default=None, ge=0, le=10)
+    epss_threshold: float | None = Field(default=None, ge=0, le=1)
+
+
+class EtfBase(BaseModel):
+    members: list[EtfMemberRequest] = Field(
+        min_length=2, description="Packages in the basket. At least 2."
+    )
+    threshold_count: int = Field(
+        ge=1, description="Number of members that must trigger their win condition."
+    )
+    purchase_price: int = Field(ge=10, description="Bits paid upfront.")
+    duration_days: ContractDuration = Field(default=30)
+
+
+class EtfQuoteRequest(EtfBase):
+    pass
+
+
+class EtfBuyRequest(EtfBase):
+    pass
+
+
+class EtfSimulateRequest(EtfBase):
+    pass
+
+
+class EtfQuoteResponse(BaseModel):
+    threshold_count: int
+    member_count: int
+    purchase_price: int
+    max_payout: int
+    combined_probability: float = Field(description="P(at least threshold_count of member_count win).")
+    avg_grade: float
+    expires_at: str
+    multiplier: float
+
+
+class EtfBuyResponse(BaseModel):
+    id: str
+    max_payout: int
+    combined_probability: float
+    avg_grade: float
+    expires_at: str
+    multiplier: float
+
+
+class EtfMemberDetail(BaseModel):
+    package_name: str
+    ecosystem: str
+    cvss_threshold: float | None
+    epss_threshold: float | None
+    opening_probability: float
+    opening_epss: float | None
+    won: bool
+    won_at: str | None
+
+
+class EtfContractDetail(BaseModel):
+    id: str
+    threshold_count: int
+    member_count: int
+    purchase_price: int
+    max_payout: int
+    combined_probability: float
+    avg_grade: float
+    expires_at: str
+    status: ContractStatus
+    resolved_at: str | None
+    sell_price: int | None
+    created_at: str
+    current_sell_value: int | None
+    multiplier: float
+    members: list[EtfMemberDetail]
 
 
 # ── Leaderboard ───────────────────────────────────────────────────────────────
@@ -290,8 +386,8 @@ class LeaderboardContract(BaseModel):
     package_name: str = Field(description="Package the contract is written against.")
     package_ecosystem: str = Field(description="Registry the package belongs to.")
     market_type: MarketType = Field(description="Win condition type.")
-    purchase_price: int = Field(description="Schmeckles paid to open the contract.")
-    max_payout: int = Field(description="Maximum Schmeckle payout on a win.")
+    purchase_price: int = Field(description="Bits paid to open the contract.")
+    max_payout: int = Field(description="Maximum Bit payout on a win.")
     opening_probability: float = Field(
         description="Win probability at purchase time (0–1)."
     )
@@ -308,7 +404,7 @@ class LeaderboardUser(BaseModel):
     username: str | None = Field(
         default=None, description="Display name. Null if not set."
     )
-    schmeckles: int = Field(description="Current Schmeckle balance.")
+    bits: int = Field(description="Current Bit balance.")
     total_contracts: int = Field(
         description="Total contracts ever opened by this user."
     )
@@ -328,20 +424,20 @@ class LeaderboardResponse(BaseModel):
     )
 
 
-# ── Schmeckle timeline ────────────────────────────────────────────────────────
+# ── Bit timeline ────────────────────────────────────────────────────────
 
 
-class SchmecklePoint(BaseModel):
+class BitPoint(BaseModel):
     date: str = Field(description="ISO date string for the balance snapshot.")
-    balance: int = Field(description="Schmeckle balance at this point in time.")
+    balance: int = Field(description="Bit balance at this point in time.")
     event: Literal["buy", "won", "sold"] | None = Field(
         default=None, description="Event that caused the balance change, if any."
     )
 
 
-class SchmeckleTimeline(BaseModel):
+class BitTimeline(BaseModel):
     user_id: str = Field(description="Auth0 user ID this timeline belongs to.")
-    points: list[SchmecklePoint] = Field(
+    points: list[BitPoint] = Field(
         description="Chronological list of balance snapshots."
     )
 

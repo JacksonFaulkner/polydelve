@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import EpssChart from "./EpssChart"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 import type { Market, PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
 
@@ -98,7 +98,7 @@ export function MarketSpotlight({ markets, onBet, showTitle = true }: Props) {
               <span className="text-[10px] text-zinc-400">EPSS <span className="text-zinc-300">{(market.package.epss_score * 100).toFixed(1)}%</span></span>
             )}
             <span className="text-[10px] text-zinc-400">Payout <span className="text-emerald-400">{multiplier}×</span></span>
-            <span className="text-[10px] text-zinc-400">Price <span className="text-zinc-300">{purchase_price} <SchmeckleIcon className="inline h-3 w-3" /></span></span>
+            <span className="text-[10px] text-zinc-400">Price <span className="text-zinc-300">{purchase_price} <BitIcon className="inline h-3 w-3" /></span></span>
             <span className="text-[10px] text-zinc-400">Duration <span className="text-zinc-300">{duration_days}d</span></span>
           </div>
           <h2 className="text-sm font-medium leading-snug text-zinc-100">{market.title}</h2>
@@ -137,7 +137,7 @@ export function MarketSpotlight({ markets, onBet, showTitle = true }: Props) {
           onClick={() => onBet(market)}
           className="shrink-0 rounded-lg bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
         >
-          Bet {purchase_price} <SchmeckleIcon />
+          Bet {purchase_price} <BitIcon />
         </button>
       </div>
     </div>

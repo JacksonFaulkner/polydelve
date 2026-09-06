@@ -1,27 +1,27 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
   type SortingState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
-    mobileHidden?: boolean
-    className?: string
+    mobileHidden?: boolean;
+    className?: string;
   }
 }
-import type { Package, PackageListResponse } from "@/types"
-import { Search } from "lucide-react"
-import { Tooltip } from "@/components/ui/Tooltip"
-import { PackageExpandedRow } from "@/components/PackageExpandedRow"
-import { useApi } from "@/lib/api"
-const PAGE_SIZE = 50
+import type { Package, PackageListResponse } from "@/types";
+import { Search } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { PackageExpandedRow } from "@/components/PackageExpandedRow";
+import { useApi } from "@/lib/api";
+const PAGE_SIZE = 50;
 
-const col = createColumnHelper<Package>()
+const col = createColumnHelper<Package>();
 
 function ColHeader({
   label,
@@ -29,10 +29,10 @@ function ColHeader({
   source,
   sourceLabel,
 }: {
-  label: string
-  tip: string
-  source?: string
-  sourceLabel?: string
+  label: string;
+  tip: string;
+  source?: string;
+  sourceLabel?: string;
 }) {
   return (
     <Tooltip
@@ -53,9 +53,11 @@ function ColHeader({
         </div>
       }
     >
-      <span className="border-b border-dashed border-zinc-600 cursor-help">{label}</span>
+      <span className="border-b border-dashed border-zinc-600 cursor-help">
+        {label}
+      </span>
     </Tooltip>
-  )
+  );
 }
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -63,7 +65,7 @@ const SEVERITY_COLOR: Record<string, string> = {
   high: "text-orange-400",
   medium: "text-yellow-400",
   low: "text-zinc-400",
-}
+};
 
 const columns = [
   col.accessor("name", {
@@ -77,19 +79,23 @@ const columns = [
     ),
     enableSorting: false,
     cell: (info) => {
-      const eco = info.row.original.ecosystem
+      const eco = info.row.original.ecosystem;
       return (
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-              eco === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
+              eco === "npm"
+                ? "bg-red-900/50 text-red-300"
+                : "bg-blue-900/50 text-blue-300"
             }`}
           >
             {eco}
           </span>
-          <span className="truncate font-mono text-sm text-zinc-100">{info.getValue()}</span>
+          <span className="truncate font-mono text-sm text-zinc-100">
+            {info.getValue()}
+          </span>
         </div>
-      )
+      );
     },
   }),
   col.accessor("weekly_downloads", {
@@ -103,9 +109,13 @@ const columns = [
       />
     ),
     cell: (info) => {
-      const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">  </span>
-      return <span className="text-zinc-300 tabular-nums">{(v / 1_000_000).toFixed(1)}M</span>
+      const v = info.getValue();
+      if (!v) return <span className="text-zinc-600"> </span>;
+      return (
+        <span className="text-zinc-300 tabular-nums">
+          {(v / 1_000_000).toFixed(1)}M
+        </span>
+      );
     },
   }),
   col.accessor("epss_score", {
@@ -118,18 +128,23 @@ const columns = [
       />
     ),
     cell: (info) => {
-      const v = info.getValue()
-      if (v === null || v === undefined) return <span className="text-zinc-600">  </span>
-      const pct = Math.round(v * 100)
-      const color = pct >= 70 ? "bg-red-500" : pct >= 30 ? "bg-orange-400" : "bg-zinc-500"
+      const v = info.getValue();
+      if (v === null || v === undefined)
+        return <span className="text-zinc-600"> </span>;
+      const pct = Math.round(v * 100);
+      const color =
+        pct >= 70 ? "bg-red-500" : pct >= 30 ? "bg-orange-400" : "bg-zinc-500";
       return (
         <div className="flex items-center gap-2">
           <div className="w-16 h-1.5 rounded-full bg-zinc-700">
-            <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+            <div
+              className={`h-1.5 rounded-full ${color}`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
           <span className="tabular-nums text-xs text-zinc-300">{pct}%</span>
         </div>
-      )
+      );
     },
   }),
   col.accessor("num_cves", {
@@ -142,20 +157,18 @@ const columns = [
       />
     ),
     cell: (info) => {
-      const v = info.getValue()
-      const maxCvss = info.row.original.max_cvss_score
-      if (!v) return <span className="text-zinc-600">0</span>
+      const v = info.getValue();
+      const maxCvss = info.row.original.max_cvss_score;
+      if (!v) return <span className="text-zinc-600">0</span>;
       const badge = (
         <span className="rounded-full bg-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-200 cursor-default">
           {v}
         </span>
-      )
-      if (maxCvss == null) return badge
+      );
+      if (maxCvss == null) return badge;
       return (
-        <Tooltip content={`Max CVSS: ${maxCvss.toFixed(1)}`}>
-          {badge}
-        </Tooltip>
-      )
+        <Tooltip content={`Max CVSS: ${maxCvss.toFixed(1)}`}>{badge}</Tooltip>
+      );
     },
   }),
   col.accessor("worst_severity", {
@@ -170,13 +183,15 @@ const columns = [
     ),
     enableSorting: false,
     cell: (info) => {
-      const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">  </span>
+      const v = info.getValue();
+      if (!v) return <span className="text-zinc-600"> </span>;
       return (
-        <span className={`text-xs font-medium capitalize ${SEVERITY_COLOR[v] ?? "text-zinc-400"}`}>
+        <span
+          className={`text-xs font-medium capitalize ${SEVERITY_COLOR[v] ?? "text-zinc-400"}`}
+        >
           {v}
         </span>
-      )
+      );
     },
   }),
   col.accessor("risk_score", {
@@ -188,9 +203,13 @@ const columns = [
       />
     ),
     cell: (info) => {
-      const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">  </span>
-      return <span className="tabular-nums text-sm text-zinc-200">{(v / 1_000_000).toFixed(1)}M</span>
+      const v = info.getValue();
+      if (!v) return <span className="text-zinc-600"> </span>;
+      return (
+        <span className="tabular-nums text-sm text-zinc-200">
+          {(v / 1_000_000).toFixed(1)}M
+        </span>
+      );
     },
   }),
   col.accessor("has_mal_advisory", {
@@ -212,47 +231,49 @@ const columns = [
       ) : null,
   }),
   // latest_cve_date and sectors injected inside component (need state closure)
-]
+];
 
 const SORT_KEY_MAP: Record<string, string> = {
   weekly_downloads: "weekly_downloads",
   epss_score: "epss_score",
   num_cves: "num_cves",
   risk_score: "risk_score",
-}
+};
 
 const CVE_WINDOW_OPTIONS: { label: string; days: number | null }[] = [
   { label: "30d", days: 30 },
   { label: "90d", days: 90 },
   { label: "1y", days: 365 },
   { label: "All", days: null },
-]
+];
 
 interface Props {
-  ecosystem?: "PyPI" | "npm"
+  ecosystem?: "PyPI" | "npm";
 }
 
 export function PackagesTable({ ecosystem }: Props) {
-  const { authFetch } = useApi()
-  const [data, setData] = useState<Package[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [sorting, setSorting] = useState<SortingState>([{ id: "risk_score", desc: true }])
-  const [latestCveDays, setLatestCveDays] = useState<number | null>(null)
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
+  const { authFetch } = useApi();
+  const [data, setData] = useState<Package[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "risk_score", desc: true },
+  ]);
+  const [latestCveDays, setLatestCveDays] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 250)
-    return () => clearTimeout(t)
-  }, [search])
+    const t = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
 
   function toggleRow(name: string, ecosystem: string) {
-    const key = `${ecosystem}::${name}`
-    setExpandedKey((prev) => (prev === key ? null : key))
+    const key = `${ecosystem}::${name}`;
+    setExpandedKey((prev) => (prev === key ? null : key));
   }
 
   const latestCveDateCol = col.accessor("latest_cve_date", {
@@ -264,7 +285,8 @@ export function PackagesTable({ ecosystem }: Props) {
           content={
             <div className="space-y-1.5">
               <p className="text-xs text-zinc-200 leading-snug">
-                Publication date of the most recently disclosed CVE for this package. Sourced from OSV.
+                Publication date of the most recently disclosed CVE for this
+                package. Sourced from OSV.
               </p>
               <a
                 href="https://osv.dev"
@@ -278,13 +300,18 @@ export function PackagesTable({ ecosystem }: Props) {
             </div>
           }
         >
-          <span className="border-b border-dashed border-zinc-600 cursor-help">Latest CVE</span>
+          <span className="border-b border-dashed border-zinc-600 cursor-help">
+            Latest CVE
+          </span>
         </Tooltip>
         <div className="flex gap-1">
           {CVE_WINDOW_OPTIONS.map(({ label, days }) => (
             <button
               key={label}
-              onClick={(e) => { e.stopPropagation(); setLatestCveDays(days) }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLatestCveDays(days);
+              }}
               className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
                 latestCveDays === days
                   ? "bg-[#FDE832] text-zinc-900"
@@ -299,79 +326,91 @@ export function PackagesTable({ ecosystem }: Props) {
     ),
     enableSorting: false,
     cell: (info) => {
-      const v = info.getValue()
-      if (!v) return <span className="text-zinc-600">  </span>
-      return <span className="text-xs text-zinc-400">{v}</span>
+      const v = info.getValue();
+      if (!v) return <span className="text-zinc-600"> </span>;
+      return <span className="text-xs text-zinc-400">{v}</span>;
     },
-  })
+  });
 
-  const allColumns = [...columns, latestCveDateCol, col.accessor("sectors", {
-    id: "sectors_col",
-    meta: { mobileHidden: true },
-    header: () => (
-      <ColHeader
-        label="Sectors"
-        tip="Industry sectors this package is commonly used in, classified by Polydelve using package metadata and LLM analysis."
-      />
-    ),
-    enableSorting: false,
-    cell: (info) => {
-      const sectors = info.getValue()
-      if (!sectors?.length) return null
-      return (
-        <div className="flex flex-wrap gap-1">
-          {sectors.slice(0, 2).map((s) => (
-            <span key={s} className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400">
-              {s}
-            </span>
-          ))}
-          {sectors.length > 2 && (
-            <span className="text-[10px] text-zinc-500">+{sectors.length - 2}</span>
-          )}
-        </div>
-      )
-    },
-  })]
+  const allColumns = [
+    ...columns,
+    latestCveDateCol,
+    col.accessor("sectors", {
+      id: "sectors_col",
+      meta: { mobileHidden: true },
+      header: () => (
+        <ColHeader
+          label="Sectors"
+          tip="Industry sectors this package is commonly used in, classified by Polydelve using package metadata and LLM analysis."
+        />
+      ),
+      enableSorting: false,
+      cell: (info) => {
+        const sectors = info.getValue();
+        if (!sectors?.length) return null;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {sectors.slice(0, 2).map((s) => (
+              <span
+                key={s}
+                className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400"
+              >
+                {s}
+              </span>
+            ))}
+            {sectors.length > 2 && (
+              <span className="text-[10px] text-zinc-500">
+                +{sectors.length - 2}
+              </span>
+            )}
+          </div>
+        );
+      },
+    }),
+  ];
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
-    const sort = sorting[0]
-    const sortKey = sort ? (SORT_KEY_MAP[sort.id] ?? "risk_score") : "risk_score"
+    setLoading(true);
+    const sort = sorting[0];
+    const sortKey = sort
+      ? (SORT_KEY_MAP[sort.id] ?? "risk_score")
+      : "risk_score";
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(PAGE_SIZE),
       sort: sortKey,
-    })
-    if (ecosystem) params.set("ecosystem", ecosystem)
-    if (latestCveDays !== null) params.set("latest_cve_days", String(latestCveDays))
-    if (debouncedSearch) params.set("search", debouncedSearch)
+    });
+    if (ecosystem) params.set("ecosystem", ecosystem);
+    if (latestCveDays !== null)
+      params.set("latest_cve_days", String(latestCveDays));
+    if (debouncedSearch) params.set("search", debouncedSearch);
 
     try {
-      const res = await authFetch(`/packages?${params}`)
+      const res = await authFetch(`/packages?${params}`);
       if (!res.ok) {
-        setData([])
-        setTotal(0)
-        return
+        setData([]);
+        setTotal(0);
+        return;
       }
-      const json: PackageListResponse = await res.json()
-      setData(json.packages ?? [])
-      setTotal(json.total ?? 0)
+      const json: PackageListResponse = await res.json();
+      setData(json.packages ?? []);
+      setTotal(json.total ?? 0);
     } catch (e) {
-      console.error("Failed to fetch packages", e)
+      console.error("Failed to fetch packages", e);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [page, sorting, ecosystem, latestCveDays, debouncedSearch, authFetch])
+  }, [page, sorting, ecosystem, latestCveDays, debouncedSearch, authFetch]);
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
-    setPage(1)
-  }, [ecosystem, sorting, latestCveDays, debouncedSearch])
+    setPage(1);
+  }, [ecosystem, sorting, latestCveDays, debouncedSearch]);
 
-  const colCount = useMemo(() => allColumns.length, [allColumns.length])
+  const colCount = useMemo(() => allColumns.length, [allColumns.length]);
 
   const table = useReactTable({
     data,
@@ -382,9 +421,9 @@ export function PackagesTable({ ecosystem }: Props) {
     manualSorting: true,
     manualPagination: true,
     pageCount: Math.ceil(total / PAGE_SIZE),
-  })
+  });
 
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const pagination = (
     <div className="flex items-center justify-between text-xs text-zinc-500">
@@ -409,110 +448,168 @@ export function PackagesTable({ ecosystem }: Props) {
         </button>
       </div>
     </div>
-  )
+  );
+
+  const searchBar = (
+    <div className="relative flex-1 min-w-0">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+      <input
+        ref={searchRef}
+        type="text"
+        placeholder="Search packages…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+      />
+      {search && (
+        <button
+          onClick={() => {
+            setSearch("");
+            searchRef.current?.focus();
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+          aria-label="Clear search"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-3">
-      {/* Search bar */}
-      <div className="relative w-full sm:w-72">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
-        <input
-          ref={searchRef}
-          type="text"
-          placeholder="Search packages…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-[#1C2229] pl-8 pr-8 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-500"
-        />
-        {search && (
-          <button
-            onClick={() => { setSearch(""); searchRef.current?.focus() }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-            aria-label="Clear search"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
       {/* Mobile card list */}
       <div className="sm:hidden space-y-2">
+        <div className="flex items-center rounded-lg border border-zinc-700 bg-zinc-800/70">
+          {searchBar}
+        </div>
         {loading ? (
           <p className="py-12 text-center text-zinc-500 text-sm">Loading…</p>
         ) : data.length === 0 ? (
-          <p className="py-12 text-center text-zinc-500 text-sm">No packages found</p>
-        ) : data.map((pkg) => {
-          const key = `${pkg.ecosystem}::${pkg.name}`
-          const isExpanded = expandedKey === key
-          const epss = pkg.epss_score
-          const epssPct = epss != null ? Math.round(epss * 100) : null
-          const epssColor = epssPct != null
-            ? epssPct >= 70 ? "bg-red-500" : epssPct >= 30 ? "bg-orange-400" : "bg-zinc-500"
-            : "bg-zinc-500"
-          return (
-            <div key={key} className="rounded-xl border border-zinc-800 bg-[#1C2229]">
-              <button
-                className="w-full text-left px-4 py-3"
-                onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
+          <p className="py-12 text-center text-zinc-500 text-sm">
+            No packages found
+          </p>
+        ) : (
+          data.map((pkg, i) => {
+            const key = `${pkg.ecosystem}::${pkg.name}`;
+            const isExpanded = expandedKey === key;
+            const epss = pkg.epss_score;
+            const epssPct = epss != null ? Math.round(epss * 100) : null;
+            const epssColor =
+              epssPct != null
+                ? epssPct >= 70
+                  ? "bg-red-500"
+                  : epssPct >= 30
+                    ? "bg-orange-400"
+                    : "bg-zinc-500"
+                : "bg-zinc-500";
+            return (
+              <div
+                key={key}
+                data-tour={i === 0 ? "pkg-row-0" : undefined}
+                className="rounded-xl border border-zinc-800 bg-[#1C2229]"
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                      pkg.ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
-                    }`}>{pkg.ecosystem}</span>
-                    <span className="truncate font-mono text-sm text-zinc-100">{pkg.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {pkg.has_mal_advisory && (
-                      <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">MAL</span>
-                    )}
-                    <span className="text-zinc-600 text-xs">{isExpanded ? "▲" : "▼"}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs">
-                  {epssPct != null && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-14 h-1.5 rounded-full bg-zinc-700">
-                        <div className={`h-1.5 rounded-full ${epssColor}`} style={{ width: `${epssPct}%` }} />
-                      </div>
-                      <span className="tabular-nums text-zinc-300">{epssPct}%</span>
+                <button
+                  className="w-full text-left px-4 py-3"
+                  onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          pkg.ecosystem === "npm"
+                            ? "bg-red-900/50 text-red-300"
+                            : "bg-blue-900/50 text-blue-300"
+                        }`}
+                      >
+                        {pkg.ecosystem}
+                      </span>
+                      <span className="truncate font-mono text-sm text-zinc-100">
+                        {pkg.name}
+                      </span>
                     </div>
-                  )}
-                  {pkg.num_cves > 0 && (
-                    <span className="text-zinc-400">
-                      <span className="text-zinc-200 font-medium">{pkg.num_cves}</span> CVEs
-                    </span>
-                  )}
-                  {pkg.worst_severity && (
-                    <span className={`capitalize font-medium ${SEVERITY_COLOR[pkg.worst_severity] ?? "text-zinc-400"}`}>
-                      {pkg.worst_severity}
-                    </span>
-                  )}
-                  {pkg.latest_cve_date && (
-                    <span className="text-zinc-500 ml-auto">{pkg.latest_cve_date}</span>
-                  )}
-                </div>
-              </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {pkg.has_mal_advisory && (
+                        <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+                          MAL
+                        </span>
+                      )}
+                      <span className="text-zinc-600 text-xs">
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </div>
+                  </div>
 
-              {isExpanded && (
-                <div className="border-t border-zinc-800">
-                  <table className="w-full">
-                    <tbody>
-                      <PackageExpandedRow name={pkg.name} ecosystem={pkg.ecosystem} colSpan={1} />
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )
-        })}
+                  <div className="flex items-center gap-4 text-xs">
+                    {epssPct != null && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-14 h-1.5 rounded-full bg-zinc-700">
+                          <div
+                            className={`h-1.5 rounded-full ${epssColor}`}
+                            style={{ width: `${epssPct}%` }}
+                          />
+                        </div>
+                        <span className="tabular-nums text-zinc-300">
+                          {epssPct}%
+                        </span>
+                      </div>
+                    )}
+                    {pkg.num_cves > 0 && (
+                      <span className="text-zinc-400">
+                        <span className="text-zinc-200 font-medium">
+                          {pkg.num_cves}
+                        </span>{" "}
+                        CVEs
+                      </span>
+                    )}
+                    {pkg.worst_severity && (
+                      <span
+                        className={`capitalize font-medium ${SEVERITY_COLOR[pkg.worst_severity] ?? "text-zinc-400"}`}
+                      >
+                        {pkg.worst_severity}
+                      </span>
+                    )}
+                    {pkg.latest_cve_date && (
+                      <span className="text-zinc-500 ml-auto">
+                        {pkg.latest_cve_date}
+                      </span>
+                    )}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div
+                    data-tour={i === 0 ? "pkg-expanded" : undefined}
+                    className="border-t border-zinc-800"
+                  >
+                    <table className="w-full">
+                      <tbody>
+                        <PackageExpandedRow
+                          name={pkg.name}
+                          ecosystem={pkg.ecosystem}
+                          colSpan={1}
+                        />
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
         {data.length > 0 && pagination}
       </div>
 
       {/* Desktop table */}
       <div className="hidden sm:block space-y-3">
-        <div className="overflow-x-auto rounded-lg border border-zinc-800">
+        <div className="overflow-hidden rounded-lg border border-zinc-800">
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
+            {searchBar}
+            <span className="shrink-0 text-xs text-zinc-500 pr-1">
+              {total.toLocaleString()} packages
+            </span>
+          </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((hg) => (
@@ -521,15 +618,22 @@ export function PackagesTable({ ecosystem }: Props) {
                     <th
                       key={header.id}
                       className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap ${
-                        header.column.getCanSort() ? "cursor-pointer select-none hover:text-zinc-300" : ""
+                        header.column.getCanSort()
+                          ? "cursor-pointer select-none hover:text-zinc-300"
+                          : ""
                       }`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <span className="flex items-center gap-1">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                         {header.column.getCanSort() && (
                           <span className="text-zinc-600">
-                            {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? "↕"}
+                            {{ asc: "↑", desc: "↓" }[
+                              header.column.getIsSorted() as string
+                            ] ?? "↕"}
                           </span>
                         )}
                       </span>
@@ -541,30 +645,40 @@ export function PackagesTable({ ecosystem }: Props) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
+                  <td
+                    colSpan={allColumns.length}
+                    className="py-12 text-center text-zinc-500"
+                  >
                     Loading…
                   </td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={allColumns.length} className="py-12 text-center text-zinc-500">
+                  <td
+                    colSpan={allColumns.length}
+                    className="py-12 text-center text-zinc-500"
+                  >
                     No packages found
                   </td>
                 </tr>
               ) : (
-                table.getRowModel().rows.flatMap((row) => {
-                  const pkg = row.original
-                  const key = `${pkg.ecosystem}::${pkg.name}`
-                  const isExpanded = expandedKey === key
+                table.getRowModel().rows.flatMap((row, i) => {
+                  const pkg = row.original;
+                  const key = `${pkg.ecosystem}::${pkg.name}`;
+                  const isExpanded = expandedKey === key;
                   return [
                     <tr
                       key={row.id}
+                      data-tour={i === 0 ? "pkg-row-0" : undefined}
                       onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
                       className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-3 py-2.5">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </td>
                       ))}
                       <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
@@ -578,17 +692,19 @@ export function PackagesTable({ ecosystem }: Props) {
                             name={pkg.name}
                             ecosystem={pkg.ecosystem}
                             colSpan={colCount + 1}
+                            tourTag={i === 0 ? "pkg-expanded" : undefined}
                           />,
                         ]
                       : []),
-                  ]
+                  ];
                 })
               )}
             </tbody>
           </table>
+          </div>
         </div>
         {pagination}
       </div>
     </div>
-  )
+  );
 }

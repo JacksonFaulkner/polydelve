@@ -118,7 +118,7 @@ def place_bet(
 ) -> None:
     cur = conn.cursor()
     cur.execute(
-        "UPDATE users SET schmeckles = schmeckles - %s WHERE id = %s AND schmeckles >= %s",
+        "UPDATE users SET bits = bits - %s WHERE id = %s AND bits >= %s",
         [price, user_id, price],
     )
     cur.execute(
@@ -130,5 +130,5 @@ def place_bet(
 
 def get_user_basic(conn: Any, user_id: str) -> tuple | None:
     cur = conn.cursor()
-    cur.execute("SELECT id, username, schmeckles FROM users WHERE id = %s", [user_id])
+    cur.execute("SELECT id, username, bits FROM users WHERE id = %s", [user_id])
     return cur.fetchone()

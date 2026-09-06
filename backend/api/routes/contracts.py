@@ -11,12 +11,14 @@ from features.contracts_repo import (
     buy_contract as repo_buy_contract,
     get_contract_for_sell,
     get_package_epss,
-    get_user_schmeckles,
+    get_user_bits,
+    is_no_bet_eligible,
     list_contracts,
     sell_contract as repo_sell_contract,
 )
 from features.db import get_db
 from models.models import (
+    NO_BET_ELIGIBILITY_DAYS,
     BuyRequest, BuyResponse, ContractDetail,
     QuoteRequest, QuoteResponse,
     SellResponse, SimCurvePoint, SimulateRequest, SimulateResponse,
@@ -25,6 +27,16 @@ from models.models import (
 # Browse-level: guests may simulate/quote. buy/sell/me each require a real
 # Auth0 user via their own Depends(get_current_user), so guests can't bet.
 router = APIRouter(prefix="/contracts", dependencies=[Depends(get_browse_user)])
+
+
+def _validate_direction(conn: Any, package_name: str, ecosystem: str, direction: str) -> None:
+    if direction != "no":
+        return
+    if not is_no_bet_eligible(conn, package_name, ecosystem, NO_BET_ELIGIBILITY_DAYS):
+        raise HTTPException(
+            422,
+            f"NO bets require a CVE in the last {NO_BET_ELIGIBILITY_DAYS} days for {package_name}/{ecosystem}",
+        )
 
 
 def _reject_backward_epss(
@@ -52,8 +64,9 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
     # The EPSS slider sets a target = current_epss * drift. Price through the real
     # logit model so the payout actually moves as the user drags (higher target =
     # harder to reach = lower prob = bigger payout), instead of a clamped multiply.
+    _validate_direction(conn, req.package_name, req.ecosystem, req.direction)
     current_epss = get_package_epss(conn, req.package_name, req.ecosystem) or 0.0
-    epss_target = min(current_epss * max(req.epss_drift, 1.0), 1.0) or None
+    epss_target = None if req.direction == "no" else (min(current_epss * max(req.epss_drift, 1.0), 1.0) or None)
 
     try:
         terms = price_contract(
@@ -64,6 +77,7 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
             epss_threshold=epss_target,
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
+            direction=req.direction,
         )
     except ValueError:
         raise HTTPException(404, "Package not found or insufficient data")
@@ -72,18 +86,16 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
     dur = req.duration_days
 
     epss_payout = terms.epss_payout
-    epss_win = epss_payout - price
+    epss_win = 0 if req.direction == "no" else epss_payout - price
     cvss_win = terms.cvss_payout - price
-    mal_win  = terms.mal_payout  - price
+    mal_win  = 0 if req.direction == "no" else terms.mal_payout - price
     max_loss = -price
 
     exponent = min(0.3 + max(0.0, dur / 7 - 1) * 0.55, 3.0)
     today = date.today()
     curve: list[SimCurvePoint] = []
     for day in range(dur + 1):
-        sv = sell_value_at_day(price, day, dur, 1.0, terms.max_payout)
         days_remaining = max(dur - day, 0)
-        time_factor = (days_remaining / dur) ** exponent if dur > 0 else 0.0
         if day == 0:
             label = "Now"
         elif day == dur:
@@ -91,6 +103,24 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
         else:
             d = today + timedelta(days=day)
             label = f"{d.month}/{d.day}"
+
+        if req.direction == "no":
+            # Inverted: a NO bet gets *more* certain (not less) as time passes
+            # with no disqualifying CVE — value should climb toward the payout
+            # as expiry nears, the opposite of a YES contract's decay.
+            survived_factor = 1.0 - (days_remaining / dur) ** exponent if dur > 0 else 1.0
+            sv = price + round((terms.max_payout - price) * survived_factor * 0.7)
+            curve.append(SimCurvePoint(
+                label=label,
+                sell_pnl=sv - price,
+                epss_win=0,
+                cvss_win=round(cvss_win * survived_factor),
+                mal_win=0,
+            ))
+            continue
+
+        sv = sell_value_at_day(price, day, dur, 1.0, terms.max_payout)
+        time_factor = (days_remaining / dur) ** exponent if dur > 0 else 0.0
         curve.append(SimCurvePoint(
             label=label,
             sell_pnl=sv - price,
@@ -118,17 +148,20 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
 @router.post("/quote", response_model=QuoteResponse)
 def quote_contract(req: QuoteRequest, conn: Any = Depends(get_db)) -> QuoteResponse:
     if req.purchase_price < 10:
-        raise HTTPException(422, "minimum purchase_price is 10 schmeckles")
-    _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
+        raise HTTPException(422, "minimum purchase_price is 10 bits")
+    _validate_direction(conn, req.package_name, req.ecosystem, req.direction)
+    epss_threshold = None if req.direction == "no" else req.epss_threshold
+    _reject_backward_epss(conn, req.package_name, req.ecosystem, epss_threshold)
     try:
         terms = price_contract(
             conn=conn,
             package_name=req.package_name,
             ecosystem=req.ecosystem,
             cvss_threshold=req.cvss_threshold,
-            epss_threshold=req.epss_threshold,
+            epss_threshold=epss_threshold,
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
+            direction=req.direction,
         )
     except ValueError:
         raise HTTPException(404, "Package not found or insufficient data")
@@ -138,8 +171,9 @@ def quote_contract(req: QuoteRequest, conn: Any = Depends(get_db)) -> QuoteRespo
         package_name=req.package_name,
         ecosystem=req.ecosystem,
         market_type="all",
+        direction=req.direction,
         cvss_threshold=req.cvss_threshold,
-        epss_threshold=req.epss_threshold,
+        epss_threshold=epss_threshold,
         purchase_price=req.purchase_price,
         max_payout=terms.max_payout,
         opening_probability=terms.opening_probability,
@@ -158,13 +192,15 @@ def buy_contract(
 ) -> BuyResponse:
     user_id = claims["sub"]
 
-    schmeckles = get_user_schmeckles(conn, user_id)
-    if schmeckles is None:
+    bits = get_user_bits(conn, user_id)
+    if bits is None:
         raise HTTPException(404, "User not found")
-    if schmeckles < req.purchase_price:
-        raise HTTPException(409, "Insufficient schmeckles")
+    if bits < req.purchase_price:
+        raise HTTPException(409, "Insufficient bits")
 
-    _reject_backward_epss(conn, req.package_name, req.ecosystem, req.epss_threshold)
+    _validate_direction(conn, req.package_name, req.ecosystem, req.direction)
+    epss_threshold = None if req.direction == "no" else req.epss_threshold
+    _reject_backward_epss(conn, req.package_name, req.ecosystem, epss_threshold)
 
     try:
         terms = price_contract(
@@ -172,9 +208,10 @@ def buy_contract(
             package_name=req.package_name,
             ecosystem=req.ecosystem,
             cvss_threshold=req.cvss_threshold,
-            epss_threshold=req.epss_threshold,
+            epss_threshold=epss_threshold,
             purchase_price=req.purchase_price,
             duration_days=req.duration_days,
+            direction=req.direction,
         )
     except ValueError:
         raise HTTPException(404, "Package not found or insufficient data")
@@ -186,18 +223,19 @@ def buy_contract(
     try:
         repo_buy_contract(
             conn, contract_id, user_id, req.package_name, req.ecosystem,
-            "all", req.cvss_threshold, req.epss_threshold,
+            "all", req.cvss_threshold, epss_threshold,
             req.purchase_price, terms.max_payout, terms.opening_probability,
-            terms.package_grade, expires_at, opening_epss,
+            terms.package_grade, expires_at, opening_epss, req.direction,
         )
     except ValueError:
-        raise HTTPException(409, "Insufficient schmeckles")
+        raise HTTPException(409, "Insufficient bits")
     except Exception as e:
         raise HTTPException(500, "Failed to create contract") from e
 
     cache_invalidate(f"contracts:me:{user_id}")
     return BuyResponse(
         id=contract_id,
+        direction=req.direction,
         max_payout=terms.max_payout,
         opening_probability=terms.opening_probability,
         package_grade=terms.package_grade,
@@ -235,7 +273,7 @@ def _list_contracts(user_id: str, conn: Any) -> list[ContractDetail]:
     for row in rows:
         (cid, pkg, eco, mtype, cvss_t, epss_t, price, payout,
          open_prob, grade, expires, status, resolved_at, sell_price, created_at,
-         opening_epss, current_epss) = row
+         opening_epss, current_epss, direction) = row
 
         sell_val = None
         if status == "open":
@@ -252,6 +290,7 @@ def _list_contracts(user_id: str, conn: Any) -> list[ContractDetail]:
             package_name=pkg,
             ecosystem=eco,
             market_type=mtype,
+            direction=direction,
             cvss_threshold=cvss_t,
             epss_threshold=epss_t,
             purchase_price=price,

@@ -7,6 +7,8 @@ from typing import Any
 
 import httpx
 
+from features.epss_crossings import record_crossing_if_applicable
+
 BULK_URL = "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz"
 CACHE_DIR = Path("/tmp/epss_csv")
 
@@ -90,5 +92,6 @@ def load_epss_for_packages(conn: Any, csv_path: Path, today: date) -> int:
                 """,
                 [name, ecosystem, score, today],
             )
+            record_crossing_if_applicable(cur, name, ecosystem, last[0] if last else None, score, today)
 
     return len(pkg_epss)

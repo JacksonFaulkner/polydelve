@@ -101,12 +101,12 @@ def test_place_bet_insufficient_funds(client, db_with_data):
     assert r.status_code == 409
 
 
-def test_place_bet_deducts_schmeckles(client, db_with_data):
+def test_place_bet_deducts_bits(client, db_with_data):
     _seed_market(db_with_data, price=100)
     r = client.post("/bets", json={"market_id": "mkt-1"})
     assert r.status_code == 201
     cur = db_with_data.cursor()
-    cur.execute("SELECT schmeckles FROM users WHERE id = 'auth0|testuser123'")
+    cur.execute("SELECT bits FROM users WHERE id = 'auth0|testuser123'")
     bal = cur.fetchone()[0]
     assert bal == 900
 

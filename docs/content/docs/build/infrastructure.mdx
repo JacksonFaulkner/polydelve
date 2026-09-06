@@ -14,7 +14,7 @@ flowchart TD
   CF_FE -->|"/*"| S3_FE["S3\npolydelve-frontend"]
   ECS --> RDS["RDS Postgres 16\ndb.t3.micro"]
   ECS --> S3_AV["S3\npolydelve-avatars"]
-  ETL["EventBridge Scheduler\nevery 2 hours"] --> ECS_ETL["ECS Fargate\nETL task (2 vCPU / 8 GB)"]
+  ETL["EventBridge Scheduler\n9am/12pm/5pm ET"] --> ECS_ETL["ECS Fargate\nETL task (2 vCPU / 8 GB)"]
   ECS_ETL --> RDS
   DOCS["GitHub Pages\ndocs"] --> CF_AS["CloudFront\nassets.polydelve.com"]
   CF_AS --> S3_AS["S3\npolydelve-assets"]
@@ -35,7 +35,7 @@ flowchart TD
 | `dns.tf` | Route 53 zone, apex + www + assets A/CNAME records |
 | `iam.tf` | ECS execution role, infrastructure role, task role |
 | `secrets.tf` | Secrets Manager entries for all app secrets |
-| `etl.tf` | Fargate ETL task definition, EventBridge Scheduler (every 2 hours) |
+| `etl.tf` | Fargate ETL task definition, EventBridge Scheduler (9am/12pm/5pm ET) |
 | `variables.tf` | Input variables — secrets passed via `TF_VAR_*`, never committed |
 
 ## Resources
@@ -53,7 +53,7 @@ The backend runs as an ECS Express Gateway Service (`aws_ecs_express_gateway_ser
 | Health check | `GET /health` |
 | Deploy | Rolling (`wait_for_steady_state = true`) |
 
-Secrets (Database URL, API keys, Auth0 config) are injected from Secrets Manager at task startup — never in environment variables directly.
+Secrets (database URL, API keys) are injected from Secrets Manager at task startup. Auth0 config (`AUTH0_DOMAIN`, `AUTH0_AUDIENCE`) is not secret-sensitive and is passed as plain ECS `environment` variables instead.
 
 ### Container registry — ECR
 
@@ -94,14 +94,14 @@ CI syncs `docs/public/` to S3 on every docs deploy using the `polydelve-ci-asset
 
 ### ETL scheduling — EventBridge Scheduler
 
-The ETL Fargate task runs on a `rate(2 hours)` schedule via EventBridge Scheduler (`aws_scheduler_schedule`). It runs the `hourly` composite job by default (EPSS refresh + news update + MAL advisories). The command can be overridden per-run via ECS task override to run any individual ETL job.
+The ETL Fargate task runs at 9am, 12pm, and 5pm ET via EventBridge Scheduler (`aws_scheduler_schedule`, `cron(0 9,12,17 * * ? *)` in the `America/New_York` timezone). It runs the `refresh` composite job by default (EPSS refresh + news update + MAL advisories). The command can be overridden per-run via ECS task override to run any individual ETL job.
 
 | Setting | Value |
 |---|---|
 | CPU / memory | 2 vCPU / 8 GB |
-| Schedule | Every 2 hours (±10 min flexible window) |
+| Schedule | 9am, 12pm, 5pm ET (`cron(0 9,12,17 * * ? *)`) |
 | Retry | 2 attempts, max event age 1 hour |
-| Logs | CloudWatch `/ecs/polydelve/etl`, 14-day retention |
+| Logs | CloudWatch `/ecs/polydelve/etl`, 7-day retention |
 
 ### DNS and TLS
 
@@ -143,6 +143,10 @@ Port 5432 is closed to the public by default. To connect to prod:
 
 3. Connect via `:Dbee` as normal.
 
-4. **Remove the security group rule when done.** Never leave 5432 open to a public IP.
+4. Remove the security group rule when done.
+
+<Callout type="warn">
+  Never leave port 5432 open to a public IP for longer than the session — revoke the temporary rule immediately after disconnecting.
+</Callout>
 
 The RDS endpoint is available as a Terraform output: `terraform output rds_endpoint`.

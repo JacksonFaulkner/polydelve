@@ -7,6 +7,9 @@ import {
 } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Mermaid } from '@/app/components/Mermaid';
 import { ModelReference } from '@/app/components/ModelReference';
 
@@ -26,7 +29,19 @@ export default async function Page({
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, Mermaid, ModelReference }} />
+        <MDX
+          components={{
+            ...defaultMdxComponents,
+            Mermaid,
+            ModelReference,
+            Step,
+            Steps,
+            Accordion,
+            Accordions,
+            Tab,
+            Tabs,
+          }}
+        />
       </DocsBody>
     </DocsPage>
   );

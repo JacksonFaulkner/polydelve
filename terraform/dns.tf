@@ -22,6 +22,14 @@ resource "aws_route53_record" "www" {
   records = [aws_cloudfront_distribution.frontend.domain_name]
 }
 
+resource "aws_route53_record" "docs" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "docs.polydelve.com"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["jacksonfaulkner.github.io"]
+}
+
 resource "aws_route53_record" "assets" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "assets.polydelve.com"

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { useApi } from "@/lib/api"
-import { SchmeckleIcon } from "./SchmeckleIcon"
+import { BitIcon } from "./BitIcon"
 import type { User } from "@/types"
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -178,10 +178,10 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
         {avatarError && <p className="text-xs text-red-400">{avatarError}</p>}
 
         <div className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3">
-          <SchmeckleIcon className="h-5 w-5 text-[#FDE832]" />
+          <BitIcon className="h-5 w-5 text-[#FDE832]" />
           <span className="text-sm text-zinc-300">Balance</span>
           <span className="ml-auto font-bold tabular-nums text-white">
-            {user?.schmeckles.toLocaleString() ?? ""}
+            {user?.bits.toLocaleString() ?? ""}
           </span>
         </div>
 

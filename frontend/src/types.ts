@@ -81,8 +81,8 @@ export interface BalancePoint {
 export interface User {
   id: string
   username: string
-  schmeckles: number
-  schmeckle_history: BalancePoint[]
+  bits: number
+  bit_history: BalancePoint[]
   avatar_url: string | null
 }
 
@@ -166,7 +166,7 @@ export interface LeaderboardUser {
   rank: number
   id: string
   username: string | null
-  schmeckles: number
+  bits: number
   total_contracts: number
   open_contracts: number
   won_contracts: number
@@ -180,13 +180,13 @@ export interface LeaderboardResponse {
   users: LeaderboardUser[]
 }
 
-export interface SchmecklePoint {
+export interface BitPoint {
   date: string
   balance: number
   event: "buy" | "won" | "sold" | null
 }
 
-export interface SchmeckleTimeline {
+export interface BitTimeline {
   user_id: string
-  points: SchmecklePoint[]
+  points: BitPoint[]
 }

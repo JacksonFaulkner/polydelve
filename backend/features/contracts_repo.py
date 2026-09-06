@@ -11,11 +11,29 @@ def get_package_epss(conn: Any, name: str, ecosystem: str) -> float | None:
     return row[0] if row else None
 
 
-def get_user_schmeckles(conn: Any, user_id: str) -> int | None:
+def get_user_bits(conn: Any, user_id: str) -> int | None:
     cur = conn.cursor()
-    cur.execute("SELECT schmeckles FROM users WHERE id = %s", [user_id])
+    cur.execute("SELECT bits FROM users WHERE id = %s", [user_id])
     row = cur.fetchone()
     return row[0] if row else None
+
+
+def is_no_bet_eligible(conn: Any, name: str, ecosystem: str, within_days: int) -> bool:
+    """A NO bet ('this package won't get another CVE') only makes sense on a
+    package that's actually been recently vulnerable."""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM cve_history
+            WHERE name = %s AND ecosystem = %s
+              AND published_date >= now() - (%s || ' days')::interval
+        )
+        """,
+        [name, ecosystem, within_days],
+    )
+    row = cur.fetchone()
+    return bool(row and row[0])
 
 
 def buy_contract(
@@ -33,6 +51,7 @@ def buy_contract(
     grade: float,
     expires_at,
     opening_epss: float | None,
+    direction: str = "yes",
 ) -> None:
     cur = conn.cursor()
     cur.execute(
@@ -40,19 +59,19 @@ def buy_contract(
         INSERT INTO contracts (
             id, user_id, package_name, package_ecosystem, market_type,
             cvss_threshold, epss_threshold, purchase_price, max_payout,
-            opening_probability, package_grade, expires_at, opening_epss
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            opening_probability, package_grade, expires_at, opening_epss, direction
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         [contract_id, user_id, name, ecosystem, market_type,
-         cvss_t, epss_t, price, max_payout, open_prob, grade, expires_at, opening_epss],
+         cvss_t, epss_t, price, max_payout, open_prob, grade, expires_at, opening_epss, direction],
     )
     cur.execute(
-        "UPDATE users SET schmeckles = schmeckles - %s WHERE id = %s AND schmeckles >= %s",
+        "UPDATE users SET bits = bits - %s WHERE id = %s AND bits >= %s",
         [price, user_id, price],
     )
     if cur.rowcount == 0:
         conn.rollback()
-        raise ValueError("insufficient_schmeckles")
+        raise ValueError("insufficient_bits")
     conn.commit()
 
 
@@ -64,7 +83,7 @@ def list_contracts(conn: Any, user_id: str) -> list[tuple]:
                c.cvss_threshold, c.epss_threshold, c.purchase_price, c.max_payout,
                c.opening_probability, c.package_grade, c.expires_at,
                c.status, c.resolved_at, c.sell_price, c.created_at,
-               c.opening_epss, p.epss_score AS current_epss
+               c.opening_epss, p.epss_score AS current_epss, c.direction
         FROM contracts c
         LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
         WHERE c.user_id = %s
@@ -98,7 +117,7 @@ def sell_contract(conn: Any, contract_id: str, user_id: str, sell_val: int) -> N
         [sell_val, contract_id],
     )
     cur.execute(
-        "UPDATE users SET schmeckles = schmeckles + %s WHERE id = %s",
+        "UPDATE users SET bits = bits + %s WHERE id = %s",
         [sell_val, user_id],
     )
     conn.commit()
