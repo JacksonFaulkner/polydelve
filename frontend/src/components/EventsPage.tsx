@@ -89,6 +89,8 @@ function rowKey(e: EventRow) {
 export function EventsPage() {
   const { authFetch } = useApi()
   const [f, setF] = useQueryStates(eventFilterParsers, { history: "push" })
+  // nuqs setter input: any key may be null (= clear back to default)
+  type FilterPatch = Exclude<Parameters<typeof setF>[0], (...args: never[]) => unknown>
   const { window: window_, type, eco, q, sev, page } = f
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [debouncedQ, setDebouncedQ] = useState(q)
@@ -97,7 +99,7 @@ export function EventsPage() {
     return () => clearTimeout(t)
   }, [q])
 
-  const setFilter = useCallback((patch: Partial<typeof f>) => setF({ ...patch, page: 1 }), [setF])
+  const setFilter = useCallback((patch: FilterPatch) => setF({ ...patch, page: 1 }), [setF])
 
   const url = useMemo(() => {
     const p = new URLSearchParams({ window: window_, page: String(page), page_size: String(PAGE_SIZE) })

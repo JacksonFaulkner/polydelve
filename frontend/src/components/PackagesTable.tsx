@@ -237,6 +237,8 @@ export function PackagesTable({ ecosystem }: Props) {
   const [total, setTotal] = useState(0);
   // Filters, sort and page live in the URL (shareable, back-button safe).
   const [f, setF] = useQueryStates(packageFilterParsers, { history: "push" });
+  // nuqs setter input: any key may be null (= clear back to default)
+  type FilterPatch = Exclude<Parameters<typeof setF>[0], (...args: never[]) => unknown>
   const { q: search, cve: latestCveDays, sev, epss, mal, dl, sort, page } = f;
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [loading, setLoading] = useState(false);
@@ -251,7 +253,7 @@ export function PackagesTable({ ecosystem }: Props) {
 
   // Any filter change lands on page 1.
   const setFilter = useCallback(
-    (patch: Partial<typeof f>) => setF({ ...patch, page: 1 }),
+    (patch: FilterPatch) => setF({ ...patch, page: 1 }),
     [setF],
   );
   const setPage = useCallback((p: number) => setF({ page: p }), [setF]);

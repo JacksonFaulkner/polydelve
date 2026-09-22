@@ -182,3 +182,10 @@ body {
     @apply font-sans;
   }
 }
+/* Recharts makes its SVG wrapper focusable; clicking a chart to pin the
+   tooltip otherwise draws the browser focus ring around it. */
+.recharts-wrapper,
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none !important;
+}
