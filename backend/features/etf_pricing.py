@@ -12,9 +12,8 @@ edge — the payout is the fair odds, only capped so extreme long-shot tails
 don't render as absurd numbers."""
 import math
 from dataclasses import dataclass
-from datetime import date
 
-from features.contract_pricing import _clamp, current_sell_value
+from features.contract_pricing import _clamp
 
 # Baskets can be genuine long shots (e.g. 4-of-6 legs) with raw fair odds in
 # the 1e3–1e8 range. This is purely a display/sanity ceiling, not a pricing
@@ -83,18 +82,12 @@ def price_basket(members: list[EtfMemberTerms], threshold_count: int, purchase_p
     return EtfTerms(combined_probability=combined, avg_grade=round(avg_grade, 2), max_payout=max_payout)
 
 
-def current_basket_sell_value(
-    purchase_price: int,
-    created_at: date,
-    expires_at: date,
-    members: list[tuple[float | None, float | None]],  # (opening_epss, current_epss) per member
+def basket_value(
+    member_probs: list[float],
+    threshold_count: int,
+    max_payout: int,
 ) -> int:
-    """Average each member's individual sell value under the same time-decay
-    curve used for single contracts, using the basket's own opening EPSS drift."""
-    if not members:
-        return current_sell_value(purchase_price, created_at, expires_at)
-    values = [
-        current_sell_value(purchase_price, created_at, expires_at, opening_epss=o, current_epss=c)
-        for o, c in members
-    ]
-    return round(sum(values) / len(values))
+    """Mark-to-model value of an open basket: P(at least K legs fire over the
+    remaining window) * payout. Legs that already fired pass probability 1.0."""
+    p = poisson_binomial_at_least(member_probs, threshold_count)
+    return int(_clamp(round(p * max_payout), 0, max_payout))

@@ -50,7 +50,7 @@ def _build_mappings() -> list[tuple[type, str, set[str]]]:
         (
             ContractDetail,
             "contracts",
-            {"current_sell_value", "multiplier", "description", "ecosystem"},
+            {"current_value", "multiplier", "description", "ecosystem"},
         ),
     ]
 

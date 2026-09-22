@@ -1,29 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip as ReTooltip,
-  ResponsiveContainer, ReferenceLine,
-} from "recharts"
 import { Layers, Search } from "lucide-react"
 import type { Package, PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { SignupPrompt } from "./SignupPrompt"
 import EpssChart from "./EpssChart"
+import { Tooltip } from "@/components/ui/Tooltip"
 
-function buildEpssChartData(detail: PackageDetail, sinceDate?: string) {
+function buildEpssChartData(detail: PackageDetail) {
   if (!detail.epss_history || detail.epss_history.length < 2) return null
-  const epssStart = sinceDate && sinceDate > detail.epss_history[0].date
-    ? sinceDate
-    : detail.epss_history[0].date
+  const epssStart = detail.epss_history[0].date
   const epssEnd = detail.epss_history[detail.epss_history.length - 1].date
   const chartData = detail.epss_history
-    .filter((pt) => pt.date >= epssStart)
     .map((pt) => ({
       date: pt.date, epss: pt.epss,
       cvss: null as number | null, severity: null as string | null, cve_id: null as string | null,
     }))
-  const scatterData = detail.cve_history
+  const scatterData = (detail.cve_history ?? [])
     .filter((c) => c.published_date && c.cvss_score != null)
     .map((c) => ({ date: c.published_date!.slice(0, 10), epss: 0, cvss: c.cvss_score, severity: c.severity, cve_id: c.cve_id }))
     .filter((c) => c.date >= epssStart && c.date <= epssEnd)
@@ -71,23 +65,16 @@ function loadStoredSlip(): StoredSlip | null {
   }
 }
 
-interface SimCurvePoint {
-  label: string
-  sell_pnl: number
-  epss_win: number
-  cvss_win: number
-  mal_win: number
-}
-
 interface SimResult {
+  epss_payout: number
+  cvss_payout: number
+  mal_payout: number
   epss_win: number
   cvss_win: number
   mal_win: number
   max_win: number
   max_loss: number
-  y_min: number
-  y_max: number
-  curve: SimCurvePoint[]
+  win_probability: number
 }
 
 function EcoBadge({ ecosystem }: { ecosystem: string }) {
@@ -121,7 +108,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const [sim, setSim] = useState<SimResult | null>(null)
   const [simLoading, setSimLoading] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
-  const [chartTab, setChartTab] = useState<"returns" | "risk">("returns")
   const [riskDetails, setRiskDetails] = useState<Record<string, PackageDetail>>({})
   const [direction, setDirection] = useState<"yes" | "no">(() => storedSlipRef.current?.direction ?? "yes")
   const [noPackages, setNoPackages] = useState<Package[] | null>(null)
@@ -168,13 +154,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   useEffect(() => {
     if (isBasket) setDirection("yes")
   }, [isBasket])
-
-  // Always land back on "Simulated returns" when the bet direction changes,
-  // so it's never possible to be stuck looking at Risk history with no
-  // indication returns are one click away.
-  useEffect(() => {
-    setChartTab("returns")
-  }, [direction])
 
   // A leg added under YES may not be NO-eligible (needs a CVE in the last
   // 100 days) — once the eligible list loads, drop it rather than let a
@@ -238,7 +217,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   }, [legs, thresholdCount, price, duration, soloDrift, isBasket, direction, authFetch])
 
   useEffect(() => {
-    if (chartTab !== "risk") return
     const missing = legs.filter((l) => !riskDetails[legKey(l.pkg)])
     if (missing.length === 0) return
     missing.forEach((l) => {
@@ -250,9 +228,17 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
         })
         .catch(() => {})
     })
-  }, [chartTab, legs, riskDetails, authFetch])
+  }, [legs, riskDetails, authFetch])
 
   function legKey(p: Package) { return `${p.ecosystem}:${p.name}` }
+
+  // Slider at baseline = no EPSS leg. Sending the current score as the target
+  // would read as "already reached" and price as a near-certain win.
+  function epssTargetOrNull(l: Leg): number | null {
+    const target = posToEpss(l.epssSliderPos)
+    const current = Math.max(l.pkg.epss_score ?? 0.01, 0.001)
+    return target / current > 1.01 ? target : null
+  }
 
   function basketBody() {
     return {
@@ -260,7 +246,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
         package_name: l.pkg.name,
         ecosystem: l.pkg.ecosystem,
         cvss_threshold: l.cvssThreshold,
-        epss_threshold: posToEpss(l.epssSliderPos),
+        epss_threshold: epssTargetOrNull(l),
       })),
       threshold_count: Math.min(thresholdCount, legs.length),
       purchase_price: price,
@@ -268,9 +254,10 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     }
   }
 
-  function chipClass(active: boolean) {
-    return `rounded border px-1.5 py-1 text-[10px] font-medium transition-colors ${
-      active ? "border-[#FDE832] bg-[#FDE832]/10 text-zinc-100" : "border-zinc-700 text-zinc-500 hover:border-zinc-500"
+  const sectionLabel = "text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+  function optionClass(active: boolean) {
+    return `rounded border px-3 py-2 text-sm font-medium transition-colors ${
+      active ? "border-[#FDE832] bg-[#FDE832]/10 text-zinc-100" : "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
     }`
   }
 
@@ -346,7 +333,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               package_name: legs[0].pkg.name,
               ecosystem: legs[0].pkg.ecosystem,
               cvss_threshold: legs[0].cvssThreshold,
-              epss_threshold: soloTarget,
+              epss_threshold: soloDrift > 1.01 ? soloTarget : null,
               purchase_price: price,
               duration_days: duration,
               direction,
@@ -368,6 +355,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   }
 
   const searchablePackages = direction === "no" ? (noPackages ?? []) : packages
+  const packagesLoading = direction === "no" ? noPackages === null : packages.length === 0
   const available = searchablePackages.filter((p) => !legs.some((l) => legKey(l.pkg) === legKey(p)))
   const filtered = search
     ? available.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20)
@@ -381,35 +369,11 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     <div className="w-full h-full flex flex-col gap-3 overflow-y-auto lg:overflow-hidden">
       <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
 
-      {/* Direction toggle — NO bets are single-package only, so hidden once a basket forms */}
-      {!isBasket && (
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Betting</span>
-          <div className="flex items-center gap-1 rounded-md bg-zinc-900 p-0.5">
-            <button
-              onClick={() => setDirection("yes")}
-              className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${direction === "yes" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              Vulnerability happens
-            </button>
-            <button
-              onClick={() => setDirection("no")}
-              className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${direction === "no" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              No vulnerability
-            </button>
-          </div>
-          {direction === "no" && (
-            <span className="text-[10px] text-zinc-600">
-              Only packages with a CVE in the last {NO_BET_ELIGIBILITY_DAYS} days are eligible.
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex-1 min-h-0 flex flex-col rounded border border-zinc-800 bg-[#181D21]">
 
       {/* Search / add */}
       {!(direction === "no" && legs.length >= 1) && (
-      <div className="relative shrink-0 rounded-xl border border-zinc-700 bg-zinc-800/70 px-4 py-3 shadow-lg shadow-black/20">
+      <div className="relative z-20 shrink-0 rounded-t border-b border-zinc-700 bg-zinc-800/70 px-4 py-2.5">
         <div className="flex items-center gap-2.5">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
           <input
@@ -444,12 +408,12 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           </button>
         </div>
         {showDropdown && (
-          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl divide-y divide-zinc-800 max-h-56 overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded border border-zinc-700 bg-zinc-900 shadow-xl divide-y divide-zinc-800 max-h-56 overflow-y-auto">
             {!search && filtered.length > 0 && (
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">Trending risk</p>
             )}
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-zinc-600">{searchablePackages.length === 0 ? "Loading…" : "No results"}</p>
+              <p className="px-3 py-2 text-sm text-zinc-600">{packagesLoading ? "Loading…" : "No results"}</p>
             ) : filtered.map((p) => (
               <button key={legKey(p)} data-tour="predict-add-result" onClick={() => addLeg(p)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/50"
@@ -467,7 +431,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
       </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden rounded-xl border border-zinc-800 bg-[#181D21] divide-y divide-zinc-800 lg:divide-y-0">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden rounded-b divide-y divide-zinc-800 lg:divide-y-0">
 
       {/* ── LEFT: payout chart ── */}
       <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 lg:border-r lg:border-zinc-800">
@@ -485,17 +449,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg text-left">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">1 package = single contract</p>
-                  <p className="text-sm text-zinc-500 leading-relaxed">Bet on one package. pick a CVSS threshold and EPSS scenario, get paid per event type.</p>
-                </div>
-                <div className="rounded-xl border border-[#FDE832]/20 bg-zinc-900/60 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#FDE832]/80 mb-1.5">2+ packages = basket</p>
-                  <p className="text-sm text-zinc-500 leading-relaxed">Any leg hitting its event pays out the whole slip. choose how many legs must hit.</p>
-                </div>
-              </div>
-
               <div className="flex items-center gap-5 text-xs text-zinc-500">
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> EPSS spike</span>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#FDE832]" /> CVSS event</span>
@@ -509,242 +462,47 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               animate={{ opacity: simLoading && !sim ? 0.5 : 1, y: 0 }}
               className="flex flex-col flex-1 min-h-0"
             >
-              {/* Summary cards */}
-              <div className="px-5 pt-4 pb-3 border-b border-zinc-800/60 shrink-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide mb-3">
-                  <div className="flex items-center gap-1 rounded-md bg-zinc-900 p-0.5">
-                    <button
-                      onClick={() => setChartTab("returns")}
-                      className={`rounded px-2 py-1 transition-colors ${chartTab === "returns" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+              {/* Risk history — fills the left panel */}
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col divide-y divide-zinc-800">
+                {legs.map((l) => {
+                  const key = legKey(l.pkg)
+                  const detail = riskDetails[key]
+                  const chart = detail ? buildEpssChartData(detail) : null
+                  return (
+                    <div
+                      key={key}
+                      className="relative w-full flex flex-col shrink-0"
+                      style={{ flex: `1 0 ${100 / Math.min(legs.length, 4)}%`, minHeight: 180 }}
                     >
-                      Simulated returns
-                    </button>
-                    <button
-                      onClick={() => setChartTab("risk")}
-                      className={`rounded px-2 py-1 transition-colors ${chartTab === "risk" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
-                    >
-                      Risk history
-                    </button>
-                  </div>
-                  {chartTab === "returns" && (
-                    <span className="ml-auto text-[10px] text-zinc-700 font-normal normal-case tracking-normal">estimate</span>
-                  )}
-                </div>
-                {chartTab === "risk" ? null : isBasket ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl border border-emerald-400/20 bg-zinc-900/60 px-3 py-2.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">If {kOfN === 1 ? "any leg" : `${kOfN} legs`} hit</p>
-                      <p className="text-lg font-bold tabular-nums text-emerald-400">{sim ? `+${sim.max_win.toLocaleString()}` : "…"}</p>
-                    </div>
-                    <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/60 px-3 py-2.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">Multiplier</p>
-                      <p className="text-lg font-bold tabular-nums text-zinc-200">{multiplier ? `${multiplier.toFixed(1)}×` : "…"}</p>
-                    </div>
-                    <div className="rounded-xl border border-red-400/20 bg-zinc-900/60 px-3 py-2.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">Max loss</p>
-                      <p className="text-lg font-bold tabular-nums text-red-400">{sim ? sim.max_loss.toLocaleString() : "…"}</p>
-                    </div>
-                  </div>
-                ) : direction === "no" ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-zinc-900/60 px-3 py-2.5">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        <span className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">No new CVE</span>
-                      </div>
-                      <p className="text-lg font-bold tabular-nums text-emerald-400">
-                        {sim ? `+${sim.cvss_win.toLocaleString()}` : "…"}
-                      </p>
-                      <p className="text-[10px] text-zinc-600">
-                        {sim && price > 0 ? `${(sim.cvss_win / price + 1).toFixed(1)}× if it survives` : ""}
-                      </p>
-                      <p className="text-[9px] text-zinc-700 mt-1 leading-tight">
-                        {legs[0] ? `wins if no new CVE ≥ ${legs[0].cvssThreshold.toFixed(1)} CVSS before expiry` : ""}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-zinc-900/60 px-3 py-2.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">Max loss</p>
-                      <p className="text-lg font-bold tabular-nums text-red-400">{sim ? sim.max_loss.toLocaleString() : "…"}</p>
-                      <p className="text-[9px] text-zinc-700 mt-1 leading-tight">lost immediately if a qualifying CVE lands</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      {
-                        label: "EPSS spike",
-                        key: "epss_win",
-                        color: "text-emerald-400",
-                        dot: "bg-emerald-400",
-                        criteria: `wins if EPSS ≥ ${(soloTarget * 100).toFixed(1)}%`,
-                      },
-                      {
-                        label: "CVSS event",
-                        key: "cvss_win",
-                        color: "text-[#FDE832]",
-                        dot: "bg-[#FDE832]",
-                        criteria: legs[0] ? `wins if new CVE, CVSS ≥ ${legs[0].cvssThreshold.toFixed(1)}` : "",
-                      },
-                      {
-                        label: "MAL",
-                        key: "mal_win",
-                        color: "text-rose-400",
-                        dot: "bg-rose-400",
-                        criteria: "wins if a malicious-package advisory is published",
-                      },
-                    ] as const).map(({ label, key, color, dot, criteria }) => (
-                      <div key={key} className="rounded-xl bg-zinc-900/60 px-3 py-2.5">
-                        <div className="flex items-center gap-1 mb-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                          <span className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
-                        </div>
-                        <p className={`text-lg font-bold tabular-nums ${color}`}>
-                          {sim ? `+${sim[key].toLocaleString()}` : "…"}
-                        </p>
-                        <p className="text-[10px] text-zinc-600">
-                          {sim && price > 0 ? `${(sim[key] / price + 1).toFixed(1)}× if YES` : ""}
-                        </p>
-                        {criteria && (
-                          <p className="text-[9px] text-zinc-700 mt-1 leading-tight">{criteria}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Chart */}
-              {chartTab === "risk" ? (
-                <div className="flex-1 min-h-0 overflow-y-auto p-2 flex flex-col gap-2">
-                  {legs.map((l) => {
-                    const key = legKey(l.pkg)
-                    const detail = riskDetails[key]
-                    const sinceDate = direction === "no"
-                      ? new Date(Date.now() - NO_BET_ELIGIBILITY_DAYS * 86400000).toISOString().slice(0, 10)
-                      : undefined
-                    const chart = detail ? buildEpssChartData(detail, sinceDate) : null
-                    return (
-                      <div
-                        key={key}
-                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900/60 flex flex-col shrink-0"
-                        style={{ flex: `1 0 ${100 / Math.min(legs.length, 4)}%`, minHeight: 160 }}
-                      >
-                        <div className="flex items-center gap-1.5 px-3 pt-2.5 shrink-0">
+                      {legs.length > 1 && (
+                        <div className="absolute top-2 right-3 z-10 flex items-center gap-1.5">
                           <EcoBadge ecosystem={l.pkg.ecosystem} />
                           <span className="font-mono text-xs text-zinc-300 truncate">{l.pkg.name}</span>
                         </div>
-                        {!detail ? (
-                          <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">Loading…</div>
-                        ) : !chart ? (
-                          <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">No EPSS history</div>
-                        ) : (
-                          <EpssChart data={chart.chartData} cveData={chart.scatterData} />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : sim && sim.curve.length > 0 ? (
-                <div className="px-2 pt-2 pb-1 flex-1 min-h-[180px] flex flex-col">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={160}>
-                    <AreaChart data={sim.curve} margin={{ top: 16, right: 56, bottom: 0, left: 0 }}>
-                      <defs>
-                        <linearGradient id="epssGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#34d399" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="#34d399" stopOpacity={0.1} />
-                        </linearGradient>
-                        <linearGradient id="cvssGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#FDE832" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="#FDE832" stopOpacity={0.1} />
-                        </linearGradient>
-                        <linearGradient id="malGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#fb7185" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="#fb7185" stopOpacity={0.1} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="label" tick={{ fill: "#52525b", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                      <YAxis yAxisId="win" orientation="right" tick={{ fill: "#52525b", fontSize: 10 }} axisLine={false} tickLine={false}
-                        tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${(v / 1000).toFixed(0)}k`}
-                        domain={[sim.y_min, sim.y_max]} allowDataOverflow={false} width={52} />
-                      <ReferenceLine yAxisId="win" y={0} stroke="#3f3f46" strokeWidth={1} />
-                      <ReferenceLine yAxisId="win" y={sim.max_loss} stroke="#f87171" strokeDasharray="4 3" strokeWidth={1}
-                        label={{ value: "MAX LOSS", position: "insideBottomRight", fill: "#f87171", fontSize: 9, fontWeight: 700 }} />
-                      <ReTooltip cursor={{ stroke: "#71717a", strokeWidth: 1, strokeDasharray: "3 3" }}
-                        content={({ active, payload, label }) => {
-                          if (!active || !payload?.length) return null
-                          const get = (key: string) => payload.find((p) => p.dataKey === key)?.value as number | undefined
-                          const sell = get("sell_pnl"); const epss = get("epss_win"); const cvss = get("cvss_win"); const mal = get("mal_win")
-                          return (
-                            <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-1">
-                              <p className="text-zinc-400 font-medium">{label}</p>
-                              {isBasket ? (
-                                epss != null && <p className="text-emerald-400">Slip hits → +{epss.toLocaleString()} bits</p>
-                              ) : direction === "no" ? (
-                                cvss != null && <p className="text-[#FDE832]">No new CVE → +{cvss.toLocaleString()} bits</p>
-                              ) : (
-                                <>
-                                  {epss != null && <p className="text-emerald-400">EPSS spike → +{epss.toLocaleString()} bits</p>}
-                                  {cvss != null && <p className="text-[#FDE832]">CVSS event → +{cvss.toLocaleString()} bits</p>}
-                                  {mal != null && <p className="text-rose-400">MAL → +{mal.toLocaleString()} bits</p>}
-                                </>
-                              )}
-                              {sell != null && (
-                                <p className={`font-medium border-t border-zinc-800 pt-1 mt-1 ${sell >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                  Sell now → {sell >= 0 ? "+" : ""}{sell.toLocaleString()} bits
-                                </p>
-                              )}
-                            </div>
-                          )
-                        }}
-                      />
-                      {!isBasket && direction === "no" ? (
-                        <Area yAxisId="win" stackId="win" type="monotone" dataKey="cvss_win" stroke="#FDE832" strokeWidth={1} fill="url(#cvssGrad)" dot={false} activeDot={{ r: 3, fill: "#FDE832", stroke: "none" }} />
-                      ) : (
-                        <>
-                          {!isBasket && (
-                            <>
-                              <Area yAxisId="win" stackId="win" type="monotone" dataKey="mal_win" stroke="#fb7185" strokeWidth={1} fill="url(#malGrad)" dot={false} activeDot={{ r: 3, fill: "#fb7185", stroke: "none" }} />
-                              <Area yAxisId="win" stackId="win" type="monotone" dataKey="cvss_win" stroke="#FDE832" strokeWidth={1} fill="url(#cvssGrad)" dot={false} activeDot={{ r: 3, fill: "#FDE832", stroke: "none" }} />
-                            </>
-                          )}
-                          <Area yAxisId="win" stackId="win" type="monotone" dataKey="epss_win" stroke="#34d399" strokeWidth={1} fill="url(#epssGrad)" dot={false} activeDot={{ r: 3, fill: "#34d399", stroke: "none" }} />
-                        </>
                       )}
-                      {/* Invisible — plotting sell value crushes to ~0 next to thousands-scale payouts; kept only so the tooltip can read it */}
-                      <Area yAxisId="win" type="monotone" dataKey="sell_pnl" stroke="none" fill="none" dot={false} activeDot={false} legendType="none" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                  <div className="flex items-center gap-4 px-3 pt-1 pb-3 text-[10px] flex-wrap">
-                    {isBasket ? (
-                      <span className="flex items-center gap-1 text-emerald-400"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/60" /> Payout if slip hits</span>
-                    ) : direction === "no" ? (
-                      <span className="flex items-center gap-1 text-[#FDE832]"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#FDE832]/60" /> No new CVE</span>
-                    ) : (
-                      <>
-                        <span className="flex items-center gap-1 text-emerald-400"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/60" /> EPSS spike</span>
-                        <span className="flex items-center gap-1 text-[#FDE832]"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#FDE832]/60" /> CVSS event</span>
-                        <span className="flex items-center gap-1 text-rose-400"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-400/60" /> MAL</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : simError ? (
-                <div className="flex items-center justify-center flex-1 min-h-[180px] text-red-400 text-sm text-center px-6">{simError}</div>
-              ) : (
-                <div className="flex items-center justify-center flex-1 min-h-[180px] text-zinc-600 text-sm">Calculating…</div>
-              )}
+                      {!detail ? (
+                        <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">Loading…</div>
+                      ) : !chart ? (
+                        <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">No EPSS history</div>
+                      ) : (
+                        <EpssChart data={chart.chartData} cveData={chart.scatterData} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </motion.div>
           )}
         </div>
       </div>
 
       {/* ── RIGHT: slip ── */}
-      <div className="w-full lg:w-[340px] shrink-0 flex flex-col lg:min-h-0">
+      <div className="w-full lg:w-[380px] shrink-0 flex flex-col lg:min-h-0">
         <div className="flex flex-col flex-1 lg:min-h-0 overflow-hidden">
           <div className="px-4 pt-3.5 pb-2.5 border-b border-zinc-800/60 flex items-center shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#FDE832]">Your slip</span>
             {legs.length > 0 && (
-              <span className="ml-2 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300 tabular-nums">
+              <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300 tabular-nums">
                 {legs.length}
               </span>
             )}
@@ -769,7 +527,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60"
+                    className="overflow-hidden rounded border border-zinc-800 bg-zinc-900/60"
                   >
                     <div data-tour="leg-row" className="flex items-center gap-2 px-4 py-2.5">
                       <EcoBadge ecosystem={l.pkg.ecosystem} />
@@ -819,12 +577,12 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           </div>
 
           {/* Slip config */}
-          <div className="border-t border-zinc-800/60 px-4 py-3 space-y-3 shrink-0">
+          <div className="border-t border-zinc-800/60 px-4 py-4 space-y-4 shrink-0">
             {isBasket && (
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-zinc-500">Legs that must hit</span>
-                  <span className="text-[10px] font-semibold text-zinc-300 tabular-nums">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={sectionLabel}>Legs that must hit</span>
+                  <span className="text-xs font-semibold text-zinc-300 tabular-nums">
                     {kOfN === 1 ? "any 1" : `at least ${kOfN}`} of {legs.length}
                   </span>
                 </div>
@@ -833,48 +591,101 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                   className="w-full accent-[#FDE832]" />
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <p className="text-[10px] text-zinc-500 mb-1">Stake</p>
+
+            {/* Outcome — three plain stats, no boxes */}
+            {legs.length > 0 && (
+              <div>
+                {simError ? (
+                  <div className="text-red-400 text-xs">{simError}</div>
+                ) : (
+                  <div className="grid grid-cols-3 divide-x divide-zinc-800">
+                    <div className="pr-3">
+                      <p className={sectionLabel}>
+                        {isBasket ? (kOfN === 1 ? "Any leg hits" : `${kOfN} legs hit`) : direction === "no" ? "If it survives" : "If it hits"}
+                      </p>
+                      <p className="text-xl font-bold tabular-nums text-emerald-400 leading-tight">{sim ? `+${sim.max_win.toLocaleString()}` : "…"}</p>
+                      <p className="text-[11px] text-zinc-500">{multiplier ? `${multiplier.toFixed(1)}× stake` : ""}</p>
+                    </div>
+                    <div className="px-3">
+                      <p className={sectionLabel}>Win chance</p>
+                      <p className="text-xl font-bold tabular-nums text-zinc-100 leading-tight">{sim ? `${(sim.win_probability * 100).toFixed(1)}%` : "…"}</p>
+                      <p className="text-[11px] text-zinc-500">{duration}d window</p>
+                    </div>
+                    <div className="pl-3">
+                      <p className={sectionLabel}>Max loss</p>
+                      <p className="text-xl font-bold tabular-nums text-red-400 leading-tight">{sim ? sim.max_loss.toLocaleString() : "…"}</p>
+                      <p className="text-[11px] text-zinc-500">{direction === "no" ? "on any CVE" : "at expiry"}</p>
+                    </div>
+                  </div>
+                )}
+                {!isBasket && legs[0] && (
+                  <p className="mt-2 text-[11px] text-zinc-500 leading-snug">
+                    {direction === "no"
+                      ? `Wins if no new CVE with CVSS ≥ ${legs[0].cvssThreshold.toFixed(1)} lands before expiry. Settles automatically.`
+                      : `Wins on the first of: CVE with CVSS ≥ ${legs[0].cvssThreshold.toFixed(1)}` +
+                        (soloDrift > 1.01 ? `, EPSS ≥ ${(soloTarget * 100).toFixed(1)}%` : "") +
+                        `, or a MAL advisory. Settles automatically.`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Direction — NO bets are single-package only, so hidden once a basket forms */}
+            {!isBasket && (
+              <div>
+                <p className={`${sectionLabel} mb-1.5`}>Betting on</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setDirection("yes")} className={optionClass(direction === "yes")}>
+                    Vulnerability happens
+                  </button>
+                  <Tooltip content={`Only packages with a CVE in the last ${NO_BET_ELIGIBILITY_DAYS} days are eligible.`}>
+                    <button onClick={() => setDirection("no")} className={`w-full ${optionClass(direction === "no")}`}>
+                      No vulnerability
+                    </button>
+                  </Tooltip>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className={`${sectionLabel} mb-1.5`}>Stake</p>
+              <div className="flex items-center gap-2">
                 <input type="number" min={10} max={bits ?? 9999} step={10} value={price}
                   onChange={(e) => setPrice(Number(e.target.value))}
-                  className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-zinc-500 tabular-nums"
+                  className="w-24 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500 tabular-nums"
                 />
+                <div data-tour="stake-chips" className="flex flex-1 gap-2">
+                  {STAKE_CHIPS.map((v) => (
+                    <button key={v} data-tour="stake-chip" onClick={() => setPrice(v)} className={`flex-1 ${optionClass(price === v)}`}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div data-tour="stake-chips" className="flex gap-1 pt-4">
-                {STAKE_CHIPS.map((v) => (
-                  <button key={v} data-tour="stake-chip" onClick={() => setPrice(v)} className={chipClass(price === v)}>
-                    {v}
+            </div>
+
+            <div>
+              <p className={`${sectionLabel} mb-1.5`}>Duration</p>
+              <div data-tour="duration-options" className="grid grid-cols-3 gap-2">
+                {DURATION_OPTIONS.map((d) => (
+                  <button key={d} data-tour="duration-chip" onClick={() => setDuration(d)} className={optionClass(duration === d)}>
+                    {d}d
                   </button>
                 ))}
               </div>
             </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 mb-1">Duration</p>
-              <div data-tour="duration-options" className="flex gap-1.5">
-                {DURATION_OPTIONS.map((d) => (
-                  <button key={d} data-tour="duration-chip" onClick={() => setDuration(d)}
-                    className={`flex-1 py-1.5 ${chipClass(duration === d)}`}
-                  >{d}d</button>
-                ))}
-              </div>
-            </div>
-            {sim && multiplier != null && (
-              <p className="text-[11px] text-zinc-500">
-                Pays <span className="font-semibold text-emerald-400 tabular-nums">+{sim.max_win.toLocaleString()} bits</span>
-                {" "}({multiplier.toFixed(1)}×) if {isBasket ? (kOfN === 1 ? "any leg hits" : `${kOfN} legs hit`) : direction === "no" ? "it survives" : "it hits"}.
-              </p>
-            )}
+
             <button
               data-tour="buy-slip-btn"
               onClick={buySlip}
               disabled={legs.length === 0 || buying || !!simError || (bits != null && bits < price)}
-              className="w-full rounded-xl bg-[#FDE832] py-2.5 text-sm font-bold text-zinc-900 transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="w-full rounded bg-[#FDE832] py-3 text-sm font-bold text-zinc-900 transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {buying ? "Buying…" : legs.length === 0 ? "Add a package to bet" : `Buy slip for ${price} bits`}
             </button>
           </div>
         </div>
+      </div>
       </div>
       </div>
     </div>

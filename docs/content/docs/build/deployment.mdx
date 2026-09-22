@@ -77,7 +77,7 @@ ETL jobs run via `python -m etl.run <job>` (see `backend/etl/run.py`). The prima
 
 | Cadence | Command | What it does |
 |---------|---------|--------------|
-| 9am, 12pm, 5pm ET (EventBridge) | `refresh` composite | EPSS refresh + news update + MAL advisories |
+| 9am, 12pm, 5pm ET (EventBridge) | `refresh` composite | EPSS refresh + news + MAL advisories + CVE history, then resolves contracts |
 | On-demand | `make etl-epss` | Refresh EPSS scores from the daily bulk file |
 | On-demand | `make etl-news` | Fetch security news, generate + rerank featured contracts |
 | On-demand | `make build-cve-history` | Backfill CVE history for all tracked packages (`scripts/build_cve_history.py`) |

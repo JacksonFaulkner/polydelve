@@ -1,14 +1,13 @@
 import { useRef, useState } from "react";
-import { Boxes, BookOpen, LayoutDashboard, ListTree, Menu, Newspaper, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
+import { Boxes, LayoutDashboard, ListTree, Menu, Newspaper, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { BitIcon } from "./BitIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["All", "PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "Dashboard", "Settings", "How"] as const;
+export const SECTORS = ["PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "Dashboard", "Settings"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const SECTOR_PATH: Record<Sector, string> = {
-  All: "/",
   PyPI: "/pypi",
   npm: "/npm",
   News: "/news",
@@ -17,14 +16,13 @@ export const SECTOR_PATH: Record<Sector, string> = {
   Leaderboard: "/leaderboard",
   Dashboard: "/dashboard",
   Settings: "/settings",
-  How: "/how-it-works",
 };
 
 export function pathToSector(pathname: string): Sector {
   const entry = (Object.entries(SECTOR_PATH) as [Sector, string][]).find(
-    ([, p]) => p === pathname || (p !== "/" && pathname.startsWith(p))
+    ([, p]) => p === pathname || pathname.startsWith(p)
   );
-  return entry ? entry[0] : "All";
+  return entry ? entry[0] : "Predict";
 }
 
 const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
@@ -36,7 +34,6 @@ const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   Leaderboard: <Trophy className="h-3.5 w-3.5" />,
   Dashboard: <LayoutDashboard className="h-3.5 w-3.5" />,
   Settings: <Settings className="h-3.5 w-3.5" />,
-  How: <BookOpen className="h-3.5 w-3.5" />,
 };
 
 const TAB_LABEL: Partial<Record<Sector, string>> = {
@@ -95,7 +92,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // All content pages are browsable logged-out; betting is gated at the action.
-  const visibleTabs: Sector[] = ["PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "How"];
+  const visibleTabs: Sector[] = ["Predict", "PyPI", "npm", "News", "Events", "Leaderboard"];
 
   const avatarSrc = user?.avatar_url ?? (auth0User as { picture?: string })?.picture;
 
@@ -108,11 +105,11 @@ export function Navbar({ user, activeSector }: NavbarProps) {
         {/* Top bar */}
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
           <a
-            href="/"
-            onClick={(e) => { e.preventDefault(); navigate("/"); }}
+            href="/predict"
+            onClick={(e) => { e.preventDefault(); navigate("/predict"); }}
             className="flex shrink-0 items-center gap-2"
           >
-            <img src="/logo.png" alt="Polydelve" width={28} height={28} className="h-7 object-contain invert" />
+            <img src="/logo.svg" alt="Polydelve" width={28} height={28} className="h-7 object-contain invert" />
           </a>
 
           {/* Desktop tab strip — inline w/ logo + sign in */}
@@ -125,7 +122,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
           <div className="ml-auto flex items-center gap-2">
             {/* Bits — hidden on mobile */}
             {isAuthenticated && user && (
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">
+              <div className="hidden sm:flex items-center gap-1.5 rounded border border-zinc-700/60 bg-[#1C2229] px-3 py-1.5">
                 <BitIcon className="h-5 w-5" />
                 <span className="text-sm font-bold text-white">{user.bits.toLocaleString()}</span>
               </div>
@@ -133,7 +130,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
 
             {/* Mobile hamburger */}
             <button
-              className="sm:hidden flex items-center justify-center h-8 w-8 rounded-lg text-zinc-400 hover:text-white transition-colors"
+              className="sm:hidden flex items-center justify-center h-8 w-8 rounded text-zinc-400 hover:text-white transition-colors"
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
             >
@@ -156,7 +153,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
 
                 {dropdownOpen && (
                   <div
-                    className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-zinc-700 bg-[#1C2128] py-1 shadow-xl"
+                    className="absolute right-0 top-full mt-2 w-44 rounded border border-zinc-700 bg-[#1C2128] py-1 shadow-xl"
                     onMouseLeave={() => setDropdownOpen(false)}
                   >
                     <button
@@ -186,7 +183,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
             ) : (
               <button
                 onClick={() => loginWithRedirect()}
-                className="rounded-full bg-[#FDE832] px-3 sm:px-4 py-1.5 text-sm font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
+                className="rounded bg-[#FDE832] px-3 sm:px-4 py-1.5 text-sm font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
               >
                 Sign in
               </button>

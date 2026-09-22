@@ -8,33 +8,26 @@ export interface PagedResponse<T> {
   total_pages: number
 }
 
-/** Shared page/page_size fetch-and-paginate hook for list endpoints that
- * return a PagedResponse. Resets to page 1 whenever `resetKey` changes
- * (e.g. a filter or search term). */
-export function usePaginatedFetch<T>(
-  buildUrl: (page: number, pageSize: number) => string,
+/** Fetch a PagedResponse for a given URL; re-runs whenever `url` changes.
+ * Page state is owned by the caller (typically the URL via nuqs). */
+export function usePagedFetch<T>(
+  url: string,
   authFetch: (url: string) => Promise<Response>,
-  opts: { pageSize?: number; resetKey?: unknown } = {},
 ) {
-  const { pageSize = 25, resetKey } = opts
-  const [page, setPage] = useState(1)
   const [data, setData] = useState<PagedResponse<T> | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey])
-
-  useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    authFetch(buildUrl(page, pageSize))
+    authFetch(url)
       .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false))
+      .then((d) => { if (!cancelled) setData(d) })
+      .catch(() => { if (!cancelled) setData(null) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, resetKey])
+  }, [url])
 
-  return { page, setPage, data, loading }
+  return { data, loading }
 }

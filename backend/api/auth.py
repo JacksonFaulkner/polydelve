@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 # Guest tokens are minted by this backend (HS256) so logged-out visitors can
 # browse read-only endpoints with a real bearer token instead of going
 # anonymous. They are deliberately NOT accepted by get_current_user, so they
-# can never place/sell bets — those require a real Auth0 login.
+# can never place bets — those require a real Auth0 login.
 GUEST_ISSUER = "polydelve-guest"
 GUEST_SECRET = os.getenv("GUEST_JWT_SECRET", "dev-guest-secret-change-me")
 GUEST_TTL_SECONDS = int(os.getenv("GUEST_JWT_TTL", str(7 * 24 * 3600)))

@@ -105,7 +105,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
       date: pt.date, epss: pt.epss,
       cvss: null as number | null, severity: null as string | null, cve_id: null as string | null,
     }))
-    const scatterData = detail.cve_history
+    const scatterData = (detail.cve_history ?? [])
       .filter((c) => c.published_date && c.cvss_score != null)
       .map((c) => ({ date: c.published_date!.slice(0, 10), epss: 0, cvss: c.cvss_score, severity: c.severity, cve_id: c.cve_id }))
       .filter((c) => c.date >= epssStart && c.date <= epssEnd)
@@ -115,21 +115,28 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
   return (
     <tr data-tour={tourTag}>
       <td colSpan={colSpan} className="p-0">
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-zinc-800 bg-zinc-900/60 px-3 sm:px-6 py-4 sm:py-5">
+        <motion.div
+          initial={{ height: 0 }}
+          animate={{ height: "auto" }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
+        >
+          {/* min-h keeps the reveal a single motion: the panel opens to roughly
+              its final size while the detail request is in flight, so content
+              fades into place instead of the row growing a second time. */}
+          <div className={`border-t border-zinc-800 bg-zinc-900/60 px-3 sm:px-6 py-4 sm:py-5 ${loading ? "min-h-[280px] sm:min-h-[400px]" : ""}`}>
+            <AnimatePresence mode="wait" initial={false}>
               {loading ? (
-                <div className="py-8 text-center text-sm text-zinc-500">Loading…</div>
+                <motion.div key="loading" exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+                  className="py-8 text-center text-sm text-zinc-500">Loading…</motion.div>
               ) : !detail ? (
                 <div className="py-8 text-center text-sm text-zinc-500">Failed to load</div>
               ) : (
-                <>
+                <motion.div key="detail"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                >
                   {/* ── MOBILE LAYOUT ── */}
                   <div className="sm:hidden space-y-3">
                     {/* 1×4 stats + tab toggle */}
@@ -137,7 +144,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                       {[
                         { label: "DL", value: detail.weekly_downloads ? (detail.weekly_downloads / 1_000_000).toFixed(1) + "M" : "—" },
                         { label: "EPSS", value: detail.epss_score !== null ? (detail.epss_score * 100).toFixed(1) + "%" : "—" },
-                        { label: "CVEs", value: String(detail.cve_ids.length) },
+                        { label: "CVEs", value: String(detail.cve_ids?.length ?? 0) },
                         { label: "Risk", value: detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : "—" },
                       ].map(({ label, value }) => (
                         <div key={label} className="flex-1 text-center">
@@ -179,7 +186,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
 
                     {/* Table view */}
                     {mobileView === "table" && (
-                      detail.cve_history.length > 0 ? (
+                      (detail.cve_history?.length ?? 0) > 0 ? (
                         <div className="rounded border border-zinc-800 max-h-52 overflow-y-auto">
                           <table className="w-full text-xs">
                             <thead className="sticky top-0 bg-zinc-900">
@@ -242,7 +249,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                         </div>
                         <div>
                           <span className="text-xs text-zinc-500">CVEs</span>
-                          <p className="font-medium text-zinc-200">{detail.cve_ids.length}</p>
+                          <p className="font-medium text-zinc-200">{detail.cve_ids?.length ?? 0}</p>
                         </div>
                         <div>
                           <span className="text-xs text-zinc-500">Risk Score</span>
@@ -253,12 +260,12 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                         {detail.has_mal_advisory && (
                           <span className="rounded bg-rose-900/60 px-2 py-0.5 text-xs font-bold text-rose-300">OSV MAL</span>
                         )}
-                        {detail.sectors.map((s) => (
+                        {(detail.sectors ?? []).map((s) => (
                           <span key={s} className="rounded bg-zinc-700/60 px-2 py-0.5 text-xs text-zinc-400">{s}</span>
                         ))}
                       </div>
 
-                      {detail.cve_history.length > 0 ? (
+                      {(detail.cve_history?.length ?? 0) > 0 ? (
                         <div className="max-h-52 overflow-y-auto rounded border border-zinc-800">
                           <table className="w-full text-xs">
                             <thead className="sticky top-0 bg-zinc-900">
@@ -317,11 +324,11 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                       </div>
                     )}
                   </div>
-                </>
+                </motion.div>
               )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+            </AnimatePresence>
+          </div>
+        </motion.div>
       </td>
     </tr>
   )

@@ -24,20 +24,19 @@ vi.mock("@auth0/auth0-react", () => ({
 
 describe("Navbar — unauthenticated", () => {
   it("renders public tabs", () => {
-    render(<Navbar activeSector="All" />)
-    // "All" is no longer a tab — the logo links home instead.
+    render(<Navbar activeSector="Predict" />)
     expect(screen.getByText("News")).toBeInTheDocument()
     expect(screen.getByText("Leaderboard")).toBeInTheDocument()
   })
 
   it("does not render auth-gated tabs when logged out", () => {
-    render(<Navbar activeSector="All" />)
+    render(<Navbar activeSector="Predict" />)
     expect(screen.getByText("PyPI")).toBeInTheDocument()
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument()
   })
 
   it("shows sign in button when logged out", () => {
-    render(<Navbar activeSector="All" />)
+    render(<Navbar activeSector="Predict" />)
     expect(screen.getByText("Sign in")).toBeInTheDocument()
   })
 

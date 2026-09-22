@@ -69,7 +69,7 @@ const columns = [
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
-        <span className="rounded-full bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">{v}</span>
+        <span className="rounded bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">{v}</span>
       ) : <span className="text-zinc-600">0</span>
     },
   }),
@@ -80,7 +80,7 @@ const columns = [
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
-        <span className="rounded-full bg-green-900/50 px-2 py-0.5 text-xs text-green-300">{v}</span>
+        <span className="rounded bg-green-900/50 px-2 py-0.5 text-xs text-green-300">{v}</span>
       ) : <span className="text-zinc-600">0</span>
     },
   }),
@@ -157,7 +157,7 @@ export function LeaderboardTable() {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-lg border border-zinc-800">
+      <div className="overflow-hidden rounded border border-zinc-800">
         <div className="flex items-center gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />

@@ -12,7 +12,7 @@ export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#1B2025] p-6 text-center"
+        className="w-full max-w-sm rounded border border-zinc-700 bg-[#1B2025] p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold text-white">Create a free account to bet</h2>
@@ -23,13 +23,13 @@ export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => 
         <div className="mt-5 flex flex-col gap-2">
           <button
             onClick={() => loginWithRedirect()}
-            className="rounded-full bg-[#FDE832] px-4 py-2 text-sm font-bold text-[#15191D]"
+            className="rounded bg-[#FDE832] px-4 py-2 text-sm font-bold text-[#15191D]"
           >
             Sign up / Sign in
           </button>
           <button
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200"
+            className="rounded px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200"
           >
             Keep browsing
           </button>

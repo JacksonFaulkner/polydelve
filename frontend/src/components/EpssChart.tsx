@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ComposedChart, Line, Scatter, XAxis, YAxis,
   Tooltip as ReTooltip, ResponsiveContainer, ReferenceLine,
@@ -51,7 +51,20 @@ type ChartPoint = {
   cve_id: string | null
 }
 
-type CveTooltip = { cx: number; cy: number; payload: { cve_id: string | null; cvss: number; severity: string | null; date: string } }
+type CvePoint = { x: number; cvss: number; severity: string | null; cve_id: string | null; date: string }
+type Focus = {
+  x: number            // pixel x within the chart container
+  y: number            // pixel y within the chart container
+  date: string
+  epss: number | null
+  prevEpss: number | null
+  cves: CvePoint[]
+}
+
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+}
 
 export default function EpssChart({
   data, cveData, selectedCveId, onCveClick,
@@ -61,7 +74,16 @@ export default function EpssChart({
   selectedCveId?: string | null
   onCveClick?: (cveId: string | null) => void
 }) {
-  const [cveHover, setCveHover] = useState<CveTooltip | null>(null)
+  const [hover, setHover] = useState<Focus | null>(null)
+  const [pinned, setPinned] = useState<Focus | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!pinned) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPinned(null) }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [pinned])
 
   if (!data.length) return null
 
@@ -71,7 +93,7 @@ export default function EpssChart({
     date: d.date,
   }))
 
-  const cvePoints = cveData.map((d) => ({
+  const cvePoints: CvePoint[] = cveData.map((d) => ({
     x: new Date(d.date).getTime(),
     cvss: d.cvss ?? 0,
     severity: d.severity,
@@ -82,8 +104,20 @@ export default function EpssChart({
   const xMin = epssPoints[0]?.x ?? 0
   const xMax = epssPoints[epssPoints.length - 1]?.x ?? 0
 
+  // Build the focus payload for a given date from the EPSS series + CVEs that day.
+  function focusFor(date: string, px: number, py: number): Focus {
+    const i = epssPoints.findIndex((p) => p.date === date)
+    const epss = i >= 0 ? epssPoints[i].epss : null
+    const prevEpss = i > 0 ? epssPoints[i - 1].epss : null
+    return { x: px, y: py, date, epss, prevEpss, cves: cvePoints.filter((c) => c.date === date) }
+  }
+
+  const focus = pinned ?? hover
+  const tooltipLeft = focus ? Math.min(focus.x + 14, (containerRef.current?.clientWidth ?? 9999) - 230) : 0
+  const tooltipTop = focus ? Math.max(8, Math.min(focus.y - 12, (containerRef.current?.clientHeight ?? 9999) - 140)) : 0
+
   return (
-    <div className="relative flex-1">
+    <div ref={containerRef} className="relative flex-1" onMouseLeave={() => setHover(null)}>
     {/* Chart title + legend */}
     <div className="absolute top-2 left-3 z-10 flex items-center gap-3">
       <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">EPSS Trend</span>
@@ -95,9 +129,24 @@ export default function EpssChart({
         <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
         CVE
       </span>
+      {!pinned && <span className="text-[10px] text-zinc-700">click to pin</span>}
     </div>
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart margin={{ top: 24, right: 44, bottom: 8, left: 4 }}>
+      <ComposedChart
+        margin={{ top: 24, right: 44, bottom: 8, left: 4 }}
+        onMouseMove={(state) => {
+          if (pinned) return
+          const s = state as { activePayload?: { payload: { date: string } }[]; activeCoordinate?: { x: number; y: number } }
+          const date = s.activePayload?.[0]?.payload?.date
+          if (!date || !s.activeCoordinate) return
+          setHover(focusFor(date, s.activeCoordinate.x, s.activeCoordinate.y))
+        }}
+        onClick={() => {
+          if (pinned) { setPinned(null); return }
+          if (hover) setPinned(hover)
+        }}
+        style={{ cursor: pinned ? "default" : "crosshair" }}
+      >
         <XAxis
           dataKey="x"
           type="number"
@@ -128,34 +177,22 @@ export default function EpssChart({
         />
 
         {/* CVSS axis (left, 0–10) for scatter dots */}
-        <YAxis
-          yAxisId="cvss"
-          domain={[0, 10]}
-          hide
-        />
+        <YAxis yAxisId="cvss" domain={[0, 10]} hide />
 
         {[0.25, 0.5, 0.75].map((v) => (
           <ReferenceLine key={v} yAxisId="epss" y={v} stroke="#27272a" strokeDasharray="3 3" />
         ))}
 
+        {/* Pinned marker */}
+        {pinned && (
+          <ReferenceLine yAxisId="epss" x={new Date(pinned.date).getTime()} stroke="#FDE832" strokeWidth={1} strokeDasharray="4 3" />
+        )}
+
+        {/* Built-in tooltip only supplies the hover cursor; content is our own layer below */}
         <ReTooltip
-          cursor={{ stroke: "#52525b", strokeWidth: 1, strokeDasharray: "3 3" }}
-          content={({ active, payload }) => {
-            if (!active || !payload?.length) return null
-            const epss = payload.find((p) => p.name === "epss")?.payload
-            const cve  = payload.find((p) => p.name === "cvss")?.payload
-            return (
-              <div className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-0.5">
-                <p className="text-zinc-500">{epss?.date ?? cve?.date}</p>
-                {epss && <p className="text-emerald-400">EPSS {(epss.epss * 100).toFixed(2)}%</p>}
-                {cve?.cve_id && (
-                  <p style={{ color: dotColor(cve.cvss ?? null, cve.severity) }}>
-                    {cve.cve_id} · CVSS {cve.cvss?.toFixed(1)}
-                  </p>
-                )}
-              </div>
-            )
-          }}
+          cursor={pinned ? false : { stroke: "#52525b", strokeWidth: 1, strokeDasharray: "3 3" }}
+          content={() => null}
+          isAnimationActive={false}
         />
 
         <Line
@@ -166,17 +203,20 @@ export default function EpssChart({
           stroke="#34d399"
           strokeWidth={1.5}
           dot={false}
-          activeDot={{ r: 4, fill: "#34d399", stroke: "#18181b", strokeWidth: 1 }}
+          activeDot={pinned ? false : { r: 4, fill: "#34d399", stroke: "#18181b", strokeWidth: 1 }}
+          isAnimationActive={false}
         />
 
         <Scatter
           yAxisId="cvss"
           data={cvePoints}
           dataKey="cvss"
-          shape={(props: { cx?: number; cy?: number; payload?: { cve_id: string | null; cvss: number; severity: string | null; date: string } }) => {
+          isAnimationActive={false}
+          shape={(props: { cx?: number; cy?: number; payload?: CvePoint }) => {
             const { cx = 0, cy = 0, payload } = props
             if (!payload) return <g />
-            const isSelected = selectedCveId != null && payload.cve_id === selectedCveId
+            const isSelected = (selectedCveId != null && payload.cve_id === selectedCveId)
+              || (pinned?.cves.some((c) => c.cve_id === payload.cve_id) ?? false)
             return (
               <circle
                 cx={cx} cy={cy} r={isSelected ? 7 : 5}
@@ -184,9 +224,14 @@ export default function EpssChart({
                 stroke={isSelected ? "#fff" : "#18181b"}
                 strokeWidth={isSelected ? 2 : 1}
                 style={{ cursor: "pointer" }}
-                onMouseEnter={() => setCveHover({ cx, cy, payload })}
-                onMouseLeave={() => setCveHover(null)}
-                onClick={() => onCveClick?.(isSelected ? null : payload.cve_id)}
+                onMouseEnter={() => { if (!pinned) setHover(focusFor(payload.date, cx, cy)) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const f = focusFor(payload.date, cx, cy)
+                  const already = pinned?.date === payload.date
+                  setPinned(already ? null : f)
+                  onCveClick?.(already ? null : payload.cve_id)
+                }}
               />
             )
           }}
@@ -194,16 +239,44 @@ export default function EpssChart({
       </ComposedChart>
     </ResponsiveContainer>
 
-    {/* CVE dot tooltip. positioned relative to chart container */}
-    {cveHover && (
+    {focus && (
       <div
-        className="pointer-events-none absolute z-10 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs shadow-lg space-y-0.5"
-        style={{ left: cveHover.cx + 12, top: cveHover.cy }}
+        className={`absolute z-20 w-[220px] rounded border bg-zinc-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur ${pinned ? "border-[#FDE832]/60" : "border-zinc-700 pointer-events-none"}`}
+        style={{ left: tooltipLeft, top: tooltipTop }}
       >
-        <p className="text-zinc-500">{cveHover.payload.date}</p>
-        <p style={{ color: dotColor(cveHover.payload.cvss, cveHover.payload.severity) }}>
-          {cveHover.payload.cve_id} · CVSS {cveHover.payload.cvss?.toFixed(1)}
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-zinc-400 font-medium">{fmtDate(focus.date)}</span>
+          {pinned ? (
+            <button onClick={() => setPinned(null)} className="text-[10px] text-[#FDE832] hover:underline">unpin</button>
+          ) : (
+            <span className="text-[10px] text-zinc-600">hover</span>
+          )}
+        </div>
+        {focus.epss != null && (
+          <div className="flex items-baseline justify-between">
+            <span className="text-emerald-400 font-semibold tabular-nums">EPSS {(focus.epss * 100).toFixed(2)}%</span>
+            {focus.prevEpss != null && focus.prevEpss !== focus.epss && (
+              <span className={`tabular-nums text-[10px] ${focus.epss > focus.prevEpss ? "text-rose-400" : "text-emerald-500"}`}>
+                {focus.epss > focus.prevEpss ? "▲" : "▼"} {Math.abs((focus.epss - focus.prevEpss) * 100).toFixed(2)} pts
+              </span>
+            )}
+          </div>
+        )}
+        {focus.cves.length > 0 && (
+          <div className="mt-1.5 pt-1.5 border-t border-zinc-800 space-y-1">
+            {focus.cves.map((c) => (
+              <div key={c.cve_id ?? c.x} className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[11px] text-zinc-200 truncate">{c.cve_id ?? "CVE"}</span>
+                <span className="shrink-0 tabular-nums font-semibold" style={{ color: dotColor(c.cvss, c.severity) }}>
+                  {c.cvss.toFixed(1)}{c.severity ? ` · ${c.severity}` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {focus.cves.length === 0 && focus.epss == null && (
+          <p className="text-zinc-600">No data</p>
+        )}
       </div>
     )}
     </div>

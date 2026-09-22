@@ -1,6 +1,13 @@
-import { useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { createColumnHelper } from "@tanstack/react-table"
+import { useQueryStates } from "nuqs"
+import { Search } from "lucide-react"
 import { useApi } from "@/lib/api"
-import { usePaginatedFetch } from "@/lib/pagination"
+import { usePagedFetch } from "@/lib/pagination"
+import { ECOSYSTEM_OPTIONS, EVENT_TYPE_OPTIONS, SEVERITY_OPTIONS, eventFilterParsers } from "@/lib/filters"
+import { DataTable } from "./DataTable"
+import { FilterClear, FilterMulti, FilterSelect } from "./FilterBar"
+import { PackageExpandedRow } from "./PackageExpandedRow"
 import { Pagination } from "./Pagination"
 
 type EventRow = {
@@ -41,70 +48,135 @@ function whatHappened(e: EventRow): string {
 }
 
 const PAGE_SIZE = 25
+const col = createColumnHelper<EventRow>()
+
+const columns = [
+  col.accessor("date", {
+    header: "Date",
+    cell: (info) => <span className="text-xs text-zinc-500 tabular-nums whitespace-nowrap">{fmtDate(info.getValue())}</span>,
+  }),
+  col.accessor("ecosystem", {
+    header: "Eco",
+    cell: (info) => <EcoBadge ecosystem={info.getValue()} />,
+  }),
+  col.accessor("name", {
+    header: "Package",
+    cell: (info) => <span className="font-mono text-sm text-zinc-200">{info.getValue()}</span>,
+  }),
+  col.accessor("type", {
+    header: "Event",
+    cell: (info) => {
+      const meta = TYPE_META[info.getValue()]
+      return (
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wide ${meta.text}`}>{meta.label}</span>
+        </span>
+      )
+    },
+  }),
+  col.display({
+    id: "what",
+    header: "What happened",
+    cell: (info) => <span className="text-xs text-zinc-500">{whatHappened(info.row.original)}</span>,
+  }),
+]
+
+function rowKey(e: EventRow) {
+  return `${e.ecosystem}::${e.name}::${e.type}::${e.date}::${e.cve_id ?? ""}`
+}
 
 export function EventsPage() {
   const { authFetch } = useApi()
-  const [window_, setWindow] = useState<"dense" | "shallow">("dense")
+  const [f, setF] = useQueryStates(eventFilterParsers, { history: "push" })
+  const { window: window_, type, eco, q, sev, page } = f
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [debouncedQ, setDebouncedQ] = useState(q)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 250)
+    return () => clearTimeout(t)
+  }, [q])
 
-  const { page, setPage, data, loading } = usePaginatedFetch<EventRow>(
-    (p, ps) => `/events?window=${window_}&page=${p}&page_size=${ps}`,
-    authFetch,
-    { pageSize: PAGE_SIZE, resetKey: window_ },
-  )
-  const events = data?.items ?? []
+  const setFilter = useCallback((patch: Partial<typeof f>) => setF({ ...patch, page: 1 }), [setF])
+
+  const url = useMemo(() => {
+    const p = new URLSearchParams({ window: window_, page: String(page), page_size: String(PAGE_SIZE) })
+    type.forEach((t) => p.append("type", t))
+    if (eco) p.set("ecosystem", eco)
+    if (debouncedQ) p.set("search", debouncedQ)
+    if (sev) p.set("severity", sev)
+    return `/events?${p}`
+  }, [window_, page, type, eco, debouncedQ, sev])
+  const { data, loading } = usePagedFetch<EventRow>(url, authFetch)
+  const events = useMemo(() => data?.items ?? [], [data])
   const totalPages = data?.total_pages ?? 1
+  const activeCount = [type.length ? 1 : null, eco, sev, window_ === "shallow" ? 1 : null].filter((v) => v != null).length
+
+  const headerFilters: Record<string, React.ReactNode> = {
+    date: (
+      <FilterSelect
+        compact
+        label="Window"
+        value={window_ === "dense" ? null : window_}
+        options={[{ value: "shallow", label: "All time" }]}
+        onChange={(v) => setFilter({ window: v ?? null })}
+      />
+    ),
+    ecosystem: <FilterSelect compact label="Ecosystem" value={eco} options={[...ECOSYSTEM_OPTIONS]} onChange={(v) => setFilter({ eco: v })} />,
+    type: <FilterMulti compact label="Event type" value={type} options={[...EVENT_TYPE_OPTIONS]} onChange={(v) => setFilter({ type: v.length ? v : null })} />,
+    what: <FilterSelect compact label="Severity" value={sev} options={SEVERITY_OPTIONS} onChange={(v) => setFilter({ sev: v })} />,
+  }
+  const filteredColumns = columns.map((c) =>
+    c.id && headerFilters[c.id] ? { ...c, meta: { ...c.meta, filter: headerFilters[c.id] } } : c,
+  )
+
+  const toolbar = (
+    <>
+      <div className="relative flex-1 min-w-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search packages…"
+          value={q}
+          onChange={(e) => setF({ q: e.target.value || null, page: 1 }, { history: "replace" })}
+          className="w-full bg-transparent pl-8 pr-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+        />
+      </div>
+      <FilterClear count={activeCount} onClear={() => setFilter({ type: null, eco: null, sev: null, window: null })} />
+      <span className="shrink-0 text-xs text-zinc-500 pr-1">
+        {data ? `${data.total.toLocaleString()} events` : ""}
+      </span>
+    </>
+  )
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-3 px-1 pb-4 shrink-0">
-        <div>
-          <h1 className="text-lg font-bold text-white">Security events</h1>
-          <p className="text-sm text-zinc-500">
-            A ledger of what happened — if a contract like this existed, it would've hit.
-            {data && <span className="text-zinc-600"> {data.total.toLocaleString()} total.</span>}
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-1 rounded-md bg-zinc-900 p-0.5">
-          <button
-            onClick={() => setWindow("dense")}
-            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${window_ === "dense" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
-          >
-            Last 30 days
-          </button>
-          <button
-            onClick={() => setWindow("shallow")}
-            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${window_ === "shallow" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
-          >
-            All time
-          </button>
-        </div>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-lg font-bold text-white">Security events</h1>
+        <p className="text-sm text-zinc-500">
+          A ledger of what happened — if a contract like this existed, it would've hit.
+        </p>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-zinc-800 divide-y divide-zinc-800/60">
-        {loading ? (
-          <div className="py-12 text-center text-sm text-zinc-500">Loading…</div>
-        ) : events.length === 0 ? (
-          <div className="py-12 text-center text-sm text-zinc-500">No events in this window.</div>
-        ) : (
-          events.map((e, i) => {
-            const meta = TYPE_META[e.type]
-            return (
-              <div key={`${e.name}-${e.ecosystem}-${e.type}-${e.date}-${i}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-900/40">
-                <span className="text-[11px] text-zinc-600 tabular-nums w-24 shrink-0">{fmtDate(e.date)}</span>
-                <EcoBadge ecosystem={e.ecosystem} />
-                <span className="font-mono text-sm text-zinc-200 truncate w-44 shrink-0" title={e.name}>{e.name}</span>
-                <span className="flex items-center gap-1.5 shrink-0">
-                  <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${meta.text}`}>{meta.label}</span>
-                </span>
-                <span className="text-xs text-zinc-500 truncate">{whatHappened(e)}</span>
-              </div>
-            )
-          })
+      <DataTable
+        columns={filteredColumns}
+        data={events}
+        loading={loading}
+        emptyText="No events in this window."
+        toolbar={toolbar}
+        rowKey={rowKey}
+        expandedKey={expandedKey}
+        onRowClick={(e) => setExpandedKey((prev) => (prev === rowKey(e) ? null : rowKey(e)))}
+        renderExpanded={(e, colSpan) => (
+          <PackageExpandedRow
+            key={`${rowKey(e)}::expanded`}
+            name={e.name}
+            ecosystem={e.ecosystem}
+            colSpan={colSpan}
+          />
         )}
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        footer={<Pagination page={page} totalPages={totalPages} onChange={(p) => setF({ page: p })} />}
+      />
     </div>
   )
 }

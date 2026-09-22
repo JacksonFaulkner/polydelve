@@ -12,7 +12,7 @@ export function BitChart({ history, current }: Props) {
   const positive = delta >= 0
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="rounded border border-zinc-800 bg-zinc-900/50 p-4">
       <div className="mb-3 flex items-end justify-between">
         <div>
           <p className="text-xs text-zinc-500">Your bits</p>

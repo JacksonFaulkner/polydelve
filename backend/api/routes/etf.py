@@ -6,19 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.auth import get_browse_user, get_current_user
 from api.cache import cache_invalidate
 from features.db import get_db
-from features.contract_pricing import sell_value_at_day
-from features.etf_pricing import current_basket_sell_value
+from features.etf_pricing import basket_value
 from features.etf_repo import (
     MemberInput,
     build_member_terms,
     buy_etf_contract as repo_buy_etf_contract,
-    get_etf_contract_for_sell,
-    get_package_epss,
+    member_remaining_probs,
     get_user_bits,
     list_etf_contracts,
     list_etf_members,
     price_etf,
-    sell_etf_contract as repo_sell_etf_contract,
 )
 from features.manifest_parser import ParsedDependency, parse_manifest
 from features.packages_repo import get_package as repo_get_package
@@ -26,8 +23,7 @@ from models.models import (
     EtfBuyRequest, EtfBuyResponse,
     EtfContractDetail, EtfMemberDetail,
     EtfQuoteRequest, EtfQuoteResponse,
-    EtfSimulateRequest, SellResponse,
-    SimCurvePoint, SimulateResponse,
+    EtfSimulateRequest, SimulateResponse,
 )
 
 router = APIRouter(prefix="/etf", dependencies=[Depends(get_browse_user)])
@@ -114,31 +110,7 @@ def simulate_etf(req: EtfSimulateRequest, conn: Any = Depends(get_db)) -> Simula
 
     terms = price_etf(member_terms, req.threshold_count, req.purchase_price, req.duration_days)
     price = req.purchase_price
-    dur = req.duration_days
     win = terms.max_payout - price
-    max_loss = -price
-
-    exponent = min(0.3 + max(0.0, dur / 7 - 1) * 0.55, 3.0)
-    today = date.today()
-    curve = []
-    for day in range(dur + 1):
-        sv = sell_value_at_day(price, day, dur, 1.0, terms.max_payout)
-        days_remaining = max(dur - day, 0)
-        time_factor = (days_remaining / dur) ** exponent if dur > 0 else 0.0
-        if day == 0:
-            label = "Now"
-        elif day == dur:
-            label = "EXP"
-        else:
-            d = today + timedelta(days=day)
-            label = f"{d.month}/{d.day}"
-        curve.append(SimCurvePoint(
-            label=label,
-            sell_pnl=sv - price,
-            epss_win=round(win * time_factor),
-            cvss_win=round(win * time_factor),
-            mal_win=round(win * time_factor),
-        ))
 
     return SimulateResponse(
         epss_payout=terms.max_payout,
@@ -148,10 +120,8 @@ def simulate_etf(req: EtfSimulateRequest, conn: Any = Depends(get_db)) -> Simula
         cvss_win=win,
         mal_win=win,
         max_win=win,
-        max_loss=max_loss,
-        y_min=round(max_loss * 1.1),
-        y_max=round(win * 1.1),
-        curve=curve,
+        max_loss=-price,
+        win_probability=terms.combined_probability,
     )
 
 
@@ -224,15 +194,14 @@ def list_my_etf_contracts(
             for m in member_rows
         ]
 
-        sell_val = None
+        value = None
         if status == "open":
             expires_date = expires if isinstance(expires, date) else date.fromisoformat(str(expires))
             created_date = created_at.date() if hasattr(created_at, "date") else created_at
-            drift_pairs = [
-                (m.opening_epss, get_package_epss(conn, m.package_name, m.ecosystem))
-                for m in members
-            ]
-            sell_val = current_basket_sell_value(price, created_date, expires_date, drift_pairs)
+            total_days = max((expires_date - created_date).days, 1)
+            remaining = max(min((expires_date - date.today()).days, total_days), 0)
+            probs = member_remaining_probs(conn, member_rows, total_days, remaining)
+            value = basket_value(probs, threshold_count, payout)
 
         result.append(EtfContractDetail(
             id=cid, threshold_count=threshold_count, member_count=member_count,
@@ -243,42 +212,8 @@ def list_my_etf_contracts(
             resolved_at=resolved_at.isoformat() if resolved_at else None,
             sell_price=sell_price,
             created_at=created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
-            current_sell_value=sell_val,
+            current_value=value,
             multiplier=round(payout / price, 2),
             members=members,
         ))
     return result
-
-
-@router.post("/{etf_contract_id}/sell", response_model=SellResponse)
-def sell_etf(
-    etf_contract_id: str,
-    claims: dict = Depends(get_current_user),
-    conn: Any = Depends(get_db),
-) -> SellResponse:
-    caller_id = claims["sub"]
-    row = get_etf_contract_for_sell(conn, etf_contract_id, caller_id)
-    if not row:
-        raise HTTPException(404, "ETF contract not found")
-    user_id, price, status = row
-    if status != "open":
-        raise HTTPException(409, f"ETF contract is {status}, cannot sell")
-
-    member_rows = list_etf_members(conn, etf_contract_id)
-    drift_pairs = [(m[5], get_package_epss(conn, m[0], m[1])) for m in member_rows]
-
-    cur = conn.cursor()
-    cur.execute("SELECT expires_at, created_at FROM etf_contracts WHERE id = %s", [etf_contract_id])
-    expires, created_at = cur.fetchone()
-    expires_date = expires if isinstance(expires, date) else date.fromisoformat(str(expires))
-    created_date = created_at.date() if hasattr(created_at, "date") else created_at
-
-    sell_val = current_basket_sell_value(price, created_date, expires_date, drift_pairs)
-
-    try:
-        repo_sell_etf_contract(conn, etf_contract_id, user_id, sell_val)
-    except Exception as e:
-        raise HTTPException(500, "Failed to sell ETF contract") from e
-
-    cache_invalidate(f"etf:me:{caller_id}")
-    return SellResponse(sell_price=sell_val, status="sold")

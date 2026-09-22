@@ -1,4 +1,4 @@
-"""Contract buy/sell flow, invalid input, auth enforcement."""
+"""Contract buy flow, invalid input, auth enforcement."""
 import sys
 from datetime import date, timedelta
 
@@ -14,7 +14,8 @@ def _seed_contract(db, contract_id="contract-1", status="open", user_id="auth0|t
             cvss_threshold, epss_threshold, purchase_price, max_payout,
             opening_probability, package_grade, expires_at, status, created_at
         ) VALUES (%s, %s, 'requests', 'PyPI', 'all', 7.0, NULL, 100, 500, 0.5, 5.0, %s, %s, now())
-        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, user_id = EXCLUDED.user_id
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, user_id = EXCLUDED.user_id,
+            expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at
         """,
         (contract_id, user_id, date.today() + timedelta(days=7), status),
     )
@@ -117,15 +118,24 @@ def test_simulate_epss_payout_increases_with_drift(client):
     assert payouts[0] < payouts[1] < payouts[2], payouts
 
 
-def test_simulate_returns_full_curve(client):
+def test_simulate_returns_payouts_and_probability(client):
     r = _simulate(client, 2.0)
     assert r.status_code == 200
     body = r.json()
-    assert len(body["curve"]) == 31  # day 0..30 inclusive
-    assert body["curve"][0]["label"] == "Now"
-    assert body["curve"][-1]["label"] == "EXP"
     assert body["max_loss"] == -100
     assert body["epss_payout"] > 100
+    assert body["max_win"] == body["cvss_payout"] - 100
+    assert 0.0 < body["win_probability"] < 1.0
+
+
+def test_simulate_baseline_drift_has_no_epss_leg(client):
+    r = _simulate(client, 1.0)
+    assert r.status_code == 200
+    body = r.json()
+    # slider at baseline: no EPSS leg, so no "already reached" free win
+    assert body["epss_payout"] == 0 and body["epss_win"] == 0
+    assert body["cvss_payout"] == body["mal_payout"] == body["max_win"] + 100
+    assert body["max_win"] > 100
 
 
 # ── Buy ───────────────────────────────────────────────────────────────────────
@@ -167,44 +177,6 @@ def test_buy_user_not_in_db_returns_404(client, db_with_data):
         "duration_days": 30,
     })
     assert r.status_code == 404
-
-
-# ── Sell ──────────────────────────────────────────────────────────────────────
-
-def test_sell_open_contract_credits_user(client, db_with_data):
-    _seed_contract(db_with_data)
-    r = client.post("/contracts/contract-1/sell")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["status"] == "sold"
-    assert body["sell_price"] >= 0
-    cur = db_with_data.cursor()
-    cur.execute("SELECT bits FROM users WHERE id = 'auth0|testuser123'")
-    bal = cur.fetchone()[0]
-    assert bal > 1000  # refunded some value
-
-
-def test_sell_already_sold_contract_rejected(client, db_with_data):
-    _seed_contract(db_with_data, status="sold")
-    r = client.post("/contracts/contract-1/sell")
-    assert r.status_code == 409
-
-
-def test_sell_won_contract_rejected(client, db_with_data):
-    _seed_contract(db_with_data, status="won")
-    r = client.post("/contracts/contract-1/sell")
-    assert r.status_code == 409
-
-
-def test_sell_nonexistent_contract(client):
-    r = client.post("/contracts/does-not-exist/sell")
-    assert r.status_code == 404
-
-
-def test_sell_other_users_contract_returns_404(client, db_with_data):
-    _seed_contract(db_with_data, "other-contract", user_id="auth0|otheruser")
-    r = client.post("/contracts/other-contract/sell")
-    assert r.status_code == 404  # not 409 — must not leak contract existence
 
 
 # ── List my contracts ─────────────────────────────────────────────────────────

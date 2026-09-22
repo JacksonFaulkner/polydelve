@@ -1,23 +1,17 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  createColumnHelper,
-  type SortingState,
-} from "@tanstack/react-table";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createColumnHelper, type OnChangeFn, type SortingState } from "@tanstack/react-table";
+import { useQueryStates } from "nuqs";
 
-declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData, TValue> {
-    mobileHidden?: boolean;
-    className?: string;
-  }
-}
 import type { Package, PackageListResponse } from "@/types";
 import { Search } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PackageExpandedRow } from "@/components/PackageExpandedRow";
+import { DataTable } from "@/components/DataTable";
+import { FilterClear, FilterSelect, FilterToggle } from "@/components/FilterBar";
+import {
+  CVE_WINDOW_OPTIONS, DOWNLOADS_MIN_OPTIONS, EPSS_MIN_OPTIONS, SEVERITY_OPTIONS,
+  packageFilterParsers, type PackageSort,
+} from "@/lib/filters";
 import { useApi } from "@/lib/api";
 const PAGE_SIZE = 50;
 
@@ -161,7 +155,7 @@ const columns = [
       const maxCvss = info.row.original.max_cvss_score;
       if (!v) return <span className="text-zinc-600">0</span>;
       const badge = (
-        <span className="rounded-full bg-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-200 cursor-default">
+        <span className="rounded bg-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-200 cursor-default">
           {v}
         </span>
       );
@@ -230,21 +224,7 @@ const columns = [
         </span>
       ) : null,
   }),
-  // latest_cve_date and sectors injected inside component (need state closure)
-];
-
-const SORT_KEY_MAP: Record<string, string> = {
-  weekly_downloads: "weekly_downloads",
-  epss_score: "epss_score",
-  num_cves: "num_cves",
-  risk_score: "risk_score",
-};
-
-const CVE_WINDOW_OPTIONS: { label: string; days: number | null }[] = [
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "1y", days: 365 },
-  { label: "All", days: null },
+  // latest_cve_date injected inside component (need state closure)
 ];
 
 interface Props {
@@ -255,21 +235,35 @@ export function PackagesTable({ ecosystem }: Props) {
   const { authFetch } = useApi();
   const [data, setData] = useState<Package[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "risk_score", desc: true },
-  ]);
-  const [latestCveDays, setLatestCveDays] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  // Filters, sort and page live in the URL (shareable, back-button safe).
+  const [f, setF] = useQueryStates(packageFilterParsers, { history: "push" });
+  const { q: search, cve: latestCveDays, sev, epss, mal, dl, sort, page } = f;
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [loading, setLoading] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const autoExpanded = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 250);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Any filter change lands on page 1.
+  const setFilter = useCallback(
+    (patch: Partial<typeof f>) => setF({ ...patch, page: 1 }),
+    [setF],
+  );
+  const setPage = useCallback((p: number) => setF({ page: p }), [setF]);
+  const setSearch = useCallback((v: string) => setF({ q: v || null, page: 1 }, { history: "replace" }), [setF]);
+
+  const sorting: SortingState = [{ id: sort, desc: true }];
+  const setSorting: OnChangeFn<SortingState> = (updater) => {
+    const next = typeof updater === "function" ? updater(sorting) : updater;
+    const id = (next[0]?.id ?? "risk_score") as PackageSort;
+    setFilter({ sort: id === "risk_score" ? null : id });
+  };
+  const activeFilterCount = [latestCveDays, sev, epss, mal, dl].filter((v) => v != null).length;
 
   function toggleRow(name: string, ecosystem: string) {
     const key = `${ecosystem}::${name}`;
@@ -280,7 +274,7 @@ export function PackagesTable({ ecosystem }: Props) {
     id: "latest_cve_date",
     meta: { mobileHidden: true },
     header: () => (
-      <div className="flex flex-col gap-1.5">
+      <div>
         <Tooltip
           content={
             <div className="space-y-1.5">
@@ -304,24 +298,6 @@ export function PackagesTable({ ecosystem }: Props) {
             Latest CVE
           </span>
         </Tooltip>
-        <div className="flex gap-1">
-          {CVE_WINDOW_OPTIONS.map(({ label, days }) => (
-            <button
-              key={label}
-              onClick={(e) => {
-                e.stopPropagation();
-                setLatestCveDays(days);
-              }}
-              className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                latestCveDays === days
-                  ? "bg-[#FDE832] text-zinc-900"
-                  : "border border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
     ),
     enableSorting: false,
@@ -332,58 +308,40 @@ export function PackagesTable({ ecosystem }: Props) {
     },
   });
 
-  const allColumns = [
-    ...columns,
-    latestCveDateCol,
-    col.accessor("sectors", {
-      id: "sectors_col",
-      meta: { mobileHidden: true },
-      header: () => (
-        <ColHeader
-          label="Sectors"
-          tip="Industry sectors this package is commonly used in, classified by Polydelve using package metadata and LLM analysis."
-        />
-      ),
-      enableSorting: false,
-      cell: (info) => {
-        const sectors = info.getValue();
-        if (!sectors?.length) return null;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {sectors.slice(0, 2).map((s) => (
-              <span
-                key={s}
-                className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400"
-              >
-                {s}
-              </span>
-            ))}
-            {sectors.length > 2 && (
-              <span className="text-[10px] text-zinc-500">
-                +{sectors.length - 2}
-              </span>
-            )}
-          </div>
-        );
-      },
-    }),
-  ];
+  // Filters live in the column headers they apply to.
+  const headerFilters: Record<string, React.ReactNode> = {
+    weekly_downloads: <FilterSelect compact label="Downloads" value={dl} options={DOWNLOADS_MIN_OPTIONS} onChange={(v) => setFilter({ dl: v })} />,
+    epss_score: (
+      <FilterSelect
+        compact
+        label="EPSS"
+        value={epss != null ? Number(epss) : null}
+        options={EPSS_MIN_OPTIONS}
+        onChange={(v) => setFilter({ epss: v == null ? null : String(v) })}
+      />
+    ),
+    worst_severity: <FilterSelect compact label="Severity" value={sev} options={SEVERITY_OPTIONS} onChange={(v) => setFilter({ sev: v })} />,
+    has_mal_advisory: <FilterToggle compact label="Only MAL-flagged" value={mal} onChange={(v) => setFilter({ mal: v })} />,
+    latest_cve_date: <FilterSelect compact label="Latest CVE" value={latestCveDays} options={CVE_WINDOW_OPTIONS} onChange={(v) => setFilter({ cve: v })} />,
+  };
+  const allColumns = [...columns, latestCveDateCol].map((c) =>
+    c.id && headerFilters[c.id] ? { ...c, meta: { ...c.meta, filter: headerFilters[c.id] } } : c,
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const sort = sorting[0];
-    const sortKey = sort
-      ? (SORT_KEY_MAP[sort.id] ?? "risk_score")
-      : "risk_score";
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(PAGE_SIZE),
-      sort: sortKey,
+      sort,
     });
     if (ecosystem) params.set("ecosystem", ecosystem);
-    if (latestCveDays !== null)
-      params.set("latest_cve_days", String(latestCveDays));
+    if (latestCveDays != null) params.set("latest_cve_days", String(latestCveDays));
     if (debouncedSearch) params.set("search", debouncedSearch);
+    if (sev) params.set("severity", sev);
+    if (epss) params.set("min_epss", epss);
+    if (mal) params.set("mal", "true");
+    if (dl != null) params.set("min_downloads", String(dl));
 
     try {
       const res = await authFetch(`/packages?${params}`);
@@ -393,35 +351,28 @@ export function PackagesTable({ ecosystem }: Props) {
         return;
       }
       const json: PackageListResponse = await res.json();
-      setData(json.packages ?? []);
+      const packages = json.packages ?? [];
+      setData(packages);
       setTotal(json.total ?? 0);
+      // First look at the table: open the top row so the expanded view is discoverable.
+      if (!autoExpanded.current && packages.length > 0) {
+        autoExpanded.current = true;
+        setExpandedKey(`${packages[0].ecosystem}::${packages[0].name}`);
+      }
     } catch (e) {
       console.error("Failed to fetch packages", e);
     } finally {
       setLoading(false);
     }
-  }, [page, sorting, ecosystem, latestCveDays, debouncedSearch, authFetch]);
+  }, [page, sort, ecosystem, latestCveDays, debouncedSearch, sev, epss, mal, dl, authFetch]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   useEffect(() => {
-    setPage(1);
-  }, [ecosystem, sorting, latestCveDays, debouncedSearch]);
-
-  const colCount = useMemo(() => allColumns.length, [allColumns.length]);
-
-  const table = useReactTable({
-    data,
-    columns: allColumns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    manualSorting: true,
-    manualPagination: true,
-    pageCount: Math.ceil(total / PAGE_SIZE),
-  });
+    autoExpanded.current = false;
+  }, [ecosystem]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -430,7 +381,7 @@ export function PackagesTable({ ecosystem }: Props) {
       <span>{total.toLocaleString()} packages</span>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          onClick={() => setPage(Math.max(1, page - 1))}
           disabled={page === 1}
           className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
         >
@@ -440,13 +391,23 @@ export function PackagesTable({ ecosystem }: Props) {
           {page} / {totalPages}
         </span>
         <button
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
           className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           →
         </button>
       </div>
+    </div>
+  );
+
+  const filterChips = (
+    <div className="flex items-center gap-1.5 flex-wrap py-1.5 sm:hidden">
+      <FilterSelect label="Latest CVE" value={latestCveDays} options={CVE_WINDOW_OPTIONS} onChange={(v) => setFilter({ cve: v })} />
+      <FilterSelect label="Severity" value={sev} options={SEVERITY_OPTIONS} onChange={(v) => setFilter({ sev: v })} />
+      <FilterSelect label="EPSS" value={epss != null ? Number(epss) : null} options={EPSS_MIN_OPTIONS} onChange={(v) => setFilter({ epss: v == null ? null : String(v) })} />
+      <FilterSelect label="Downloads" value={dl} options={DOWNLOADS_MIN_OPTIONS} onChange={(v) => setFilter({ dl: v })} />
+      <FilterToggle label="MAL flagged" value={mal} onChange={(v) => setFilter({ mal: v })} />
     </div>
   );
 
@@ -480,8 +441,9 @@ export function PackagesTable({ ecosystem }: Props) {
     <div className="space-y-3">
       {/* Mobile card list */}
       <div className="sm:hidden space-y-2">
-        <div className="flex items-center rounded-lg border border-zinc-700 bg-zinc-800/70">
+        <div className="rounded border border-zinc-700 bg-zinc-800/70 px-2">
           {searchBar}
+          {filterChips}
         </div>
         {loading ? (
           <p className="py-12 text-center text-zinc-500 text-sm">Loading…</p>
@@ -507,7 +469,7 @@ export function PackagesTable({ ecosystem }: Props) {
               <div
                 key={key}
                 data-tour={i === 0 ? "pkg-row-0" : undefined}
-                className="rounded-xl border border-zinc-800 bg-[#1C2229]"
+                className="rounded border border-zinc-800 bg-[#1C2229]"
               >
                 <button
                   className="w-full text-left px-4 py-3"
@@ -601,109 +563,38 @@ export function PackagesTable({ ecosystem }: Props) {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden sm:block space-y-3">
-        <div className="overflow-hidden rounded-lg border border-zinc-800">
-          <div className="flex items-center justify-between gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
-            {searchBar}
-            <span className="shrink-0 text-xs text-zinc-500 pr-1">
-              {total.toLocaleString()} packages
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-zinc-800">
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap ${
-                        header.column.getCanSort()
-                          ? "cursor-pointer select-none hover:text-zinc-300"
-                          : ""
-                      }`}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <span className="flex items-center gap-1">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {header.column.getCanSort() && (
-                          <span className="text-zinc-600">
-                            {{ asc: "↑", desc: "↓" }[
-                              header.column.getIsSorted() as string
-                            ] ?? "↕"}
-                          </span>
-                        )}
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={allColumns.length}
-                    className="py-12 text-center text-zinc-500"
-                  >
-                    Loading…
-                  </td>
-                </tr>
-              ) : data.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={allColumns.length}
-                    className="py-12 text-center text-zinc-500"
-                  >
-                    No packages found
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.flatMap((row, i) => {
-                  const pkg = row.original;
-                  const key = `${pkg.ecosystem}::${pkg.name}`;
-                  const isExpanded = expandedKey === key;
-                  return [
-                    <tr
-                      key={row.id}
-                      data-tour={i === 0 ? "pkg-row-0" : undefined}
-                      onClick={() => toggleRow(pkg.name, pkg.ecosystem)}
-                      className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3 py-2.5">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
-                        {isExpanded ? "▲" : "▼"}
-                      </td>
-                    </tr>,
-                    ...(isExpanded
-                      ? [
-                          <PackageExpandedRow
-                            key={`${key}::expanded`}
-                            name={pkg.name}
-                            ecosystem={pkg.ecosystem}
-                            colSpan={colCount + 1}
-                            tourTag={i === 0 ? "pkg-expanded" : undefined}
-                          />,
-                        ]
-                      : []),
-                  ];
-                })
-              )}
-            </tbody>
-          </table>
-          </div>
-        </div>
-        {pagination}
+      <div className="hidden sm:block">
+        <DataTable
+          columns={allColumns}
+          data={data}
+          loading={loading}
+          emptyText="No packages found"
+          sorting={sorting}
+          onSortingChange={setSorting}
+          toolbar={
+            <>
+              {searchBar}
+              <FilterClear count={activeFilterCount} onClear={() => setFilter({ cve: null, sev: null, epss: null, mal: null, dl: null })} />
+              <span className="shrink-0 text-xs text-zinc-500 pr-1">
+                {total.toLocaleString()} packages
+              </span>
+            </>
+          }
+          rowKey={(pkg) => `${pkg.ecosystem}::${pkg.name}`}
+          expandedKey={expandedKey}
+          onRowClick={(pkg) => toggleRow(pkg.name, pkg.ecosystem)}
+          rowTourTag={(i) => (i === 0 ? "pkg-row-0" : undefined)}
+          renderExpanded={(pkg, colSpan, i) => (
+            <PackageExpandedRow
+              key={`${pkg.ecosystem}::${pkg.name}::expanded`}
+              name={pkg.name}
+              ecosystem={pkg.ecosystem}
+              colSpan={colSpan}
+              tourTag={i === 0 ? "pkg-expanded" : undefined}
+            />
+          )}
+          footer={pagination}
+        />
       </div>
     </div>
   );

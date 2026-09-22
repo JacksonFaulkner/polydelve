@@ -17,6 +17,14 @@ from features.packages_repo import (
 
 router = APIRouter(prefix="/packages", dependencies=[Depends(get_browse_user)])
 
+# CVSS v3 qualitative bands: [lo, hi)
+SEVERITY_BANDS: dict[str, tuple[float, float | None]] = {
+    "critical": (9.0, None),
+    "high": (7.0, 9.0),
+    "medium": (4.0, 7.0),
+    "low": (0.0, 4.0),
+}
+
 
 @router.get("")
 def list_packages(
@@ -25,12 +33,22 @@ def list_packages(
     has_cves: bool | None = None,
     latest_cve_days: int | None = Query(None, ge=1, description="Only packages with a CVE in the last N days"),
     search: str | None = Query(None, max_length=100, description="Filter by package name prefix"),
+    severity: Literal["critical", "high", "medium", "low"] | None = Query(
+        None, description="Worst CVSS band on record: critical >= 9, high >= 7, medium >= 4, low < 4"
+    ),
+    min_epss: float | None = Query(None, ge=0, le=1, description="Current EPSS score at least this (0-1)"),
+    max_epss: float | None = Query(None, ge=0, le=1, description="Current EPSS score at most this (0-1)"),
+    mal: bool | None = Query(None, description="True = only packages with an OSV MAL advisory"),
+    min_downloads: int | None = Query(None, ge=0, description="Weekly downloads at least this"),
     sort: Literal["risk_score", "weekly_downloads", "epss_score", "num_cves"] = "risk_score",
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
     conn: Any = Depends(get_db),
 ) -> dict:
-    cache_key = f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{search}:{sort}:{page}:{page_size}"
+    cache_key = (
+        f"packages:{ecosystem}:{sector}:{has_cves}:{latest_cve_days}:{search}:{severity}:"
+        f"{min_epss}:{max_epss}:{mal}:{min_downloads}:{sort}:{page}:{page_size}"
+    )
     if cached := cache_get(cache_key):
         return cached
     filters = ["p.ecosystem IN ('PyPI', 'npm')"]
@@ -55,6 +73,31 @@ def list_packages(
             "EXISTS (SELECT 1 FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem AND ch.published_date >= %s)"
         )
         params.append(cutoff)
+
+    if severity:
+        lo, hi = SEVERITY_BANDS[severity]
+        filters.append(
+            "(SELECT MAX(ch.cvss_score) FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem) >= %s"
+        )
+        params.append(lo)
+        if hi is not None:
+            filters.append(
+                "(SELECT MAX(ch.cvss_score) FROM cve_history ch WHERE ch.name = p.name AND ch.ecosystem = p.ecosystem) < %s"
+            )
+            params.append(hi)
+    if min_epss is not None:
+        filters.append("p.epss_score >= %s")
+        params.append(min_epss)
+    if max_epss is not None:
+        filters.append("p.epss_score <= %s")
+        params.append(max_epss)
+    if mal is True:
+        filters.append("p.has_mal_advisory")
+    elif mal is False:
+        filters.append("NOT p.has_mal_advisory")
+    if min_downloads is not None:
+        filters.append("p.weekly_downloads >= %s")
+        params.append(min_downloads)
 
     where = " AND ".join(filters)
 

@@ -8,8 +8,8 @@ describe("SECTOR_PATH", () => {
     paths.forEach((p) => expect(p).toMatch(/^\//))
   })
 
-  it("root path maps to All", () => {
-    expect(pathToSector("/")).toBe("All")
+  it("root path maps to Predict", () => {
+    expect(pathToSector("/")).toBe("Predict")
   })
 
   it("known paths resolve correctly", () => {
@@ -21,9 +21,9 @@ describe("SECTOR_PATH", () => {
     expect(pathToSector("/dashboard")).toBe("Dashboard")
   })
 
-  it("unknown path falls back to All", () => {
-    expect(pathToSector("/does-not-exist")).toBe("All")
-    expect(pathToSector("/random/deep/path")).toBe("All")
+  it("unknown path falls back to Predict", () => {
+    expect(pathToSector("/does-not-exist")).toBe("Predict")
+    expect(pathToSector("/random/deep/path")).toBe("Predict")
   })
 
   it("all SECTOR_PATH values round-trip through pathToSector", () => {

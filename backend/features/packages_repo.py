@@ -30,7 +30,12 @@ def list_packages(
             COUNT(DISTINCT ch.cve_id)   AS num_cves,
             COUNT(DISTINCT np.news_id)  AS news_mentions,
             MAX(ch.published_date)      AS latest_cve_date,
-            MAX(ch.severity)            AS worst_severity,
+            CASE
+                WHEN MAX(ch.cvss_score) >= 9 THEN 'critical'
+                WHEN MAX(ch.cvss_score) >= 7 THEN 'high'
+                WHEN MAX(ch.cvss_score) >= 4 THEN 'medium'
+                WHEN MAX(ch.cvss_score) IS NOT NULL THEN 'low'
+            END                         AS worst_severity,
             MAX(ch.cvss_score)          AS max_cvss_score
         FROM packages p
         LEFT JOIN news_packages np

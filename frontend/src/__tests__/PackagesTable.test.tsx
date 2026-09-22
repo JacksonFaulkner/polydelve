@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render as rtlRender, screen, waitFor } from "@testing-library/react"
+import { NuqsTestingAdapter } from "nuqs/adapters/testing"
 import { PackagesTable } from "@/components/PackagesTable"
+import type { ReactElement } from "react"
+
+// Filters/sort/page live in the URL via nuqs, which needs an adapter to mount.
+const render = (ui: ReactElement) => rtlRender(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>)
 
 const mockAuthFetch = vi.fn()
 

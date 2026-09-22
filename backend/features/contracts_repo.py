@@ -94,30 +94,3 @@ def list_contracts(conn: Any, user_id: str) -> list[tuple]:
     return cur.fetchall()
 
 
-def get_contract_for_sell(conn: Any, contract_id: str, user_id: str) -> tuple | None:
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT c.user_id, c.purchase_price,
-               c.expires_at, c.status, c.created_at,
-               c.opening_epss, p.epss_score AS current_epss
-        FROM contracts c
-        LEFT JOIN packages p ON p.name = c.package_name AND p.ecosystem = c.package_ecosystem
-        WHERE c.id = %s AND c.user_id = %s
-        """,
-        [contract_id, user_id],
-    )
-    return cur.fetchone()
-
-
-def sell_contract(conn: Any, contract_id: str, user_id: str, sell_val: int) -> None:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE contracts SET status = 'sold', sell_price = %s, resolved_at = now() WHERE id = %s",
-        [sell_val, contract_id],
-    )
-    cur.execute(
-        "UPDATE users SET bits = bits + %s WHERE id = %s",
-        [sell_val, user_id],
-    )
-    conn.commit()

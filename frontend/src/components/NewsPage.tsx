@@ -7,8 +7,6 @@ import { BentoCard, BentoGrid } from "@/components/ui/bento-grid"
 
 const PAGE_SIZE = 20
 
-const SEVERITY_FILTERS = ["all", "critical", "high", "medium", "low"] as const
-
 interface SelectedPkg { name: string; ecosystem: string }
 
 
@@ -108,14 +106,12 @@ export function NewsPage() {
   const [items, setItems] = useState<NewsItem[]>([])
   const [page, setPage] = useState(1)
   const [slide, setSlide] = useState(0)
-  const [severity, setSeverity] = useState("")
   const [loading, setLoading] = useState(false)
   const [selectedPkg, setSelectedPkg] = useState<SelectedPkg | null>(null)
 
   const fetchNews = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
-    if (severity) params.set("severity", severity)
     try {
       const res = await authFetch(`/news?${params}`)
       const json: NewsResponse = await res.json()
@@ -125,10 +121,9 @@ export function NewsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, severity, authFetch])
+  }, [page, authFetch])
 
   useEffect(() => { fetchNews() }, [fetchNews])
-  useEffect(() => { setPage(1); setSlide(0) }, [severity])
 
   const slides: NewsItem[][] = []
   for (let i = 0; i < items.length; i += 6) slides.push(items.slice(i, i + 6))
@@ -148,22 +143,7 @@ export function NewsPage() {
       <div className="flex flex-col gap-3 h-full">
         {/* Controls */}
         <div className="flex shrink-0 items-center justify-center gap-1.5">
-          <span className="text-xs text-zinc-500">Severity</span>
-          {SEVERITY_FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setSeverity(f === "all" ? "" : f)}
-              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
-                (f === "all" && !severity) || severity === f
-                  ? "bg-[#FDE832] text-zinc-900"
-                  : "border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
           {totalSlides > 1 && <>
-            <span className="text-zinc-700">·</span>
             <button
               onClick={() => setSlide((s) => Math.max(0, s - 1))}
               disabled={slide === 0}
@@ -188,7 +168,7 @@ export function NewsPage() {
         ) : items.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-zinc-500 text-sm">No articles found</div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800">
+          <div className="flex-1 min-h-0 overflow-hidden rounded border border-zinc-800 bg-zinc-800">
             <BentoGrid className="h-full gap-px lg:grid-rows-3 [&>*]:bg-[#181D21] [&>*]:rounded-none [&>*]:dark:[box-shadow:none] [&>*]:dark:border-0">
               {current.slice(0, 6).map((item, i) => {
                 const size = CARD_SIZES[i] ?? "small"

@@ -25,7 +25,7 @@ export function MarketCard({ market, onBet }: Props) {
   const { name, ecosystem, epss_score, weekly_downloads, has_mal_advisory } = market.package
 
   return (
-    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-4 hover:border-zinc-700 transition-colors">
+    <div className="rounded border border-zinc-700/40 bg-[#181D21] p-4 hover:border-zinc-700 transition-colors">
       <div className="mb-3 flex items-center gap-2">
         <span className="font-mono text-xs font-semibold text-zinc-200">{name}</span>
         <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
@@ -55,7 +55,7 @@ export function MarketCard({ market, onBet }: Props) {
         </div>
         <button
           onClick={() => onBet(market)}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors"
+          className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors"
         >
           Bet {market.contract.purchase_price} <BitIcon className="h-3.5 w-3.5" />
         </button>

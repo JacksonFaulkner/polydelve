@@ -30,7 +30,7 @@ def _timed(label: str):
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Run a Polydelve ETL job.")
-    parser.add_argument("job", choices=["news", "epss", "mal", "packages", "refresh", "seed", "epss-history", "cve"])
+    parser.add_argument("job", choices=["news", "epss", "mal", "packages", "refresh", "seed", "epss-history", "cve", "resolve"])
     parser.add_argument("--days-back", type=int, default=1, help="news only: days of history to fetch")
     parser.add_argument("--skip-download", action="store_true", help="mal only: use cached zips")
     args = parser.parse_args()
@@ -40,6 +40,10 @@ async def main() -> None:
     try:
         if args.job == "cve":
             await cve.run(conn)
+        elif args.job == "resolve":
+            import subprocess
+            import sys as _sys
+            raise SystemExit(subprocess.run([_sys.executable, "/app/scripts/resolve_contracts.py"]).returncode)
         elif args.job == "news":
             await news.run(conn, days_back=args.days_back)
         elif args.job == "epss":
@@ -84,6 +88,16 @@ async def main() -> None:
                 await news.run(conn, days_back=args.days_back)
             with _timed("mal"):
                 await mal.run(conn, skip_download=args.skip_download)
+            with _timed("cve"):
+                await cve.run(conn)
+            # Contracts settle automatically: any leg that fired in the data
+            # just ingested pays out now, no manual sell step.
+            with _timed("resolve"):
+                import subprocess
+                import sys as _sys
+                result = subprocess.run([_sys.executable, "/app/scripts/resolve_contracts.py"])
+                if result.returncode != 0:
+                    raise SystemExit(result.returncode)
             print(f"[refresh] total={time.monotonic() - t0:.1f}s", flush=True)
     finally:
         conn.close()

@@ -6,25 +6,23 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import get_browse_user, get_current_user
 from api.cache import cache_get, cache_invalidate, cache_set
-from features.contract_pricing import current_sell_value, price_contract, sell_value_at_day
+from features.contract_pricing import current_value, price_contract
 from features.contracts_repo import (
     buy_contract as repo_buy_contract,
-    get_contract_for_sell,
     get_package_epss,
     get_user_bits,
     is_no_bet_eligible,
     list_contracts,
-    sell_contract as repo_sell_contract,
 )
 from features.db import get_db
 from models.models import (
     NO_BET_ELIGIBILITY_DAYS,
     BuyRequest, BuyResponse, ContractDetail,
     QuoteRequest, QuoteResponse,
-    SellResponse, SimCurvePoint, SimulateRequest, SimulateResponse,
+    SimulateRequest, SimulateResponse,
 )
 
-# Browse-level: guests may simulate/quote. buy/sell/me each require a real
+# Browse-level: guests may simulate/quote. buy/me each require a real
 # Auth0 user via their own Depends(get_current_user), so guests can't bet.
 router = APIRouter(prefix="/contracts", dependencies=[Depends(get_browse_user)])
 
@@ -50,23 +48,27 @@ def _reject_backward_epss(
     if epss_threshold is None:
         return
     current = get_package_epss(conn, package_name, ecosystem) or 0.0
-    if epss_threshold < current:
+    if epss_threshold <= current:
         raise HTTPException(
             422,
-            f"epss_threshold {epss_threshold:.4f} is below current EPSS {current:.4f}; "
-            "contracts cannot bet on EPSS decreasing",
+            f"epss_threshold {epss_threshold:.4f} is not above current EPSS {current:.4f}; "
+            "contracts must bet on EPSS rising",
         )
 
 
 @router.post("/simulate", response_model=SimulateResponse)
 def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> SimulateResponse:
-    """Return sell-value curve + three stacked win areas for the predict page chart."""
+    """Price a hypothetical contract: per-leg payouts, profit/loss, and P(win)."""
     # The EPSS slider sets a target = current_epss * drift. Price through the real
     # logit model so the payout actually moves as the user drags (higher target =
     # harder to reach = lower prob = bigger payout), instead of a clamped multiply.
     _validate_direction(conn, req.package_name, req.ecosystem, req.direction)
     current_epss = get_package_epss(conn, req.package_name, req.ecosystem) or 0.0
-    epss_target = None if req.direction == "no" else (min(current_epss * max(req.epss_drift, 1.0), 1.0) or None)
+    # Baseline drift (<= 1) means "no EPSS leg" — a target equal to the current
+    # score would count as already reached and price as a near-certain win.
+    epss_target = None
+    if req.direction != "no" and req.epss_drift > 1.0 and current_epss > 0:
+        epss_target = min(current_epss * req.epss_drift, 1.0)
 
     try:
         terms = price_contract(
@@ -83,65 +85,21 @@ def simulate_contract(req: SimulateRequest, conn: Any = Depends(get_db)) -> Simu
         raise HTTPException(404, "Package not found or insufficient data")
 
     price = req.purchase_price
-    dur = req.duration_days
-
-    epss_payout = terms.epss_payout
-    epss_win = 0 if req.direction == "no" else epss_payout - price
+    # epss_payout is 0 when there's no EPSS leg (NO bet, or slider at baseline)
+    epss_win = terms.epss_payout - price if terms.epss_payout else 0
     cvss_win = terms.cvss_payout - price
     mal_win  = 0 if req.direction == "no" else terms.mal_payout - price
-    max_loss = -price
 
-    exponent = min(0.3 + max(0.0, dur / 7 - 1) * 0.55, 3.0)
-    today = date.today()
-    curve: list[SimCurvePoint] = []
-    for day in range(dur + 1):
-        days_remaining = max(dur - day, 0)
-        if day == 0:
-            label = "Now"
-        elif day == dur:
-            label = "EXP"
-        else:
-            d = today + timedelta(days=day)
-            label = f"{d.month}/{d.day}"
-
-        if req.direction == "no":
-            # Inverted: a NO bet gets *more* certain (not less) as time passes
-            # with no disqualifying CVE — value should climb toward the payout
-            # as expiry nears, the opposite of a YES contract's decay.
-            survived_factor = 1.0 - (days_remaining / dur) ** exponent if dur > 0 else 1.0
-            sv = price + round((terms.max_payout - price) * survived_factor * 0.7)
-            curve.append(SimCurvePoint(
-                label=label,
-                sell_pnl=sv - price,
-                epss_win=0,
-                cvss_win=round(cvss_win * survived_factor),
-                mal_win=0,
-            ))
-            continue
-
-        sv = sell_value_at_day(price, day, dur, 1.0, terms.max_payout)
-        time_factor = (days_remaining / dur) ** exponent if dur > 0 else 0.0
-        curve.append(SimCurvePoint(
-            label=label,
-            sell_pnl=sv - price,
-            epss_win=round(epss_win * time_factor),
-            cvss_win=round(cvss_win * time_factor),
-            mal_win=round(mal_win * time_factor),
-        ))
-
-    max_win = max(epss_win, cvss_win, mal_win)
     return SimulateResponse(
-        epss_payout=epss_payout,
+        epss_payout=terms.epss_payout,
         cvss_payout=terms.cvss_payout,
         mal_payout=terms.mal_payout,
         epss_win=epss_win,
         cvss_win=cvss_win,
         mal_win=mal_win,
-        max_win=max_win,
-        max_loss=max_loss,
-        y_min=round(max_loss * 1.1),
-        y_max=round(max_win * 1.1),
-        curve=curve,
+        max_win=terms.max_payout - price,
+        max_loss=-price,
+        win_probability=terms.opening_probability,
     )
 
 
@@ -275,15 +233,17 @@ def _list_contracts(user_id: str, conn: Any) -> list[ContractDetail]:
          open_prob, grade, expires, status, resolved_at, sell_price, created_at,
          opening_epss, current_epss, direction) = row
 
-        sell_val = None
+        value = None
         if status == "open":
-            sell_val = current_sell_value(
-                purchase_price=price,
-                created_at=created_at.date() if hasattr(created_at, "date") else created_at,
-                expires_at=expires if isinstance(expires, date) else date.fromisoformat(str(expires)),
-                opening_epss=opening_epss,
-                current_epss=current_epss,
-            )
+            try:
+                value = current_value(
+                    conn, pkg, eco, cvss_t, epss_t, price, payout,
+                    created_at=created_at.date() if hasattr(created_at, "date") else created_at,
+                    expires_at=expires if isinstance(expires, date) else date.fromisoformat(str(expires)),
+                    direction=direction,
+                )
+            except ValueError:
+                value = None  # package vanished from the catalog
 
         result.append(ContractDetail(
             id=cid,
@@ -302,39 +262,7 @@ def _list_contracts(user_id: str, conn: Any) -> list[ContractDetail]:
             resolved_at=resolved_at.isoformat() if resolved_at else None,
             sell_price=sell_price,
             created_at=created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
-            current_sell_value=sell_val,
+            current_value=value,
             multiplier=round(payout / price, 2),
         ))
     return result
-
-
-@router.post("/{contract_id}/sell", response_model=SellResponse)
-def sell_contract(
-    contract_id: str,
-    claims: dict = Depends(get_current_user),
-    conn: Any = Depends(get_db),
-) -> SellResponse:
-    caller_id = claims["sub"]
-    row = get_contract_for_sell(conn, contract_id, caller_id)
-    if not row:
-        raise HTTPException(404, "Contract not found")
-
-    user_id, price, expires, status, created_at, opening_epss, current_epss = row
-    if status != "open":
-        raise HTTPException(409, f"Contract is {status}, cannot sell")
-
-    sell_val = current_sell_value(
-        purchase_price=price,
-        created_at=created_at.date() if hasattr(created_at, "date") else created_at,
-        expires_at=expires if isinstance(expires, date) else date.fromisoformat(str(expires)),
-        opening_epss=opening_epss,
-        current_epss=current_epss,
-    )
-
-    try:
-        repo_sell_contract(conn, contract_id, user_id, sell_val)
-    except Exception as e:
-        raise HTTPException(500, "Failed to sell contract") from e
-
-    cache_invalidate(f"contracts:me:{caller_id}")
-    return SellResponse(sell_price=sell_val, status="sold")

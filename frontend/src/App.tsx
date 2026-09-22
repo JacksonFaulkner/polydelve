@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Navbar, pathToSector } from "./components/Navbar";
 import type { Sector } from "./components/Navbar";
-import { MarketSpotlight } from "./components/MarketSpotlight";
-import { RecentNews } from "./components/RecentNews";
 import { PackagesTable } from "./components/PackagesTable";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 import { NewsPage } from "./components/NewsPage";
@@ -11,14 +9,11 @@ import { PredictPage } from "./components/PredictPage";
 import { EventsPage } from "./components/EventsPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { SettingsPage } from "./components/SettingsPage";
-import { HowItWorksPage } from "./components/HowItWorksPage";
-import { AdBanner } from "./components/AdBanner";
 import { UsernameModal } from "./components/UsernameModal";
 import { SignupPrompt } from "./components/SignupPrompt";
 import { TourProvider } from "@tour-kit/core";
 import { SiteTour } from "./components/SiteTour";
-import { TourPrompt } from "./components/TourPrompt";
-import type { Market, NewsItem, User } from "./types";
+import type { User } from "./types";
 import { useApi } from "@/lib/api";
 
 export default function App() {
@@ -36,38 +31,13 @@ function AppInner() {
   const [activeSector, setActiveSector] = useState<Sector>(() => pathToSector(window.location.pathname));
 
   useEffect(() => {
+    // No homepage: land straight on Predict.
+    if (window.location.pathname === "/") window.history.replaceState({}, "", "/predict");
     const onPop = () => setActiveSector(pathToSector(window.location.pathname));
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
-  const [news, setNews] = useState<NewsItem[]>([]);
   const [me, setMe] = useState<User | null>(null);
-  const [markets, setMarkets] = useState<Market[]>([]);
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 639px)").matches);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    authFetch("/featured-contracts")
-      .then((r) => r.json())
-      .then((data: Market[]) => {
-        if (Array.isArray(data)) setMarkets(data);
-      })
-      .catch((err) => console.error("Failed to fetch featured contracts:", err));
-  }, []);
-
-  useEffect(() => {
-    authFetch(`/news?page=1&page_size=10`)
-      .then((r) => r.json())
-      .then((d) => setNews(d.items ?? []))
-      .catch((err) => console.error("Failed to fetch news:", err));
-  }, []);
-
   useEffect(() => {
     if (!isAuthenticated) return;
     authFetch("/users/me")
@@ -87,41 +57,7 @@ function AppInner() {
     );
   }
 
-  async function handleBet(market: Market) {
-    if (!isAuthenticated) {
-      setShowSignup(true);
-      return;
-    }
-    const { purchase_price, cvss_threshold, epss_threshold, duration_days } = market.contract;
-    try {
-      const res = await authFetch(`/contracts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          package_name: market.package.name,
-          ecosystem: market.package.ecosystem,
-          cvss_threshold,
-          epss_threshold,
-          purchase_price,
-          duration_days,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(`Bet failed: ${err.detail ?? res.status}`);
-        return;
-      }
-      const data = await res.json();
-      alert(`Contract bought! Max payout: ${data.max_payout} bits · ${Number(data.multiplier).toFixed(1)}×`);
-      authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {});
-    } catch {
-      alert("Network error. is the backend running?");
-    }
-  }
-
-  const isHome = !["News", "Dashboard", "Predict", "Events", "Leaderboard", "PyPI", "npm", "Settings", "How"].includes(activeSector);
-  const isFullHeight = isHome || activeSector === "News" || activeSector === "Predict";
-  const showAd = !isHome && activeSector !== "How";
+  const isFullHeight = activeSector === "News" || activeSector === "Predict";
 
   return (
     <div
@@ -133,10 +69,8 @@ function AppInner() {
       {needsUsername && <UsernameModal onComplete={(user) => setMe(user)} />}
       <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
       <SiteTour />
-      {isHome && <TourPrompt />}
       <main
-        className={isFullHeight ? "mx-auto flex w-full max-w-7xl min-h-0 flex-1 flex-col overflow-hidden px-4 py-4" : `mx-auto max-w-7xl px-4 py-6${showAd ? " pb-20" : ""}`}
-        style={isFullHeight && showAd ? { paddingBottom: 68 } : undefined}
+        className={isFullHeight ? "mx-auto flex w-full max-w-7xl min-h-0 flex-1 flex-col overflow-hidden px-4 py-4" : "mx-auto max-w-7xl px-4 py-6"}
       >
         <div className={isFullHeight ? "min-h-0 flex-1 overflow-hidden" : ""}>
         {activeSector === "Settings" ? (
@@ -149,46 +83,13 @@ function AppInner() {
           <PredictPage onBuy={() => authFetch("/users/me").then((r) => r.json()).then(setMe).catch(() => {})} />
         ) : activeSector === "Events" ? (
           <EventsPage />
-        ) : activeSector === "How" ? (
-          <HowItWorksPage />
         ) : activeSector === "Leaderboard" ? (
           <LeaderboardTable />
-        ) : activeSector === "PyPI" || activeSector === "npm" ? (
-          <PackagesTable ecosystem={activeSector} />
         ) : (
-          <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:grid-cols-[1fr_320px] lg:grid-rows-1">
-            <div className="min-h-0 overflow-y-auto">
-              {isMobile ? (
-                markets.length > 0 && <MarketSpotlight markets={markets} onBet={handleBet} />
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {[0, 1, 2].map((tier) => {
-                    const size = Math.ceil(markets.length / 3);
-                    const group = markets.slice(tier * size, (tier + 1) * size);
-                    if (group.length === 0) return null;
-                    return (
-                      <div key={tier} className={tier === 0 ? "col-span-2" : ""}>
-                        <MarketSpotlight markets={group} onBet={handleBet} showTitle={tier === 0} />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="flex min-h-0 flex-col">
-              <RecentNews items={news} />
-            </div>
-          </div>
+          <PackagesTable ecosystem={activeSector} />
         )}
         </div>
       </main>
-      {showAd && (
-        <div className="fixed inset-x-0 bottom-0 z-30 px-4">
-          <div className="mx-auto max-w-7xl">
-            <AdBanner seed={activeSector} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

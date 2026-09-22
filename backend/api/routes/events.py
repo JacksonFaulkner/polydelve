@@ -2,7 +2,7 @@
 labeled with the contract type it would have won: "if a contract like this
 existed, it would've hit." Read-only, no thresholds are user-specific."""
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 
@@ -38,9 +38,15 @@ epss_events AS (
     WHERE %(since)s::timestamptz IS NULL OR crossed_at >= %(since)s
 ),
 all_events AS (
-    SELECT * FROM cvss_events
-    UNION ALL SELECT * FROM mal_events
-    UNION ALL SELECT * FROM epss_events
+    SELECT * FROM (
+        SELECT * FROM cvss_events
+        UNION ALL SELECT * FROM mal_events
+        UNION ALL SELECT * FROM epss_events
+    ) e
+    WHERE (%(types)s::text[] IS NULL OR e.event_type = ANY(%(types)s))
+      AND (%(ecosystem)s::text IS NULL OR e.ecosystem = %(ecosystem)s)
+      AND (%(search)s::text IS NULL OR e.name ILIKE %(search)s)
+      AND (%(severity)s::text IS NULL OR e.severity = %(severity)s)
 )
 """
 
@@ -52,11 +58,21 @@ def _since_for(window: str) -> datetime | None:
 @router.get("")
 def list_events(
     window: str = Query("dense", pattern="^(dense|shallow)$"),
+    type: list[Literal["cvss", "epss", "mal"]] | None = Query(None, description="Event types to include (repeatable)"),
+    ecosystem: Literal["PyPI", "npm"] | None = None,
+    search: str | None = Query(None, max_length=100, description="Package name contains"),
+    severity: Literal["critical", "high", "medium", "low"] | None = Query(None, description="CVSS events only"),
     page_params: PageParams = Depends(page_query),
     conn: Any = Depends(get_db),
 ) -> dict:
     """`dense` = last 30 days. `shallow` = all time. Both paginated."""
-    params = {"since": _since_for(window)}
+    params = {
+        "since": _since_for(window),
+        "types": list(type) if type else None,
+        "ecosystem": ecosystem,
+        "search": f"%{search}%" if search else None,
+        "severity": severity,
+    }
 
     cur = conn.cursor()
     cur.execute(_EVENTS_CTE + "SELECT count(*) FROM all_events", params)

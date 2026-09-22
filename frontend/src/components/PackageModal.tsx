@@ -62,7 +62,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-[#15191D] shadow-2xl"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded border border-zinc-700 bg-[#15191D] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -181,7 +181,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                       key={n.id}
                       href={n.url}
                       target="_blank" rel="noopener noreferrer"
-                      className="block rounded-lg border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-600"
+                      className="block rounded border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-600"
                     >
                       <p className="text-sm text-zinc-200 line-clamp-1">{n.title}</p>
                       <p className="mt-0.5 text-xs text-zinc-500">{n.source_name} · {n.published_date?.slice(0, 10)}</p>

@@ -28,7 +28,7 @@ export function Tooltip({ children, content }: TooltipProps) {
       {pos &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 shadow-xl
+            className="pointer-events-none fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full rounded border border-zinc-700 bg-zinc-900 p-3 shadow-xl
               animate-in fade-in zoom-in-95 duration-150"
             style={{ left: pos.x, top: pos.y }}
           >

@@ -154,44 +154,16 @@ class SimulateRequest(BaseModel):
     direction: Direction = Field(default="yes", description="'yes' or 'no' bet direction.")
 
 
-class SimCurvePoint(BaseModel):
-    label: str = Field(
-        description="X-axis label for this point on the payout curve (e.g. day or scenario name)."
-    )
-    sell_pnl: int = Field(
-        description="Profit/loss in Bits if the contract is sold at this point."
-    )
-    epss_win: int = Field(
-        description="Bit payout if the EPSS win condition triggers at this point."
-    )
-    cvss_win: int = Field(
-        description="Bit payout if the CVSS win condition triggers at this point."
-    )
-    mal_win: int = Field(
-        description="Bit payout if the MAL advisory win condition triggers at this point."
-    )
-
-
 class SimulateResponse(BaseModel):
-    epss_payout: int = Field(description="Max payout if the EPSS condition wins.")
-    cvss_payout: int = Field(description="Max payout if the CVSS condition wins.")
-    mal_payout: int = Field(
-        description="Max payout if the MAL advisory condition wins."
-    )
-    epss_win: int = Field(
-        description="Estimated Bit profit on an EPSS win (payout minus purchase price)."
-    )
-    cvss_win: int = Field(description="Estimated Bit profit on a CVSS win.")
-    mal_win: int = Field(description="Estimated Bit profit on a MAL win.")
-    max_win: int = Field(description="Best-case profit across all win conditions.")
-    max_loss: int = Field(
-        description="Worst-case loss (negative) if the contract expires without winning."
-    )
-    y_min: int = Field(description="Chart Y-axis minimum for the payout curve.")
-    y_max: int = Field(description="Chart Y-axis maximum for the payout curve.")
-    curve: list[SimCurvePoint] = Field(
-        description="Series of payout curve points for charting expected value over time."
-    )
+    epss_payout: int = Field(description="Payout if the EPSS condition wins (0 if no EPSS leg).")
+    cvss_payout: int = Field(description="Payout if the CVSS condition wins.")
+    mal_payout: int = Field(description="Payout if the MAL advisory condition wins (0 for NO bets).")
+    epss_win: int = Field(description="Bit profit on an EPSS win (payout minus purchase price).")
+    cvss_win: int = Field(description="Bit profit on a CVSS win.")
+    mal_win: int = Field(description="Bit profit on a MAL win.")
+    max_win: int = Field(description="Profit if the contract wins.")
+    max_loss: int = Field(description="Loss (negative) if the contract expires without winning.")
+    win_probability: float = Field(description="Model P(win) over the full contract window, 0–1.")
 
 
 class QuoteResponse(BaseModel):
@@ -279,20 +251,11 @@ class ContractDetail(BaseModel):
     opening_epss: float | None = Field(
         default=None, description="EPSS score of the package at time of purchase."
     )
-    current_sell_value: int | None = Field(
-        description="Current early-exit sell value in Bits. Null if not open."
+    current_value: int | None = Field(
+        description="Mark-to-model value in Bits (P(win) × payout over the remaining window). Null if not open."
     )
     multiplier: float = Field(
         description="Payout multiplier applied at purchase based on risk and duration."
-    )
-
-
-class SellResponse(BaseModel):
-    sell_price: int = Field(
-        description="Bits credited to the user for selling early."
-    )
-    status: ContractStatus = Field(
-        description="Contract status after the sell, always 'sold'."
     )
 
 
@@ -373,7 +336,7 @@ class EtfContractDetail(BaseModel):
     resolved_at: str | None
     sell_price: int | None
     created_at: str
-    current_sell_value: int | None
+    current_value: int | None
     multiplier: float
     members: list[EtfMemberDetail]
 

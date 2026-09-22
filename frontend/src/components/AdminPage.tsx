@@ -117,7 +117,7 @@ export function AdminPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+        <div className="rounded border border-zinc-700 bg-zinc-900 p-4 space-y-3">
           <h3 className="text-sm font-semibold text-zinc-200">New Market</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
@@ -216,7 +216,7 @@ export function AdminPage() {
       )}
 
       {/* Markets table */}
-      <div className="rounded-lg border border-zinc-800 overflow-hidden">
+      <div className="rounded border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-zinc-900 border-b border-zinc-800">
             <tr>

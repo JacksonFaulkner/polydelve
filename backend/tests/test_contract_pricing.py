@@ -3,204 +3,213 @@ import sys
 sys.path.insert(0, ".")
 
 from features.contract_pricing import (
+    MAX_MULTIPLIER,
+    P_MIN,
+    PackageStats,
+    any_leg_probability,
+    build_legs,
     compute_cvss_probability,
     compute_epss_probability,
     compute_grade,
     compute_mal_probability,
     compute_payout,
-    sell_value_at_day,
+    contract_value,
+    cve_hazard,
+    price_from_stats,
 )
 
 
-# ── compute_grade ─────────────────────────────────────────────────────────────
+def _stats(recent: tuple | list = (), epss=0.05, num_cves=5, mal=False, max_cvss=7.5, exploit=False) -> PackageStats:
+    return PackageStats(
+        epss_score=epss, num_cves=num_cves, has_mal_advisory=mal,
+        max_cvss=max_cvss, exploit_in_news=exploit, recent_cves=list(recent),
+    )
+
+
+# ── compute_grade (display only) ──────────────────────────────────────────────
 
 def test_grade_zero_for_clean_package():
-    g = compute_grade(num_cves=0, epss_score=None, has_mal_advisory=False, max_cvss=None)
-    assert g == 0.0
+    assert compute_grade(0, None, False, None) == 0.0
 
 
-def test_grade_clamped_max():
-    g = compute_grade(num_cves=10_000, epss_score=1.0, has_mal_advisory=True, max_cvss=10.0)
-    assert g == 10.0
+def test_grade_capped_at_ten():
+    assert compute_grade(10_000, 1.0, True, 10.0) == 10.0
 
 
-def test_grade_clamped_min():
-    g = compute_grade(num_cves=0, epss_score=0.0, has_mal_advisory=False, max_cvss=0.0)
-    assert g == 0.0
+def test_grade_monotone_in_cves_and_epss():
+    prev = -1.0
+    for cves, epss in [(0, 0.0), (1, 0.1), (5, 0.3), (50, 0.9)]:
+        g = compute_grade(cves, epss, False, None)
+        assert g > prev
+        prev = g
 
 
-def test_grade_mal_advisory_adds_risk():
-    without = compute_grade(0, None, False, None)
-    with_mal = compute_grade(0, None, True, None)
-    assert with_mal > without
+# ── cve_hazard ────────────────────────────────────────────────────────────────
+
+def test_hazard_nonzero_with_no_history():
+    assert cve_hazard([], 7.0) > 0
 
 
-def test_grade_in_range():
-    for cves in (0, 1, 10, 100):
-        for epss in (None, 0.0, 0.5, 1.0):
-            g = compute_grade(cves, epss, False, None)
-            assert 0.0 <= g <= 10.0
+def test_hazard_rises_with_qualifying_cves():
+    quiet = cve_hazard([], 7.0)
+    busy = cve_hazard([(10, 9.0), (40, 8.0), (80, 7.5)], 7.0)
+    assert busy > quiet
 
 
-# ── compute_epss_probability ──────────────────────────────────────────────────
-
-def test_epss_prob_none_input():
-    p = compute_epss_probability(None)
-    assert 0.001 <= p <= 0.75
+def test_hazard_ignores_cves_below_threshold():
+    low = cve_hazard([(10, 3.0), (20, 4.0)], 7.0)
+    assert low == cve_hazard([], 7.0)
 
 
-def test_epss_prob_zero():
-    p = compute_epss_probability(0.0)
-    assert p == 0.01
+def test_hazard_recent_cves_weigh_more_than_old():
+    recent = cve_hazard([(10, 9.0)], 7.0)
+    old = cve_hazard([(300, 9.0)], 7.0)
+    assert recent > old
 
 
-def test_epss_prob_no_threshold_max_clamped_at_075():
-    # Without threshold: high EPSS should NOT hit 0.95 (keeps payouts attractive)
-    p = compute_epss_probability(1.0)
-    assert p <= 0.75
-
-
-def test_epss_prob_monotonic():
-    scores = [0.0, 0.1, 0.2, 0.5, 1.0]
-    probs = [compute_epss_probability(s) for s in scores]
-    assert probs == sorted(probs)
-
-
-def test_epss_prob_already_above_threshold_near_certain():
-    # EPSS 0.5, threshold 0.3 → already above → near-certain win next refresh
-    p = compute_epss_probability(0.5, epss_threshold=0.3)
-    assert p >= 0.90
-
-
-def test_epss_prob_far_below_threshold_low():
-    # EPSS 0.01, threshold 0.5 → very unlikely to spike 50x
-    p = compute_epss_probability(0.01, epss_threshold=0.5)
-    assert p < 0.15
-
-
-def test_epss_prob_threshold_monotonic_with_ratio():
-    # As current EPSS approaches threshold, probability should increase
-    threshold = 0.5
-    probs = [compute_epss_probability(epss, threshold) for epss in [0.05, 0.1, 0.2, 0.4, 0.5, 0.6]]
-    assert probs == sorted(probs)
-
-
-def test_epss_prob_threshold_gives_better_payout_for_high_epss():
-    # With threshold, high-EPSS packages can have varied payouts based on gap
-    # A package at EPSS=0.8 with threshold=0.9 should have lower prob than threshold=0.5
-    p_above = compute_epss_probability(0.8, epss_threshold=0.5)   # already above
-    p_below = compute_epss_probability(0.8, epss_threshold=0.9)   # still below
-    assert p_above > p_below
+def test_hazard_higher_threshold_never_higher_rate():
+    hist = [(5, 9.8), (30, 7.2), (60, 5.5), (200, 8.0)]
+    rates = [cve_hazard(hist, t) for t in (3.0, 5.0, 7.0, 9.0)]
+    assert rates == sorted(rates, reverse=True)
 
 
 # ── compute_cvss_probability ──────────────────────────────────────────────────
 
-def test_cvss_prob_always_in_range():
-    for threshold in (0.0, 5.0, 7.0, 9.0, 10.0):
-        p = compute_cvss_probability(0, 0, None, threshold)
-        assert 0.001 <= p <= 0.95
+def test_cvss_probability_increases_with_duration():
+    hist = [(10, 9.0), (50, 8.0)]
+    p7 = compute_cvss_probability(hist, 7.0, 7)
+    p14 = compute_cvss_probability(hist, 7.0, 14)
+    p30 = compute_cvss_probability(hist, 7.0, 30)
+    assert p7 < p14 < p30
 
 
-def test_cvss_prob_high_threshold_lower_than_low():
-    p_low = compute_cvss_probability(5, 10, 9.0, 3.0)
-    p_high = compute_cvss_probability(5, 10, 9.0, 9.0)
-    assert p_high < p_low
+def test_cvss_probability_bounded():
+    for hist in ([], [(1, 10.0)] * 200):
+        p = compute_cvss_probability(hist, 5.0, 30)
+        assert 0.0 < p <= 1.0
 
 
-def test_cvss_prob_zero_cves_no_crash():
-    p = compute_cvss_probability(0, 0, None, 7.0)
-    assert p >= 0.001
+# ── compute_epss_probability ──────────────────────────────────────────────────
+
+def test_epss_probability_zero_without_target():
+    assert compute_epss_probability(0.5, None, 30) == 0.0
 
 
-def test_cvss_prob_absolute_activity_matters():
-    # 5 recent CVEs out of 100 total should NOT be rated as safer than
-    # 5 recent CVEs out of 5 total — absolute activity still contributes
-    p_large_history = compute_cvss_probability(5, 100, 9.0, 7.0)
-    p_small_history = compute_cvss_probability(5, 5,   9.0, 7.0)
-    # small history is still riskier (higher relative velocity), but gap shouldn't be 4x+
-    assert p_small_history / p_large_history < 3.0
+def test_epss_probability_already_above_target():
+    assert compute_epss_probability(0.5, 0.3, 30) == 0.92
 
 
-def test_cvss_prob_high_absolute_recent_beats_zero():
-    # A package with 10 recent CVEs should have meaningfully higher prob than 0 recent
-    p_zero = compute_cvss_probability(0, 50, 7.0, 5.0)
-    p_ten  = compute_cvss_probability(10, 50, 7.0, 5.0)
-    assert p_ten > p_zero * 2
+def test_epss_probability_harder_targets_less_likely():
+    p2 = compute_epss_probability(0.05, 0.10, 30)
+    p5 = compute_epss_probability(0.05, 0.25, 30)
+    p10 = compute_epss_probability(0.05, 0.50, 30)
+    assert p2 > p5 > p10
+
+
+def test_epss_probability_shorter_window_less_likely():
+    p7 = compute_epss_probability(0.05, 0.25, 7)
+    p30 = compute_epss_probability(0.05, 0.25, 30)
+    assert p7 < p30
 
 
 # ── compute_mal_probability ───────────────────────────────────────────────────
 
-def test_mal_prob_already_flagged_is_minimal():
-    p = compute_mal_probability(has_mal_advisory=True, exploit_in_news=True)
-    assert p == 0.001
+def test_mal_probability_zero_when_already_flagged():
+    assert compute_mal_probability(True, True, 30) == 0.0
 
 
-def test_mal_prob_exploit_in_news_boosts():
-    p_clean = compute_mal_probability(False, False)
-    p_news = compute_mal_probability(False, True)
-    assert p_news > p_clean
+def test_mal_probability_exploit_news_and_duration_raise_it():
+    base = compute_mal_probability(False, False, 30)
+    news = compute_mal_probability(False, True, 30)
+    short = compute_mal_probability(False, False, 7)
+    assert news > base > short
 
 
 # ── compute_payout ────────────────────────────────────────────────────────────
 
-def test_payout_always_exceeds_price():
-    for prob in (0.01, 0.1, 0.5, 0.9):
-        for grade in (0.0, 5.0, 10.0):
-            payout = compute_payout(100, prob, grade, 30)
-            assert payout > 100
+def test_payout_is_fair_odds_below_knee():
+    assert compute_payout(100, 0.5) == 200
+    assert compute_payout(100, 0.1) == 1000
 
 
-def test_payout_higher_grade_higher_payout():
-    p_low = compute_payout(100, 0.1, 0.0, 30)
-    p_high = compute_payout(100, 0.1, 10.0, 30)
-    assert p_high > p_low
+def test_payout_always_beats_stake():
+    assert compute_payout(100, 0.999) == 101
 
 
-def test_payout_soft_cap_monotonic_for_high_grade():
-    # High-grade package, dragging prob down (rarer event) must keep raising the
-    # payout even deep in the capped region — no flat pinning (the pandas bug).
-    payouts = [compute_payout(100, p, 9.5, 30) for p in (0.10, 0.05, 0.02, 0.01)]
+def test_payout_monotone_and_capped():
+    payouts = [compute_payout(100, p) for p in (0.5, 0.1, 0.02, 0.01, P_MIN)]
     assert payouts == sorted(payouts)
-    assert payouts[0] < payouts[-1]
+    assert payouts[-1] <= 100 * MAX_MULTIPLIER
 
 
-def test_payout_never_exceeds_ceiling():
-    # Even at extreme odds the multiplier stays under MAX_MULTIPLIER.
-    from features.contract_pricing import MAX_MULTIPLIER
-    p = compute_payout(100, 0.001, 10.0, 7)
-    assert p <= 100 * MAX_MULTIPLIER
+# ── direction symmetry ────────────────────────────────────────────────────────
+
+def test_no_payout_rises_with_duration_yes_payout_falls():
+    stats = _stats(recent=[(10, 9.0), (40, 8.0)])
+    yes = [price_from_stats(stats, 7.0, None, 100, d, "yes")[0].cvss_payout for d in (7, 14, 30)]
+    no = [price_from_stats(stats, 7.0, None, 100, d, "no")[0].cvss_payout for d in (7, 14, 30)]
+    assert yes == sorted(yes, reverse=True), "YES: longer window = easier = pays less"
+    assert no == sorted(no), "NO: longer window = more exposure = pays more"
 
 
-def test_payout_shorter_duration_higher_payout():
-    p_7 = compute_payout(100, 0.1, 5.0, 7)
-    p_30 = compute_payout(100, 0.1, 5.0, 30)
-    assert p_7 > p_30
+def test_yes_and_no_probabilities_sum_to_one():
+    stats = _stats(recent=[(10, 9.0)])
+    for d in (7, 14, 30):
+        yes_legs = {leg.kind: leg for leg in build_legs(stats, 7.0, None, 100, d, "yes")}
+        p_yes = yes_legs["cvss"].prob_at(d)
+        p_no = build_legs(stats, 7.0, None, 100, d, "no")[0].prob_at(d)
+        assert abs(p_yes + p_no - 1.0) < 1e-9
 
 
-# ── sell_value_at_day ─────────────────────────────────────────────────────────
-
-def test_sell_value_day0_equals_purchase_price():
-    v = sell_value_at_day(purchase_price=100, day=0, total_days=30)
-    assert v == 100
-
-
-def test_sell_value_at_expiry_is_zero():
-    v = sell_value_at_day(purchase_price=100, day=30, total_days=30)
-    assert v == 0
+def test_no_bet_ignores_epss_and_mal():
+    stats = _stats(recent=[(10, 9.0)], epss=0.9, mal=False, exploit=True)
+    terms, legs = price_from_stats(stats, 7.0, 0.95, 100, 30, "no")
+    assert len(legs) == 1 and legs[0].kind == "cvss"
+    assert terms.epss_payout == 0 and terms.mal_payout == 0
+    assert terms.max_payout == terms.cvss_payout
 
 
-def test_sell_value_never_negative():
-    for day in range(31):
-        v = sell_value_at_day(100, day, 30)
-        assert v >= 0
+def test_risky_package_no_bet_pays_more_than_quiet_one():
+    quiet = price_from_stats(_stats(recent=[]), 7.0, None, 100, 30, "no")[0]
+    busy = price_from_stats(_stats(recent=[(5, 9.0), (20, 9.0), (50, 8.0)]), 7.0, None, 100, 30, "no")[0]
+    assert busy.max_payout > quiet.max_payout
+    assert busy.opening_probability < quiet.opening_probability
 
 
-def test_sell_value_decreases_monotonically():
-    values = [sell_value_at_day(100, d, 30) for d in range(31)]
+# ── yes blending ──────────────────────────────────────────────────────────────
+
+def test_yes_opening_probability_is_any_leg():
+    stats = _stats(recent=[(10, 9.0)], epss=0.05)
+    terms, legs = price_from_stats(stats, 7.0, 0.25, 100, 30, "yes")
+    assert terms.opening_probability == any_leg_probability(legs, 30)
+    assert terms.opening_probability >= max(leg.prob_at(30) for leg in legs) - 1e-4
+    # one stake, one payout: every leg pays the same, priced off P(any)
+    assert terms.epss_payout == terms.cvss_payout == terms.mal_payout == terms.max_payout
+    assert terms.max_payout == compute_payout(100, terms.opening_probability)
+
+
+def test_yes_is_fair_at_purchase():
+    stats = _stats(recent=[(10, 9.0)], epss=0.05)
+    terms, legs = price_from_stats(stats, 7.0, 0.25, 100, 30, "yes")
+    # mark-to-model at day 0 == stake (within rounding) — no free value
+    assert abs(contract_value(legs, terms.max_payout, 30) - 100) <= 2
+
+
+# ── contract_value / simulate_curve ───────────────────────────────────────────
+
+def test_yes_value_decays_to_zero():
+    stats = _stats(recent=[(10, 9.0)], epss=0.05)
+    terms, legs = price_from_stats(stats, 7.0, 0.25, 100, 30, "yes")
+    values = [contract_value(legs, terms.max_payout, r) for r in range(30, -1, -1)]
     assert values == sorted(values, reverse=True)
+    assert values[-1] == 0
+    assert values[0] <= terms.max_payout
 
 
-def test_sell_value_drift_boosts_value():
-    base = sell_value_at_day(100, 5, 30, epss_drift=1.0, max_payout=500)
-    boosted = sell_value_at_day(100, 5, 30, epss_drift=5.0, max_payout=500)
-    assert boosted > base
+def test_no_value_climbs_to_full_payout():
+    stats = _stats(recent=[(10, 9.0)])
+    terms, legs = price_from_stats(stats, 7.0, None, 100, 30, "no")
+    values = [contract_value(legs, terms.max_payout, r) for r in range(30, -1, -1)]
+    assert values == sorted(values)
+    assert values[-1] == terms.max_payout
+    assert values[0] < terms.max_payout

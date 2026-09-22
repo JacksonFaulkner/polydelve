@@ -15,7 +15,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
   const { name, ecosystem, epss_score } = market.package
 
   return (
-    <div className="rounded-xl border border-zinc-700/40 bg-[#181D21] p-5">
+    <div className="rounded border border-zinc-700/40 bg-[#181D21] p-5">
       <div className="mb-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="mb-1 flex items-center gap-2">
@@ -66,7 +66,7 @@ export function FeaturedMarket({ market, onBet }: Props) {
         <span className="text-xs text-zinc-500">{market.bet_count.toLocaleString()} bets</span>
         <button
           onClick={() => onBet(market)}
-          className="rounded-lg bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
+          className="rounded bg-[#FDE832] px-5 py-2 text-sm font-semibold text-white hover:bg-[#D4C020] transition-colors"
         >
           Bet {purchase_price} <BitIcon />
         </button>

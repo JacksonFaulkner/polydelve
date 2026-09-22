@@ -26,12 +26,14 @@ Contracts expire **NO** if the deadline passes with none of those conditions met
 
 ## Pricing
 
-Contract price is calculated in `features/contract_pricing.py`. It computes a `grade` from CVE count, EPSS, MAL status, and CVSS, then prices the CVSS/EPSS/MAL win conditions as separate probabilities (a hazard/logit-based model for EPSS) before combining them. Download volume feeds `risk_score` for package ranking, not contract price directly.
+Pricing lives in `features/contract_pricing.py`. One hazard model drives both bet directions:
 
-- **Higher exploitation probability → higher cost.** As implied probability rises, price rises.
-- **Multiplier** — payout = `purchase_price × multiplier`, capped at `MAX_MULTIPLIER = 50`.
+- **New CVEs arrive as a Poisson process.** Each package gets a daily rate λ for CVEs at or above the chosen CVSS threshold, estimated from the last 90 and 365 days of `cve_history` with a small prior so quiet packages still have a non-zero rate.
+- **Every probability is duration-aware.** `P_yes(D) = 1 − e^(−λD)`, `P_no(D) = e^(−λD)`. Longer windows make YES easier and NO harder, so a 30-day NO pays more than a 7-day NO, and the reverse for YES.
+- **EPSS** uses a logit-gap model (distance from current EPSS to the target, scaled by duration); **MAL** advisories use a small constant hazard, boosted when the news feed shows active exploitation.
+- **Payout is fair odds, no house edge:** `max_payout = stake / P(win)`, soft-capped at `MAX_MULTIPLIER = 50` so long shots stay finite. The `grade` shown in the UI is informational and does not change the payout.
 
-The multiplier is inversely proportional to probability: low-risk packages pay more per Schmeckle.
+An open contract is always valued mark-to-model: `Σ P_leg(remaining days) × leg_payout`, capped at `max_payout`. That number is both the sell price and the "simulated returns" curve. A YES contract decays toward zero as its window closes with nothing happening; a NO contract climbs toward full payout as the package keeps surviving.
 
 ## Schmeckles
 
