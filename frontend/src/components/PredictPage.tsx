@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { SignupPrompt } from "./SignupPrompt"
 import EpssChart from "./EpssChart"
 import { Tooltip } from "@/components/ui/Tooltip"
+import { EcoBadge } from "@/components/ui/Badges"
 
 function buildEpssChartData(detail: PackageDetail) {
   if (!detail.epss_history || detail.epss_history.length < 2) return null
@@ -75,16 +76,6 @@ interface SimResult {
   max_win: number
   max_loss: number
   win_probability: number
-}
-
-function EcoBadge({ ecosystem }: { ecosystem: string }) {
-  return (
-    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-      ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
-    }`}>
-      {ecosystem}
-    </span>
-  )
 }
 
 export function PredictPage({ onBuy }: { onBuy?: () => void }) {
@@ -254,13 +245,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     }
   }
 
-  const sectionLabel = "text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-  function optionClass(active: boolean) {
-    return `rounded border px-3 py-2 text-sm font-medium transition-colors ${
-      active ? "border-[#FDE832] bg-[#FDE832]/10 text-zinc-100" : "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-    }`
-  }
-
+  const sectionLabel = "text-xs font-medium text-ink-3"
   function addLeg(p: Package) {
     if (legs.length >= MAX_LEGS) return
     if (direction === "no" && legs.length >= 1) return // NO bets are single-package only
@@ -369,13 +354,13 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     <div className="w-full h-full flex flex-col gap-3 overflow-y-auto lg:overflow-hidden">
       <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
 
-      <div className="flex-1 min-h-0 flex flex-col rounded border border-zinc-800 bg-[#181D21]">
+      <div className="flex-1 min-h-0 flex flex-col rounded border border-line-1 bg-surface-1">
 
       {/* Search / add */}
       {!(direction === "no" && legs.length >= 1) && (
-      <div className="relative z-20 shrink-0 rounded-t border-b border-zinc-700 bg-zinc-800/70 px-4 py-2.5">
+      <div className="relative z-20 shrink-0 rounded-t border-b border-line-2 bg-surface-2/70 px-4 py-2.5">
         <div className="flex items-center gap-2.5">
-          <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+          <Search className="w-4 h-4 text-ink-2 shrink-0" />
           <input
             type="text"
             data-tour="predict-search"
@@ -390,7 +375,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-            className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            className="flex-1 bg-transparent text-sm text-ink-1 placeholder-ink-3 outline-none"
           />
           <input
             ref={fileInputRef}
@@ -401,29 +386,29 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="shrink-0 rounded border border-zinc-600 px-2 py-1 text-[10px] text-zinc-300 hover:border-zinc-400 hover:text-white transition-colors"
+            className="chip shrink-0 px-2.5 py-1 text-xs"
             title="Add all tracked packages from a package.json / requirements.txt / pyproject.toml"
           >
             {parsing ? "parsing…" : "import manifest"}
           </button>
         </div>
         {showDropdown && (
-          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded border border-zinc-700 bg-zinc-900 shadow-xl divide-y divide-zinc-800 max-h-56 overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded border border-line-2 bg-surface-1 shadow-xl divide-y divide-line-1 max-h-56 overflow-y-auto">
             {!search && filtered.length > 0 && (
-              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">Trending risk</p>
+              <p className="px-3 py-1.5 text-xs font-medium text-ink-4">Trending risk</p>
             )}
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-zinc-600">{packagesLoading ? "Loading…" : "No results"}</p>
+              <p className="px-3 py-2 text-sm text-ink-4">{packagesLoading ? "Loading…" : "No results"}</p>
             ) : filtered.map((p) => (
               <button key={legKey(p)} data-tour="predict-add-result" onClick={() => addLeg(p)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800/50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-2/50"
               >
                 <EcoBadge ecosystem={p.ecosystem} />
-                <span className="font-mono text-sm text-zinc-200">{p.name}</span>
+                <span className="font-mono text-sm text-ink-1">{p.name}</span>
                 {p.epss_score != null && (
-                  <span className="ml-auto text-xs text-zinc-500">EPSS {Math.round(p.epss_score * 100)}%</span>
+                  <span className="ml-auto text-xs text-ink-3">EPSS {Math.round(p.epss_score * 100)}%</span>
                 )}
-                <span className="text-[10px] font-bold text-[#FDE832]">+ add</span>
+                <span className="text-xs font-medium text-ink-3">+ add</span>
               </button>
             ))}
           </div>
@@ -431,27 +416,27 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
       </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden rounded-b divide-y divide-zinc-800 lg:divide-y-0">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden rounded-b divide-y divide-line-1 lg:divide-y-0">
 
       {/* ── LEFT: payout chart ── */}
-      <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 lg:border-r lg:border-zinc-800">
+      <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 lg:border-r lg:border-line-1">
         {/* Payout panel */}
         <div className="flex-1 min-h-[280px] lg:min-h-0 overflow-hidden flex flex-col">
           {legs.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-7 px-8 py-10 text-center">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800/60 border border-zinc-700/60">
-                <Layers className="w-7 h-7 text-zinc-500" />
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-surface-2/60 border border-line-2/60">
+                <Layers className="w-7 h-7 text-ink-3" />
               </div>
               <div className="space-y-1.5">
-                <p className="text-base font-medium text-zinc-200">Add packages to build a slip.</p>
-                <p className="text-sm text-zinc-500 max-w-md">
+                <p className="text-base font-medium text-ink-1">Add packages to build a slip.</p>
+                <p className="text-sm text-ink-3 max-w-md">
                   Search above, or import a manifest to pull in everything you depend on.
                 </p>
               </div>
 
-              <div className="flex items-center gap-5 text-xs text-zinc-500">
+              <div className="flex items-center gap-5 text-xs text-ink-3">
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> EPSS spike</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#FDE832]" /> CVSS event</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-brand" /> CVSS event</span>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400" /> MAL advisory</span>
               </div>
             </div>
@@ -463,7 +448,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               className="flex flex-col flex-1 min-h-0"
             >
               {/* Risk history — fills the left panel */}
-              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col divide-y divide-zinc-800">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col divide-y divide-line-1">
                 {legs.map((l) => {
                   const key = legKey(l.pkg)
                   const detail = riskDetails[key]
@@ -477,13 +462,13 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                       {legs.length > 1 && (
                         <div className="absolute top-2 right-3 z-10 flex items-center gap-1.5">
                           <EcoBadge ecosystem={l.pkg.ecosystem} />
-                          <span className="font-mono text-xs text-zinc-300 truncate">{l.pkg.name}</span>
+                          <span className="font-mono text-xs text-ink-2 truncate">{l.pkg.name}</span>
                         </div>
                       )}
                       {!detail ? (
-                        <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">Loading…</div>
+                        <div className="flex-1 flex items-center justify-center text-ink-4 text-xs">Loading…</div>
                       ) : !chart ? (
-                        <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">No EPSS history</div>
+                        <div className="flex-1 flex items-center justify-center text-ink-4 text-xs">No EPSS history</div>
                       ) : (
                         <EpssChart data={chart.chartData} cveData={chart.scatterData} />
                       )}
@@ -499,16 +484,16 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
       {/* ── RIGHT: slip ── */}
       <div className="w-full lg:w-[380px] shrink-0 flex flex-col lg:min-h-0">
         <div className="flex flex-col flex-1 lg:min-h-0 overflow-hidden">
-          <div className="px-4 pt-3.5 pb-2.5 border-b border-zinc-800/60 flex items-center shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#FDE832]">Your slip</span>
+          <div className="px-4 pt-3.5 pb-2.5 border-b border-line-1/60 flex items-center shrink-0">
+            <span className="text-sm font-semibold text-ink-1">Your slip</span>
             {legs.length > 0 && (
-              <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300 tabular-nums">
+              <span className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold text-ink-2 tabular-nums">
                 {legs.length}
               </span>
             )}
             {bits != null && (
-              <span className="ml-auto text-[10px] text-zinc-500">
-                Balance <span className="font-semibold text-zinc-300 tabular-nums">{bits.toLocaleString()}</span>
+              <span className="ml-auto text-[11px] text-ink-3">
+                Balance <span className="font-semibold text-ink-2 tabular-nums">{bits.toLocaleString()}</span>
               </span>
             )}
           </div>
@@ -516,7 +501,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           {/* Legs */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2 lg:min-h-0">
             {legs.length === 0 && (
-              <p className="px-4 py-6 text-xs text-zinc-600 text-center">Empty. Search a package on the left to add a leg.</p>
+              <p className="px-4 py-6 text-xs text-ink-4 text-center">Empty. Search a package on the left to add a leg.</p>
             )}
             <AnimatePresence initial={false}>
               {legs.map((l) => {
@@ -527,39 +512,39 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden rounded border border-zinc-800 bg-zinc-900/60"
+                    className="overflow-hidden rounded border border-line-1 bg-surface-1/60"
                   >
                     <div data-tour="leg-row" className="flex items-center gap-2 px-4 py-2.5">
                       <EcoBadge ecosystem={l.pkg.ecosystem} />
                       <button data-tour="leg-row-toggle" onClick={() => setExpandedLeg(isOpen ? null : key)}
-                        className="flex-1 min-w-0 text-left font-mono text-sm text-zinc-200 truncate hover:text-white"
+                        className="flex-1 min-w-0 text-left font-mono text-sm text-ink-1 truncate hover:text-ink-1"
                       >
                         {l.pkg.name}
                       </button>
-                      <span className="text-[10px] text-zinc-600 tabular-nums shrink-0">CVSS ≥ {l.cvssThreshold.toFixed(1)}</span>
-                      <button onClick={() => removeLeg(key)} className="shrink-0 text-zinc-600 hover:text-zinc-300 text-sm leading-none">✕</button>
+                      <span className="text-[11px] text-ink-4 tabular-nums shrink-0">CVSS ≥ {l.cvssThreshold.toFixed(1)}</span>
+                      <button onClick={() => removeLeg(key)} className="shrink-0 text-ink-4 hover:text-ink-2 text-sm leading-none">✕</button>
                     </div>
                     {isOpen && (
-                      <div className="px-4 pb-3 pt-3 space-y-3 border-t border-zinc-800/60">
+                      <div className="px-4 pb-3 pt-3 space-y-3 border-t border-line-1/60">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-zinc-500">CVSS threshold</span>
-                            <span className="text-[10px] font-semibold text-zinc-300">≥ {l.cvssThreshold.toFixed(1)}</span>
+                            <span className="text-[11px] text-ink-3">CVSS threshold</span>
+                            <span className="text-[11px] font-semibold text-ink-2">≥ {l.cvssThreshold.toFixed(1)}</span>
                           </div>
                           <input type="range" data-tour="cvss-slider" min={1} max={10} step={0.1} value={l.cvssThreshold}
                             onChange={(e) => updateLeg(key, { cvssThreshold: Number(e.target.value) })}
-                            className="w-full accent-[#FDE832]" />
+                            className="w-full accent-brand" />
                         </div>
                         {!isBasket && (
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-zinc-500">
+                              <span className="text-[11px] text-ink-3">
                                 EPSS scenario
                                 {l.pkg.epss_score != null && (
-                                  <span className="ml-1.5 text-zinc-600">now {(l.pkg.epss_score * 100).toFixed(2)}%</span>
+                                  <span className="ml-1.5 text-ink-4">now {(l.pkg.epss_score * 100).toFixed(2)}%</span>
                                 )}
                               </span>
-                              <span className={`text-[10px] font-semibold tabular-nums ${soloDrift > 1.5 ? "text-green-400" : "text-zinc-400"}`}>
+                              <span className={`text-[11px] font-semibold tabular-nums ${soloDrift > 1.5 ? "text-green-400" : "text-ink-2"}`}>
                                 {soloDrift >= 0.99 && soloDrift <= 1.01 ? "baseline" : `${soloDrift.toFixed(1)}× → ${(soloTarget * 100).toFixed(1)}%`}
                               </span>
                             </div>
@@ -577,18 +562,18 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           </div>
 
           {/* Slip config */}
-          <div className="border-t border-zinc-800/60 px-4 py-4 space-y-4 shrink-0">
+          <div className="border-t border-line-1/60 px-4 py-4 space-y-4 shrink-0">
             {isBasket && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className={sectionLabel}>Legs that must hit</span>
-                  <span className="text-xs font-semibold text-zinc-300 tabular-nums">
+                  <span className="text-xs font-semibold text-ink-2 tabular-nums">
                     {kOfN === 1 ? "any 1" : `at least ${kOfN}`} of {legs.length}
                   </span>
                 </div>
                 <input type="range" min={1} max={legs.length} step={1} value={kOfN}
                   onChange={(e) => setThresholdCount(Number(e.target.value))}
-                  className="w-full accent-[#FDE832]" />
+                  className="w-full accent-brand" />
               </div>
             )}
 
@@ -598,28 +583,28 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                 {simError ? (
                   <div className="text-red-400 text-xs">{simError}</div>
                 ) : (
-                  <div className="grid grid-cols-3 divide-x divide-zinc-800">
+                  <div className="grid grid-cols-3 divide-x divide-line-1">
                     <div className="pr-3">
                       <p className={sectionLabel}>
                         {isBasket ? (kOfN === 1 ? "Any leg hits" : `${kOfN} legs hit`) : direction === "no" ? "If it survives" : "If it hits"}
                       </p>
                       <p className="text-xl font-bold tabular-nums text-emerald-400 leading-tight">{sim ? `+${sim.max_win.toLocaleString()}` : "…"}</p>
-                      <p className="text-[11px] text-zinc-500">{multiplier ? `${multiplier.toFixed(1)}× stake` : ""}</p>
+                      <p className="text-[11px] text-ink-3">{multiplier ? `${multiplier.toFixed(1)}× stake` : ""}</p>
                     </div>
                     <div className="px-3">
                       <p className={sectionLabel}>Win chance</p>
-                      <p className="text-xl font-bold tabular-nums text-zinc-100 leading-tight">{sim ? `${(sim.win_probability * 100).toFixed(1)}%` : "…"}</p>
-                      <p className="text-[11px] text-zinc-500">{duration}d window</p>
+                      <p className="text-xl font-bold tabular-nums text-ink-1 leading-tight">{sim ? `${(sim.win_probability * 100).toFixed(1)}%` : "…"}</p>
+                      <p className="text-[11px] text-ink-3">{duration}d window</p>
                     </div>
                     <div className="pl-3">
                       <p className={sectionLabel}>Max loss</p>
                       <p className="text-xl font-bold tabular-nums text-red-400 leading-tight">{sim ? sim.max_loss.toLocaleString() : "…"}</p>
-                      <p className="text-[11px] text-zinc-500">{direction === "no" ? "on any CVE" : "at expiry"}</p>
+                      <p className="text-[11px] text-ink-3">{direction === "no" ? "on any CVE" : "at expiry"}</p>
                     </div>
                   </div>
                 )}
                 {!isBasket && legs[0] && (
-                  <p className="mt-2 text-[11px] text-zinc-500 leading-snug">
+                  <p className="mt-2 text-[11px] text-ink-3 leading-snug">
                     {direction === "no"
                       ? `Wins if no new CVE with CVSS ≥ ${legs[0].cvssThreshold.toFixed(1)} lands before expiry. Settles automatically.`
                       : `Wins on the first of: CVE with CVSS ≥ ${legs[0].cvssThreshold.toFixed(1)}` +
@@ -635,11 +620,11 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               <div>
                 <p className={`${sectionLabel} mb-1.5`}>Betting on</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setDirection("yes")} className={optionClass(direction === "yes")}>
+                  <button onClick={() => setDirection("yes")} aria-pressed={direction === "yes"} className="chip px-3 py-2">
                     Vulnerability happens
                   </button>
                   <Tooltip content={`Only packages with a CVE in the last ${NO_BET_ELIGIBILITY_DAYS} days are eligible.`}>
-                    <button onClick={() => setDirection("no")} className={`w-full ${optionClass(direction === "no")}`}>
+                    <button onClick={() => setDirection("no")} aria-pressed={direction === "no"} className="chip w-full px-3 py-2">
                       No vulnerability
                     </button>
                   </Tooltip>
@@ -650,13 +635,17 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
             <div>
               <p className={`${sectionLabel} mb-1.5`}>Stake</p>
               <div className="flex items-center gap-2">
-                <input type="number" min={10} max={bits ?? 9999} step={10} value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  className="w-24 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500 tabular-nums"
-                />
+                <div className="relative w-24 shrink-0">
+                  <input type="number" min={10} max={bits ?? 9999} step={10} value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    aria-label="Stake in bits"
+                    className="w-full rounded-md border border-line-2 bg-surface-1 py-2 pl-3 pr-9 text-sm text-ink-1 outline-none focus:border-line-3 tabular-nums"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-4">bits</span>
+                </div>
                 <div data-tour="stake-chips" className="flex flex-1 gap-2">
                   {STAKE_CHIPS.map((v) => (
-                    <button key={v} data-tour="stake-chip" onClick={() => setPrice(v)} className={`flex-1 ${optionClass(price === v)}`}>
+                    <button key={v} data-tour="stake-chip" onClick={() => setPrice(v)} aria-pressed={price === v} className="chip flex-1 px-3 py-2 tabular-nums">
                       {v}
                     </button>
                   ))}
@@ -668,7 +657,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               <p className={`${sectionLabel} mb-1.5`}>Duration</p>
               <div data-tour="duration-options" className="grid grid-cols-3 gap-2">
                 {DURATION_OPTIONS.map((d) => (
-                  <button key={d} data-tour="duration-chip" onClick={() => setDuration(d)} className={optionClass(duration === d)}>
+                  <button key={d} data-tour="duration-chip" onClick={() => setDuration(d)} aria-pressed={duration === d} className="chip px-3 py-2">
                     {d}d
                   </button>
                 ))}
@@ -679,7 +668,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               data-tour="buy-slip-btn"
               onClick={buySlip}
               disabled={legs.length === 0 || buying || !!simError || (bits != null && bits < price)}
-              className="w-full rounded bg-[#FDE832] py-3 text-sm font-bold text-zinc-900 transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="w-full btn-primary py-3 text-sm"
             >
               {buying ? "Buying…" : legs.length === 0 ? "Add a package to bet" : `Buy slip for ${price} bits`}
             </button>

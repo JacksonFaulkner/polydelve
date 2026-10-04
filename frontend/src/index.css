@@ -81,10 +81,46 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* App design tokens. Surfaces step up in small lightness increments (depth comes
+   from surface shifts, not shadows); brand yellow is reserved for the primary
+   action, focus ring and logo. Use these instead of raw zinc/hex values. */
+@theme {
+  --color-surface-0: #15191d; /* page */
+  --color-surface-1: #181d21; /* cards, inputs, menus */
+  --color-surface-2: #1e2428; /* raised: chips, popovers, hover rows */
+  --color-surface-3: #272f36; /* pressed / selected */
+  --color-line-1: #242b32;    /* hairline */
+  --color-line-2: #303942;    /* controls */
+  --color-line-3: #46515c;    /* control hover */
+  --color-ink-1: #e6eaed;     /* primary text */
+  --color-ink-2: #bbc4cd;     /* secondary text */
+  --color-ink-3: #7b8996;     /* muted */
+  --color-ink-4: #66737f;     /* faint labels */
+  --color-brand: #fde832;
+  --color-sev-critical: #f87171;
+  --color-sev-high: #fb923c;
+  --color-sev-medium: #facc15;
+  --color-sev-low: #7b8996;
+}
+
+@utility btn-primary {
+  @apply rounded-md bg-brand font-semibold text-surface-0 transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-ink-4 disabled:hover:bg-surface-3;
+}
+
+@utility chip {
+  @apply rounded-md border border-line-2 text-sm font-medium text-ink-2 transition-colors hover:border-line-3 hover:text-ink-1 aria-pressed:border-ink-3 aria-pressed:bg-surface-3 aria-pressed:text-ink-1;
+}
+
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-surface-0);
+  color: var(--color-ink-1);
   font-family: system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }
 
 @media (min-width: 768px) {
@@ -176,7 +212,7 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-surface-0 text-ink-1;
   }
   html {
     @apply font-sans;

@@ -25,23 +25,23 @@ export function MarketCard({ market, onBet }: Props) {
   const { name, ecosystem, epss_score, weekly_downloads, has_mal_advisory } = market.package
 
   return (
-    <div className="rounded border border-zinc-700/40 bg-[#181D21] p-4 hover:border-zinc-700 transition-colors">
+    <div className="rounded border border-line-2/40 bg-surface-1 p-4 hover:border-line-2 transition-colors">
       <div className="mb-3 flex items-center gap-2">
-        <span className="font-mono text-xs font-semibold text-zinc-200">{name}</span>
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+        <span className="font-mono text-xs font-semibold text-ink-1">{name}</span>
+        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
           ecosystem === "PyPI" ? "bg-blue-900/50 text-blue-300" : "bg-red-900/50 text-red-300"
         }`}>{ecosystem}</span>
         {has_mal_advisory && (
-          <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-rose-900/50 text-rose-300">MAL</span>
+          <span className="rounded px-1.5 py-0.5 text-[11px] font-bold bg-rose-900/50 text-rose-300">MAL</span>
         )}
-        <span className="ml-auto text-[10px] text-zinc-600">{conditionLabel(market)}</span>
+        <span className="ml-auto text-[11px] text-ink-4">{conditionLabel(market)}</span>
       </div>
 
-      <p className="mb-3 text-sm font-medium leading-snug text-zinc-100">{market.title}</p>
+      <p className="mb-3 text-sm font-medium leading-snug text-ink-1">{market.title}</p>
 
-      <div className="mb-3 flex gap-3 text-[10px] text-zinc-500">
+      <div className="mb-3 flex gap-3 text-[11px] text-ink-3">
         {epss_score != null && (
-          <span>EPSS <span className="text-zinc-300 font-semibold">{(epss_score * 100).toFixed(1)}%</span></span>
+          <span>EPSS <span className="text-ink-2 font-semibold">{(epss_score * 100).toFixed(1)}%</span></span>
         )}
         <span>{fmtDownloads(weekly_downloads)}</span>
       </div>
@@ -49,13 +49,13 @@ export function MarketCard({ market, onBet }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex gap-4 text-sm">
           <div>
-            <span className="text-zinc-500 text-xs">Win </span>
+            <span className="text-ink-3 text-xs">Win </span>
             <span className="font-semibold text-emerald-400">{multiplier}×</span>
           </div>
         </div>
         <button
           onClick={() => onBet(market)}
-          className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors"
+          className="rounded border border-line-2 px-3 py-1.5 text-xs font-semibold text-ink-1 hover:bg-surface-2 transition-colors"
         >
           Bet {market.contract.purchase_price} <BitIcon className="h-3.5 w-3.5" />
         </button>

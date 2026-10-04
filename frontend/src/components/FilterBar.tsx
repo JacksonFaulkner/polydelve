@@ -10,11 +10,11 @@ import { Check, ChevronDown, ListFilter, X } from "lucide-react"
 export type FilterOption<V extends string | number> = { value: V; label: string }
 
 const chipBase = "inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors whitespace-nowrap"
-const chipIdle = "border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-const chipActive = "bg-[#FDE832] text-zinc-900"
+const chipIdle = "border border-line-2 text-ink-2 hover:border-line-3 hover:text-ink-1"
+const chipActive = "bg-surface-3 text-ink-1 border border-line-3"
 // compact = lives inside a column header: idle is just a funnel icon, active shows the value
-const compactBase = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal transition-colors whitespace-nowrap"
-const compactIdle = "text-zinc-600 hover:text-zinc-300"
+const compactBase = "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium normal-case tracking-normal transition-colors whitespace-nowrap"
+const compactIdle = "text-ink-4 hover:text-ink-2"
 
 function chipClasses(compact: boolean | undefined, active: boolean) {
   if (compact) return `${compactBase} ${active ? chipActive : compactIdle}`
@@ -39,7 +39,7 @@ function usePopover() {
 
 function Popover({ children }: { children: ReactNode }) {
   return (
-    <div className="absolute left-0 top-full z-30 mt-1 min-w-[10rem] rounded border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+    <div className="absolute left-0 top-full z-30 mt-1 min-w-[10rem] rounded border border-line-2 bg-surface-1 py-1 shadow-xl">
       {children}
     </div>
   )
@@ -49,7 +49,7 @@ function Item({ active, onClick, children }: { active: boolean; onClick: () => v
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs hover:bg-zinc-800/60 ${active ? "text-[#FDE832]" : "text-zinc-300"}`}
+      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs hover:bg-surface-2/60 ${active ? "text-brand" : "text-ink-2"}`}
     >
       <span>{children}</span>
       {active && <Check className="h-3 w-3" />}
@@ -154,7 +154,7 @@ export function FilterToggle({ label, value, onChange, compact }: { label: strin
 export function FilterClear({ count, onClear }: { count: number; onClear: () => void }) {
   if (count === 0) return null
   return (
-    <button onClick={onClear} className="text-xs text-zinc-500 hover:text-zinc-300 whitespace-nowrap">
+    <button onClick={onClear} className="text-xs text-ink-3 hover:text-ink-2 whitespace-nowrap">
       Clear {count}
     </button>
   )

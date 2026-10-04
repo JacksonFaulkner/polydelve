@@ -9,6 +9,7 @@ import { DataTable } from "./DataTable"
 import { FilterClear, FilterMulti, FilterSelect } from "./FilterBar"
 import { PackageExpandedRow } from "./PackageExpandedRow"
 import { Pagination } from "./Pagination"
+import { EcoBadge } from "@/components/ui/Badges"
 
 type EventRow = {
   name: string
@@ -21,19 +22,9 @@ type EventRow = {
 }
 
 const TYPE_META: Record<EventRow["type"], { label: string; dot: string; text: string }> = {
-  cvss: { label: "CVSS event", dot: "bg-[#FDE832]", text: "text-[#FDE832]" },
+  cvss: { label: "CVSS event", dot: "bg-brand", text: "text-brand" },
   epss: { label: "EPSS spike", dot: "bg-emerald-400", text: "text-emerald-400" },
   mal: { label: "MAL advisory", dot: "bg-rose-400", text: "text-rose-400" },
-}
-
-function EcoBadge({ ecosystem }: { ecosystem: string }) {
-  return (
-    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-      ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
-    }`}>
-      {ecosystem}
-    </span>
-  )
 }
 
 function fmtDate(iso: string) {
@@ -53,7 +44,7 @@ const col = createColumnHelper<EventRow>()
 const columns = [
   col.accessor("date", {
     header: "Date",
-    cell: (info) => <span className="text-xs text-zinc-500 tabular-nums whitespace-nowrap">{fmtDate(info.getValue())}</span>,
+    cell: (info) => <span className="text-xs text-ink-3 tabular-nums whitespace-nowrap">{fmtDate(info.getValue())}</span>,
   }),
   col.accessor("ecosystem", {
     header: "Eco",
@@ -61,7 +52,7 @@ const columns = [
   }),
   col.accessor("name", {
     header: "Package",
-    cell: (info) => <span className="font-mono text-sm text-zinc-200">{info.getValue()}</span>,
+    cell: (info) => <span className="font-mono text-sm text-ink-1">{info.getValue()}</span>,
   }),
   col.accessor("type", {
     header: "Event",
@@ -70,7 +61,7 @@ const columns = [
       return (
         <span className="flex items-center gap-1.5 whitespace-nowrap">
           <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wide ${meta.text}`}>{meta.label}</span>
+          <span className={`text-[11px] font-semibold ${meta.text}`}>{meta.label}</span>
         </span>
       )
     },
@@ -78,7 +69,7 @@ const columns = [
   col.display({
     id: "what",
     header: "What happened",
-    cell: (info) => <span className="text-xs text-zinc-500">{whatHappened(info.row.original)}</span>,
+    cell: (info) => <span className="text-xs text-ink-3">{whatHappened(info.row.original)}</span>,
   }),
 ]
 
@@ -135,17 +126,17 @@ export function EventsPage() {
   const toolbar = (
     <>
       <div className="relative flex-1 min-w-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3 pointer-events-none" />
         <input
           type="text"
           placeholder="Search packages…"
           value={q}
           onChange={(e) => setF({ q: e.target.value || null, page: 1 }, { history: "replace" })}
-          className="w-full bg-transparent pl-8 pr-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+          className="w-full bg-transparent pl-8 pr-3 py-2.5 text-sm text-ink-1 placeholder-ink-4 outline-none"
         />
       </div>
       <FilterClear count={activeCount} onClear={() => setFilter({ type: null, eco: null, sev: null, window: null })} />
-      <span className="shrink-0 text-xs text-zinc-500 pr-1">
+      <span className="shrink-0 text-xs text-ink-3 pr-1">
         {data ? `${data.total.toLocaleString()} events` : ""}
       </span>
     </>
@@ -154,8 +145,8 @@ export function EventsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-lg font-bold text-white">Security events</h1>
-        <p className="text-sm text-zinc-500">
+        <h1 className="text-lg font-bold text-ink-1">Security events</h1>
+        <p className="text-sm text-ink-3">
           A ledger of what happened — if a contract like this existed, it would've hit.
         </p>
       </div>

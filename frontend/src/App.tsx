@@ -51,8 +51,8 @@ function AppInner() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: "#15191D" }}>
-        <div className="h-6 w-6 rounded-full border-2 border-[#FDE832] border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center gap-4">
+        <div className="h-6 w-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -61,8 +61,7 @@ function AppInner() {
 
   return (
     <div
-      className={isFullHeight ? "flex h-dvh flex-col overflow-hidden text-white" : "min-h-screen text-white"}
-      style={{ backgroundColor: "#15191D" }}
+      className={isFullHeight ? "flex h-dvh flex-col overflow-hidden text-ink-1" : "min-h-screen text-ink-1"}
     >
       <Navbar user={me ?? undefined} activeSector={activeSector} />
 

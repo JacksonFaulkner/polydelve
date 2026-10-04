@@ -57,7 +57,7 @@ function newsBackground(item: NewsItem, size: CardSize) {
           className="w-full object-cover object-top"
           loading="lazy"
         />
-        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-[#181D21]" />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-surface-1" />
       </div>
 
       {/* content */}
@@ -65,24 +65,24 @@ function newsBackground(item: NewsItem, size: CardSize) {
         {/* source metadata. top */}
         <div className="flex items-center gap-1.5 mb-2 shrink-0">
           {favicon && <img src={favicon} alt="" className="h-3.5 w-3.5 rounded-sm opacity-70" />}
-          <span className="text-[10px] font-medium text-zinc-400">{item.source_name}</span>
-          <span className="text-zinc-700">·</span>
-          <span className="text-[10px] text-zinc-600">{timeAgo(item.published_at)}</span>
+          <span className="text-[11px] font-medium text-ink-2">{item.source_name}</span>
+          <span className="text-ink-4">·</span>
+          <span className="text-[11px] text-ink-4">{timeAgo(item.published_at)}</span>
           {item.severity && (
             <>
-              <span className="text-zinc-700">·</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{item.severity}</span>
+              <span className="text-ink-4">·</span>
+              <span className="text-[9px] font-bold text-ink-3">{item.severity}</span>
             </>
           )}
         </div>
 
-        <p className={`font-bold text-zinc-100 leading-snug shrink-0 ${size === "small" ? "text-xs line-clamp-4" : "text-sm line-clamp-4"}`}>
+        <p className={`font-bold text-ink-1 leading-snug shrink-0 ${size === "small" ? "text-xs line-clamp-4" : "text-sm line-clamp-4"}`}>
           {item.title}
         </p>
 
         {item.summary && (
-          <div className={`border-t border-zinc-800/60 mt-2 pt-2 flex-1 overflow-hidden transition-all duration-300 ${size === "small" ? "group-hover:hidden" : ""}`}>
-            <p className={`text-zinc-400 leading-relaxed text-xs ${SUMMARY_LINES[size]}`}>
+          <div className={`border-t border-line-1/60 mt-2 pt-2 flex-1 overflow-hidden transition-all duration-300 ${size === "small" ? "group-hover:hidden" : ""}`}>
+            <p className={`text-ink-2 leading-relaxed text-xs ${SUMMARY_LINES[size]}`}>
               {item.summary}
             </p>
           </div>
@@ -147,15 +147,15 @@ export function NewsPage() {
             <button
               onClick={() => setSlide((s) => Math.max(0, s - 1))}
               disabled={slide === 0}
-              className="rounded-full border border-zinc-700 p-1 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="rounded-full border border-line-2 p-1 text-ink-2 hover:border-line-3 hover:text-ink-1 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-3 w-3" />
             </button>
-            <span className="text-xs text-zinc-500">{slide + 1} / {totalSlides}</span>
+            <span className="text-xs text-ink-3">{slide + 1} / {totalSlides}</span>
             <button
               onClick={() => setSlide((s) => Math.min(totalSlides - 1, s + 1))}
               disabled={slide >= totalSlides - 1}
-              className="rounded-full border border-zinc-700 p-1 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="rounded-full border border-line-2 p-1 text-ink-2 hover:border-line-3 hover:text-ink-1 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="h-3 w-3" />
             </button>
@@ -164,12 +164,12 @@ export function NewsPage() {
 
         {/* Content */}
         {loading ? (
-          <div className="flex flex-1 items-center justify-center text-zinc-500 text-sm">Loading…</div>
+          <div className="flex flex-1 items-center justify-center text-ink-3 text-sm">Loading…</div>
         ) : items.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-zinc-500 text-sm">No articles found</div>
+          <div className="flex flex-1 items-center justify-center text-ink-3 text-sm">No articles found</div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-hidden rounded border border-zinc-800 bg-zinc-800">
-            <BentoGrid className="h-full gap-px lg:grid-rows-3 [&>*]:bg-[#181D21] [&>*]:rounded-none [&>*]:dark:[box-shadow:none] [&>*]:dark:border-0">
+          <div className="flex-1 min-h-0 overflow-hidden rounded border border-line-1 bg-surface-2">
+            <BentoGrid className="h-full gap-px lg:grid-rows-3 [&>*]:bg-surface-1 [&>*]:rounded-none [&>*]:dark:[box-shadow:none] [&>*]:dark:border-0">
               {current.slice(0, 6).map((item, i) => {
                 const size = CARD_SIZES[i] ?? "small"
                 return (

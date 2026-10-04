@@ -12,24 +12,24 @@ export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded border border-zinc-700 bg-[#1B2025] p-6 text-center"
+        className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-white">Create a free account to bet</h2>
-        <p className="mt-2 text-sm text-zinc-400">
+        <h2 className="text-lg font-bold text-ink-1">Create a free account to bet</h2>
+        <p className="mt-2 text-sm text-ink-2">
           You can browse packages and run simulations without an account. To place a
           contract and earn bits, sign up. it takes a few seconds.
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button
             onClick={() => loginWithRedirect()}
-            className="rounded bg-[#FDE832] px-4 py-2 text-sm font-bold text-[#15191D]"
+            className="btn-primary px-4 py-2 text-sm"
           >
             Sign up / Sign in
           </button>
           <button
             onClick={onClose}
-            className="rounded px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200"
+            className="rounded px-4 py-2 text-sm font-medium text-ink-2 hover:text-ink-1"
           >
             Keep browsing
           </button>

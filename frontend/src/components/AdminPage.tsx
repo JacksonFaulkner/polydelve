@@ -4,7 +4,7 @@ import type { Market } from "@/types"
 const STATUS_STYLES: Record<string, string> = {
   open: "bg-green-900/60 text-green-300",
   won: "bg-blue-900/60 text-blue-300",
-  expired: "bg-zinc-700 text-zinc-400",
+  expired: "bg-surface-3 text-ink-2",
 }
 
 function StatusBadge({ status }: { status: Market["status"] }) {
@@ -96,19 +96,19 @@ export function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-white">Markets Admin</h1>
-          <p className="text-xs text-zinc-500">{markets.length} markets · in-memory edit · export to update mock</p>
+          <h1 className="text-lg font-semibold text-ink-1">Markets Admin</h1>
+          <p className="text-xs text-ink-3">{markets.length} markets · in-memory edit · export to update mock</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={exportJson}
-            className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-white transition-colors"
+            className="rounded border border-line-2 px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-line-3 hover:text-ink-1 transition-colors"
           >
             {copied ? "Copied!" : "Export JSON"}
           </button>
           <button
             onClick={() => setShowCreate((v) => !v)}
-            className="rounded bg-[#FDE832] px-3 py-1.5 text-xs font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
+            className="btn-primary px-3 py-1.5 text-xs"
           >
             + New Market
           </button>
@@ -117,40 +117,40 @@ export function AdminPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded border border-zinc-700 bg-zinc-900 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-200">New Market</h3>
+        <div className="rounded border border-line-2 bg-surface-1 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-ink-1">New Market</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-zinc-500">Title</label>
+              <label className="text-xs text-ink-3">Title</label>
               <input
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. requests actively exploited within 30 days"
               />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-zinc-500">Description</label>
+              <label className="text-xs text-ink-3">Description</label>
               <textarea
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500 resize-none"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3 resize-none"
                 rows={2}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-500">Package name</label>
+              <label className="text-xs text-ink-3">Package name</label>
               <input
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.packageName}
                 onChange={(e) => setForm((f) => ({ ...f, packageName: e.target.value }))}
                 placeholder="requests"
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-500">Ecosystem</label>
+              <label className="text-xs text-ink-3">Ecosystem</label>
               <select
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.ecosystem}
                 onChange={(e) => setForm((f) => ({ ...f, ecosystem: e.target.value }))}
               >
@@ -159,27 +159,27 @@ export function AdminPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-zinc-500">EPSS threshold (0–1)</label>
+              <label className="text-xs text-ink-3">EPSS threshold (0–1)</label>
               <input
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.epssThreshold}
                 onChange={(e) => setForm((f) => ({ ...f, epssThreshold: e.target.value }))}
                 placeholder="0.94"
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-500">CVSS threshold (optional)</label>
+              <label className="text-xs text-ink-3">CVSS threshold (optional)</label>
               <input
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.cvssThreshold}
                 onChange={(e) => setForm((f) => ({ ...f, cvssThreshold: e.target.value }))}
                 placeholder="9.0"
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-500">Duration (days)</label>
+              <label className="text-xs text-ink-3">Duration (days)</label>
               <select
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.durationDays}
                 onChange={(e) => setForm((f) => ({ ...f, durationDays: e.target.value }))}
               >
@@ -189,9 +189,9 @@ export function AdminPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-zinc-500">Price (bits)</label>
+              <label className="text-xs text-ink-3">Price (bits)</label>
               <input
-                className="mt-1 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-zinc-500"
+                className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 text-sm text-ink-1 outline-none focus:border-line-3"
                 value={form.purchasePrice}
                 onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))}
                 placeholder="100"
@@ -201,13 +201,13 @@ export function AdminPage() {
           <div className="flex gap-2 pt-1">
             <button
               onClick={createMarket}
-              className="rounded bg-[#FDE832] px-4 py-1.5 text-xs font-bold text-zinc-900 hover:bg-yellow-300 transition-colors"
+              className="btn-primary px-4 py-1.5 text-xs"
             >
               Create
             </button>
             <button
               onClick={() => { setShowCreate(false); setForm(EMPTY_FORM) }}
-              className="rounded border border-zinc-700 px-4 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="rounded border border-line-2 px-4 py-1.5 text-xs text-ink-2 hover:text-ink-1 transition-colors"
             >
               Cancel
             </button>
@@ -216,36 +216,36 @@ export function AdminPage() {
       )}
 
       {/* Markets table */}
-      <div className="rounded border border-zinc-800 overflow-hidden">
+      <div className="rounded border border-line-1 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900 border-b border-zinc-800">
+          <thead className="bg-surface-1 border-b border-line-1">
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Package</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Title</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">EPSS</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Duration</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Price</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Max Payout</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Bets</th>
-              <th className="px-4 py-2.5 text-right text-xs font-medium text-zinc-500">Actions</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Package</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Title</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">EPSS</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Duration</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Price</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Max Payout</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-ink-3">Bets</th>
+              <th className="px-4 py-2.5 text-right text-xs font-medium text-ink-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60">
+          <tbody className="divide-y divide-line-1/60">
             {markets.map((m) => (
-              <tr key={m.id} className="hover:bg-zinc-800/20">
+              <tr key={m.id} className="hover:bg-surface-2/20">
                 <td className="px-4 py-2.5">
-                  <div className="font-mono text-xs text-zinc-300">{m.package.name}</div>
-                  <div className="text-[10px] text-zinc-600">{m.package.ecosystem}</div>
+                  <div className="font-mono text-xs text-ink-2">{m.package.name}</div>
+                  <div className="text-[11px] text-ink-4">{m.package.ecosystem}</div>
                 </td>
                 <td className="px-4 py-2.5 max-w-xs">
-                  <p className="text-xs text-zinc-300 line-clamp-2">{m.title}</p>
+                  <p className="text-xs text-ink-2 line-clamp-2">{m.title}</p>
                 </td>
                 <td className="px-4 py-2.5">
                   {editing === m.id ? (
                     <div className="flex items-center gap-1.5">
                       <select
-                        className="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-200 outline-none"
+                        className="rounded border border-line-2 bg-surface-2 px-2 py-0.5 text-xs text-ink-1 outline-none"
                         value={editStatus}
                         onChange={(e) => setEditStatus(e.target.value as Market["status"])}
                       >
@@ -255,13 +255,13 @@ export function AdminPage() {
                       </select>
                       <button
                         onClick={() => saveStatus(m.id)}
-                        className="text-[10px] text-green-400 hover:text-green-300"
+                        className="text-[11px] text-green-400 hover:text-green-300"
                       >
                         Save
                       </button>
                       <button
                         onClick={() => setEditing(null)}
-                        className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                        className="text-[11px] text-ink-3 hover:text-ink-2"
                       >
                         ×
                       </button>
@@ -270,26 +270,26 @@ export function AdminPage() {
                     <StatusBadge status={m.status} />
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
+                <td className="px-4 py-2.5 text-xs text-ink-2 tabular-nums">
                   {m.contract.epss_threshold != null ? `≥${(m.contract.epss_threshold * 100).toFixed(0)}%` : ""}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400">
+                <td className="px-4 py-2.5 text-xs text-ink-2">
                   {m.contract.duration_days}d
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
+                <td className="px-4 py-2.5 text-xs text-ink-2 tabular-nums">
                   {m.contract.purchase_price} bits
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
+                <td className="px-4 py-2.5 text-xs text-ink-2 tabular-nums">
                   {m.max_payout} bits
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400 tabular-nums">
+                <td className="px-4 py-2.5 text-xs text-ink-2 tabular-nums">
                   {m.bet_count.toLocaleString()}
                 </td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => { setEditing(m.id); setEditStatus(m.status) }}
-                      className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
+                      className="text-xs text-ink-3 hover:text-ink-1 transition-colors"
                     >
                       Edit
                     </button>

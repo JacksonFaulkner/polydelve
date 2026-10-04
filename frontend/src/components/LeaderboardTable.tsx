@@ -18,87 +18,87 @@ const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" }
 
 const columns = [
   col.accessor("rank", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">#</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">#</span>,
     enableSorting: false,
     cell: (info) => {
       const r = info.getValue()
       return (
-        <span className="tabular-nums text-sm text-zinc-400">
+        <span className="tabular-nums text-sm text-ink-2">
           {MEDAL[r] ?? r}
         </span>
       )
     },
   }),
   col.accessor("username", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">User</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">User</span>,
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue()
       return (
-        <span className="font-mono text-sm text-zinc-100 truncate">
-          {v ?? <span className="text-zinc-600 italic">anonymous</span>}
+        <span className="font-mono text-sm text-ink-1 truncate">
+          {v ?? <span className="text-ink-4 italic">anonymous</span>}
         </span>
       )
     },
   }),
   col.accessor("bits", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Bits</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">Bits</span>,
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue()
       return (
         <div className="flex items-center gap-1.5">
-          <BitIcon className="h-3.5 w-3.5 text-[#FDE832]" />
-          <span className="tabular-nums text-sm text-zinc-200 font-medium">{v.toLocaleString()}</span>
+          <BitIcon className="h-3.5 w-3.5 text-brand" />
+          <span className="tabular-nums text-sm text-ink-1 font-medium">{v.toLocaleString()}</span>
         </div>
       )
     },
   }),
   col.accessor("total_contracts", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Contracts</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">Contracts</span>,
     enableSorting: false,
     meta: { className: "hidden sm:table-cell" },
     cell: (info) => (
-      <span className="tabular-nums text-sm text-zinc-400">{info.getValue()}</span>
+      <span className="tabular-nums text-sm text-ink-2">{info.getValue()}</span>
     ),
   }),
   col.accessor("open_contracts", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Open</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">Open</span>,
     enableSorting: false,
     meta: { className: "hidden sm:table-cell" },
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
         <span className="rounded bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">{v}</span>
-      ) : <span className="text-zinc-600">0</span>
+      ) : <span className="text-ink-4">0</span>
     },
   }),
   col.accessor("won_contracts", {
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Won</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">Won</span>,
     enableSorting: false,
     meta: { className: "hidden sm:table-cell" },
     cell: (info) => {
       const v = info.getValue()
       return v > 0 ? (
         <span className="rounded bg-green-900/50 px-2 py-0.5 text-xs text-green-300">{v}</span>
-      ) : <span className="text-zinc-600">0</span>
+      ) : <span className="text-ink-4">0</span>
     },
   }),
   col.display({
     id: "win_rate",
-    header: () => <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Win Rate</span>,
+    header: () => <span className="text-ink-3 text-xs font-semibold">Win Rate</span>,
     meta: { className: "hidden md:table-cell" },
     cell: (info) => {
       const { total_contracts, won_contracts } = info.row.original
-      if (!total_contracts) return <span className="text-zinc-600">  </span>
+      if (!total_contracts) return <span className="text-ink-4">  </span>
       const pct = Math.round((won_contracts / total_contracts) * 100)
-      const color = pct >= 60 ? "bg-green-500" : pct >= 30 ? "bg-yellow-400" : "bg-zinc-500"
+      const color = pct >= 60 ? "bg-green-500" : pct >= 30 ? "bg-yellow-400" : "bg-surface-3"
       return (
         <div className="flex items-center gap-2">
-          <div className="w-16 h-1.5 rounded-full bg-zinc-700">
+          <div className="w-16 h-1.5 rounded-full bg-surface-3">
             <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
           </div>
-          <span className="tabular-nums text-xs text-zinc-300">{pct}%</span>
+          <span className="tabular-nums text-xs text-ink-2">{pct}%</span>
         </div>
       )
     },
@@ -157,35 +157,35 @@ export function LeaderboardTable() {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded border border-zinc-800">
-        <div className="flex items-center gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
+      <div className="overflow-hidden rounded border border-line-1">
+        <div className="flex items-center gap-3 border-b border-line-2 bg-surface-2/70 px-3">
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3 pointer-events-none" />
             <input
               ref={searchRef}
               type="text"
               placeholder="Search players…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+              className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-ink-1 placeholder-ink-4 outline-none"
             />
             {search && (
               <button
                 onClick={() => { setSearch(""); searchRef.current?.focus() }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                 aria-label="Clear search"
               >
                 ✕
               </button>
             )}
           </div>
-          <span className="shrink-0 text-xs text-zinc-500 pr-1">{total.toLocaleString()} players</span>
+          <span className="shrink-0 text-xs text-ink-3 pr-1">{total.toLocaleString()} players</span>
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-zinc-800">
+              <tr key={hg.id} className="border-b border-line-1">
                 {hg.headers.map((header) => (
                   <th
                     key={header.id}
@@ -201,11 +201,11 @@ export function LeaderboardTable() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={colCount + 1} className="py-12 text-center text-zinc-500">Loading…</td>
+                <td colSpan={colCount + 1} className="py-12 text-center text-ink-3">Loading…</td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={colCount + 1} className="py-12 text-center text-zinc-500">No users</td>
+                <td colSpan={colCount + 1} className="py-12 text-center text-ink-3">No users</td>
               </tr>
             ) : (
               table.getRowModel().rows.flatMap((row) => {
@@ -215,7 +215,7 @@ export function LeaderboardTable() {
                   <tr
                     key={row.id}
                     onClick={() => toggleRow(user.id)}
-                    className={`border-b border-zinc-800/50 cursor-pointer transition-colors hover:bg-zinc-800/30 ${isExpanded ? "bg-zinc-800/20" : ""}`}
+                    className={`border-b border-line-1/50 cursor-pointer transition-colors hover:bg-surface-2/30 ${isExpanded ? "bg-surface-2/20" : ""}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -225,7 +225,7 @@ export function LeaderboardTable() {
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
-                    <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
+                    <td className="px-2 py-2.5 text-ink-4 text-xs select-none">
                       {isExpanded ? "▲" : "▼"}
                     </td>
                   </tr>,
@@ -246,13 +246,13 @@ export function LeaderboardTable() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-zinc-500">
+      <div className="flex items-center justify-between text-xs text-ink-3">
         <span>{total.toLocaleString()} players</span>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded border border-line-2 px-2.5 py-1 hover:border-line-3 hover:text-ink-2 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ←
           </button>
@@ -260,7 +260,7 @@ export function LeaderboardTable() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded border border-line-2 px-2.5 py-1 hover:border-line-3 hover:text-ink-2 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             →
           </button>

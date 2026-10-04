@@ -3,16 +3,7 @@ import { createPortal } from "react-dom"
 import EpssChart from "./EpssChart"
 import type { PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
-
-const SEV_COLOR: Record<string, string> = {
-  critical: "#f87171",
-  high: "#fb923c",
-  medium: "#facc15",
-  low: "#71717a",
-}
-
-const SCORE_COLOR = (s: number) =>
-  s >= 9 ? "#f87171" : s >= 7 ? "#fb923c" : s >= 4 ? "#facc15" : "#71717a"
+import { SEV_COLOR, SEV_FALLBACK, scoreColor } from "@/lib/severity"
 
 interface Props {
   name: string
@@ -62,25 +53,25 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded border border-zinc-700 bg-[#15191D] shadow-2xl"
+        className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded border border-line-2 bg-surface-0 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-[#15191D] px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line-1 bg-surface-0 px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className={`rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+            <span className={`rounded px-2 py-0.5 text-[11px] font-bold ${
               ecosystem === "npm" ? "bg-red-900/50 text-red-300" : "bg-blue-900/50 text-blue-300"
             }`}>
               {ecosystem}
             </span>
-            <span className="font-mono text-lg font-semibold text-zinc-100">{name}</span>
+            <span className="font-mono text-lg font-semibold text-ink-1">{name}</span>
             {detail?.has_mal_advisory && (
               <span className="rounded bg-rose-900/60 px-2 py-0.5 text-xs font-bold text-rose-300">MAL</span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-full p-1.5 text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink-1"
           >
             ✕
           </button>
@@ -88,9 +79,9 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
 
         <div className="p-6">
           {loading ? (
-            <div className="py-16 text-center text-zinc-500">Loading…</div>
+            <div className="py-16 text-center text-ink-3">Loading…</div>
           ) : !detail ? (
-            <div className="py-16 text-center text-zinc-500">Failed to load</div>
+            <div className="py-16 text-center text-ink-3">Failed to load</div>
           ) : (
             <div className="space-y-6">
               {/* Stats */}
@@ -102,18 +93,18 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                   ["Risk Score", detail.risk_score ? (detail.risk_score / 1_000_000).toFixed(1) + "M" : ""],
                 ].map(([label, val]) => (
                   <div key={label}>
-                    <p className="text-xs text-zinc-500">{label}</p>
-                    <p className="font-medium text-zinc-200 tabular-nums">{val}</p>
+                    <p className="text-xs text-ink-3">{label}</p>
+                    <p className="font-medium text-ink-1 tabular-nums">{val}</p>
                   </div>
                 ))}
                 {detail.sectors.map((s) => (
-                  <span key={s} className="self-end rounded bg-zinc-700/60 px-2 py-0.5 text-xs text-zinc-400">{s}</span>
+                  <span key={s} className="self-end rounded bg-surface-3/60 px-2 py-0.5 text-xs text-ink-2">{s}</span>
                 ))}
               </div>
 
               {/* EPSS chart */}
               {epssChart && (
-                <div className="h-56 rounded border border-zinc-800">
+                <div className="h-56 rounded border border-line-1">
                   <EpssChart
                     data={epssChart.chartData}
                     cveData={epssChart.scatterData}
@@ -125,12 +116,12 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
 
               {/* CVE table */}
               {detail.cve_history.length > 0 && (
-                <div className="max-h-64 overflow-y-auto rounded border border-zinc-800">
+                <div className="max-h-64 overflow-y-auto rounded border border-line-1">
                   <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-zinc-900">
-                      <tr className="border-b border-zinc-800">
+                    <thead className="sticky top-0 bg-surface-1">
+                      <tr className="border-b border-line-1">
                         {["CVE ID", "Published", "Severity", "Score"].map((h) => (
-                          <th key={h} className="px-3 py-2 text-left font-medium text-zinc-500">{h}</th>
+                          <th key={h} className="px-3 py-2 text-left font-medium text-ink-3">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -138,8 +129,8 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                       {detail.cve_history.map((c) => (
                         <tr
                           key={c.osv_id}
-                          className={`border-b border-zinc-800/50 transition-colors ${
-                            selectedCveId && c.cve_id === selectedCveId ? "bg-zinc-700/50" : "hover:bg-zinc-800/30"
+                          className={`border-b border-line-1/50 transition-colors ${
+                            selectedCveId && c.cve_id === selectedCveId ? "bg-surface-3/50" : "hover:bg-surface-2/30"
                           }`}
                         >
                           <td className="px-3 py-1.5 font-mono">
@@ -147,21 +138,21 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                               <a
                                 href={`https://nvd.nist.gov/vuln/detail/${c.cve_id}`}
                                 target="_blank" rel="noopener noreferrer"
-                                className="text-zinc-300 underline decoration-zinc-600 hover:text-white hover:decoration-zinc-400 transition-colors"
+                                className="text-ink-2 underline decoration-line-3 hover:text-ink-1 hover:decoration-ink-3 transition-colors"
                               >{c.cve_id}</a>
-                            ) : <span className="text-zinc-300">{c.osv_id}</span>}
+                            ) : <span className="text-ink-2">{c.osv_id}</span>}
                           </td>
-                          <td className="px-3 py-1.5 tabular-nums text-zinc-500">{c.published_date?.slice(0, 10) ?? ""}</td>
+                          <td className="px-3 py-1.5 tabular-nums text-ink-3">{c.published_date?.slice(0, 10) ?? ""}</td>
                           <td className="px-3 py-1.5">
                             {c.severity
-                              ? <span className="capitalize font-medium" style={{ color: SEV_COLOR[c.severity] ?? "#71717a" }}>{c.severity}</span>
+                              ? <span className="capitalize font-medium" style={{ color: SEV_COLOR[c.severity] ?? SEV_FALLBACK }}>{c.severity}</span>
                               : ""}
                           </td>
                           <td className="px-3 py-1.5 tabular-nums">
                             {c.cvss_score != null ? (
                               <span
                                 className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
-                                style={{ backgroundColor: `${SCORE_COLOR(c.cvss_score)}22`, color: SCORE_COLOR(c.cvss_score) }}
+                                style={{ backgroundColor: `${scoreColor(c.cvss_score)}22`, color: scoreColor(c.cvss_score) }}
                               >{c.cvss_score.toFixed(1)}</span>
                             ) : ""}
                           </td>
@@ -175,16 +166,16 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
               {/* Recent news */}
               {detail.recent_news.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Recent news</p>
+                  <p className="text-xs font-semibold text-ink-3">Recent news</p>
                   {detail.recent_news.slice(0, 3).map((n) => (
                     <a
                       key={n.id}
                       href={n.url}
                       target="_blank" rel="noopener noreferrer"
-                      className="block rounded border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-600"
+                      className="block rounded border border-line-1 px-3 py-2 transition-colors hover:border-line-3"
                     >
-                      <p className="text-sm text-zinc-200 line-clamp-1">{n.title}</p>
-                      <p className="mt-0.5 text-xs text-zinc-500">{n.source_name} · {n.published_date?.slice(0, 10)}</p>
+                      <p className="text-sm text-ink-1 line-clamp-1">{n.title}</p>
+                      <p className="mt-0.5 text-xs text-ink-3">{n.source_name} · {n.published_date?.slice(0, 10)}</p>
                     </a>
                   ))}
                 </div>

@@ -24,9 +24,9 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload?.length) return null
   const pt = payload[0].payload
   return (
-    <div className="rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs shadow">
-      <p className="text-zinc-400">{pt.date}</p>
-      <p className="font-semibold text-[#FDE832] tabular-nums">{pt.balance.toLocaleString()} bits</p>
+    <div className="rounded border border-line-2 bg-surface-1 px-2.5 py-1.5 text-xs shadow">
+      <p className="text-ink-2">{pt.date}</p>
+      <p className="font-semibold text-brand tabular-nums">{pt.balance.toLocaleString()} bits</p>
       {pt.event && (
         <p className="capitalize" style={{ color: EVENT_COLOR[pt.event] ?? "#a1a1aa" }}>
           {pt.event}
@@ -38,7 +38,7 @@ function CustomTooltip({ active, payload }: TooltipProps) {
 
 export function BitTimeline({ points }: { points: BitPoint[] }) {
   if (points.length < 2) return (
-    <p className="py-6 text-center text-xs text-zinc-600">Not enough history</p>
+    <p className="py-6 text-center text-xs text-ink-4">Not enough history</p>
   )
 
   const balances = points.map((p) => p.balance)
@@ -49,7 +49,7 @@ export function BitTimeline({ points }: { points: BitPoint[] }) {
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-3 text-[10px] text-zinc-500">
+      <div className="flex items-center gap-3 text-[11px] text-ink-3">
         {Object.entries(EVENT_COLOR).map(([label, color]) => (
           <span key={label} className="flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />

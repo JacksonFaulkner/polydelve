@@ -136,11 +136,11 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
 
   return (
     <div className="mx-auto max-w-lg py-8">
-      <div className="rounded border border-zinc-800 bg-[#1C2128] p-6 space-y-4">
+      <div className="rounded border border-line-1 bg-surface-1 p-6 space-y-4">
         <div className="flex items-center gap-4">
           {/* Avatar with upload overlay */}
           <div className="relative group shrink-0">
-            <div className="h-16 w-16 rounded-full overflow-hidden bg-zinc-700">
+            <div className="h-16 w-16 rounded-full overflow-hidden bg-surface-3">
               {avatarSrc ? (
                 <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -150,7 +150,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
-              className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white font-medium disabled:cursor-wait"
+              className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-ink-1 font-medium disabled:cursor-wait"
             >
               {avatarUploading ? "…" : "Change"}
             </button>
@@ -168,19 +168,19 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
           </div>
 
           <div className="space-y-0.5 min-w-0">
-            <p className="text-lg font-semibold text-white truncate">{user?.username ?? ""}</p>
+            <p className="text-lg font-semibold text-ink-1 truncate">{user?.username ?? ""}</p>
             {"email" in (auth0User ?? {}) && (
-              <p className="text-sm text-zinc-400 truncate">{(auth0User as { email?: string })?.email}</p>
+              <p className="text-sm text-ink-2 truncate">{(auth0User as { email?: string })?.email}</p>
             )}
           </div>
         </div>
 
         {avatarError && <p className="text-xs text-red-400">{avatarError}</p>}
 
-        <div className="flex items-center gap-2 rounded border border-zinc-700 bg-zinc-800/50 px-4 py-3">
-          <BitIcon className="h-5 w-5 text-[#FDE832]" />
-          <span className="text-sm text-zinc-300">Balance</span>
-          <span className="ml-auto font-bold tabular-nums text-white">
+        <div className="flex items-center gap-2 rounded border border-line-2 bg-surface-2/50 px-4 py-3">
+          <BitIcon className="h-5 w-5 text-brand" />
+          <span className="text-sm text-ink-2">Balance</span>
+          <span className="ml-auto font-bold tabular-nums text-ink-1">
             {user?.bits.toLocaleString() ?? ""}
           </span>
         </div>
@@ -194,7 +194,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
               onChange={(e) => { setValue(e.target.value); setUsernameError(null); setDirty(true) }}
               maxLength={20}
               autoFocus
-              className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 outline-none focus:border-[#FDE832] focus:ring-1 focus:ring-[#FDE832]"
+              className="w-full rounded border border-line-3 bg-surface-2 px-4 py-2.5 text-ink-1 placeholder-ink-3 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
             {(validationError || usernameError) && (
               <p className="text-xs text-red-400">{validationError ?? usernameError}</p>
@@ -203,14 +203,14 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
               <button
                 type="submit"
                 disabled={saving || !value || !!validationError}
-                className="flex-1 rounded bg-[#FDE832] py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 btn-primary py-2 text-sm"
               >
                 {saving ? "Saving…" : "Save"}
               </button>
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="rounded border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="rounded border border-line-2 px-4 py-2 text-sm text-ink-2 hover:text-ink-1 transition-colors"
               >
                 Cancel
               </button>
@@ -219,7 +219,7 @@ export function SettingsPage({ user, onUsernameChange }: Props) {
         ) : (
           <button
             onClick={startEdit}
-            className="w-full rounded border border-zinc-700 px-4 py-2.5 text-sm text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+            className="w-full rounded border border-line-2 px-4 py-2.5 text-sm text-ink-2 hover:border-line-3 hover:text-ink-1 transition-colors"
           >
             {saved ? "Username updated ✓" : "Change username"}
           </button>

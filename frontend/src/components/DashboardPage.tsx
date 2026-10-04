@@ -26,10 +26,10 @@ interface UserContract {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  open: "text-[#FDE832] bg-[#FDE832]/10 border-[#FDE832]/30",
+  open: "text-brand bg-brand/10 border-brand/30",
   won: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
   sold: "text-blue-400 bg-blue-500/10 border-blue-500/30",
-  expired: "text-zinc-500 bg-zinc-800 border-zinc-700",
+  expired: "text-ink-3 bg-surface-2 border-line-2",
   lost: "text-red-400 bg-red-500/10 border-red-500/30",
 }
 
@@ -41,7 +41,7 @@ function daysUntil(dateStr: string): number {
 function pnlColor(v: number) {
   if (v > 0) return "text-emerald-400"
   if (v < 0) return "text-red-400"
-  return "text-zinc-400"
+  return "text-ink-2"
 }
 
 export function DashboardPage() {
@@ -82,7 +82,7 @@ export function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-5 w-5 rounded-full border-2 border-[#FDE832] border-t-transparent animate-spin" />
+        <div className="h-5 w-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     )
   }
@@ -104,17 +104,17 @@ export function DashboardPage() {
 
       {/* Balance timeline */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-400">Balance over time</h2>
-        <div className="rounded border border-zinc-800 bg-[#1C2229] p-4">
+        <h2 className="mb-3 text-sm font-semibold text-ink-2">Balance over time</h2>
+        <div className="rounded border border-line-1 bg-surface-2 p-4">
           <BitTimeline points={timeline} />
         </div>
       </section>
 
       {/* Active contracts */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-400">Active contracts ({open.length})</h2>
+        <h2 className="mb-3 text-sm font-semibold text-ink-2">Active contracts ({open.length})</h2>
         {open.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-[#1C2229] p-8 text-center text-sm text-zinc-600">
+          <p className="rounded border border-line-1 bg-surface-2 p-8 text-center text-sm text-ink-4">
             No open contracts. Go to Predict to buy one.
           </p>
         ) : (
@@ -125,7 +125,7 @@ export function DashboardPage() {
       {/* History */}
       {closed.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-zinc-400">History ({closed.length})</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink-2">History ({closed.length})</h2>
           <ContractTable contracts={closed} />
         </section>
       )}
@@ -146,9 +146,9 @@ function StatCard({
   icon?: boolean
 }) {
   return (
-    <div className="rounded border border-zinc-800 bg-[#1C2229] p-4">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className={`mt-1 flex items-center gap-1 text-lg font-bold tabular-nums ${valueClass ?? "text-white"}`}>
+    <div className="rounded border border-line-1 bg-surface-2 p-4">
+      <p className="text-xs text-ink-3">{label}</p>
+      <p className={`mt-1 flex items-center gap-1 text-lg font-bold tabular-nums ${valueClass ?? "text-ink-1"}`}>
         {icon && <BitIcon className="h-4 w-4 shrink-0" />}
         {value}
       </p>
@@ -157,7 +157,7 @@ function StatCard({
 }
 
 function GradeScore({ grade }: { grade: number | null }) {
-  if (grade == null) return <span className="text-zinc-600">  </span>
+  if (grade == null) return <span className="text-ink-4">  </span>
   const g = Math.round(grade * 10) / 10
   const color = g >= 8 ? "text-red-400 border-red-500/30 bg-red-500/10"
     : g >= 6 ? "text-orange-400 border-orange-500/30 bg-orange-500/10"
@@ -177,11 +177,11 @@ function ContractCard({ c }: { c: UserContract }) {
   const days = daysUntil(c.expires_at)
 
   return (
-    <div className="rounded border border-zinc-800 bg-[#1C2229] p-4">
+    <div className="rounded border border-line-1 bg-surface-2 p-4">
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <span className="font-medium text-white truncate block">{c.package_name}</span>
-          <span className="text-xs text-zinc-500">{c.ecosystem}</span>
+          <span className="font-medium text-ink-1 truncate block">{c.package_name}</span>
+          <span className="text-xs text-ink-3">{c.ecosystem}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <GradeScore grade={c.package_grade} />
@@ -193,21 +193,21 @@ function ContractCard({ c }: { c: UserContract }) {
 
       <div className="grid grid-cols-3 gap-2 text-xs mb-3">
         <div>
-          <p className="text-zinc-600 mb-0.5">Cost</p>
-          <p className="tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</p>
+          <p className="text-ink-4 mb-0.5">Cost</p>
+          <p className="tabular-nums text-ink-2">{c.purchase_price.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-zinc-600 mb-0.5">Max payout</p>
-          <p className="tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</p>
+          <p className="text-ink-4 mb-0.5">Max payout</p>
+          <p className="tabular-nums text-ink-2">{c.max_payout.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-zinc-600 mb-0.5">P&L</p>
+          <p className="text-ink-4 mb-0.5">P&L</p>
           <p className={`tabular-nums font-medium ${pnlColor(pnl)}`}>{pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-ink-3">
           {c.status === "open"
             ? days === 0 ? <span className="text-red-400">Expires today</span> : `Expires in ${days}d`
             : c.resolved_at ? c.resolved_at.slice(0, 10) : c.expires_at.slice(0, 10)}
@@ -215,7 +215,7 @@ function ContractCard({ c }: { c: UserContract }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-ink-3 hover:text-ink-2 transition-colors"
           >
             {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
@@ -223,7 +223,7 @@ function ContractCard({ c }: { c: UserContract }) {
       </div>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-zinc-800">
+        <div className="mt-3 pt-3 border-t border-line-1">
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs mb-4">
             <Detail label="Contract ID" value={c.id.slice(0, 8) + "…"} />
             <Detail label="Opened" value={c.created_at.slice(0, 10)} />
@@ -256,10 +256,10 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden sm:block overflow-x-auto rounded border border-zinc-800">
+      <div className="hidden sm:block overflow-x-auto rounded border border-line-1">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+            <tr className="border-b border-line-1 text-left text-xs text-ink-3">
               <th className="w-6 px-3 py-2.5" />
               <th className="px-4 py-2.5 font-medium">Package</th>
               <th className="px-4 py-2.5 font-medium">Risk</th>
@@ -271,7 +271,7 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
               <th className="px-4 py-2.5 font-medium">Expires</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60">
+          <tbody className="divide-y divide-line-1/60">
             {contracts.map((c) => {
               const value = c.status === "sold" ? (c.sell_price ?? 0) : c.status === "won" ? c.max_payout : c.status === "lost" ? 0 : (c.current_value ?? c.purchase_price)
               const pnl = value - c.purchase_price
@@ -281,15 +281,15 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
               return (
                 <Fragment key={c.id}>
                   <tr
-                    className="bg-[#1C2229] hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                    className="bg-surface-2 hover:bg-surface-2/40 transition-colors cursor-pointer"
                     onClick={() => toggle(c.id)}
                   >
-                    <td className="px-3 py-3 text-zinc-600">
+                    <td className="px-3 py-3 text-ink-4">
                       {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-white">{c.package_name}</span>
-                      <span className="ml-1.5 text-xs text-zinc-500">{c.ecosystem}</span>
+                      <span className="font-medium text-ink-1">{c.package_name}</span>
+                      <span className="ml-1.5 text-xs text-ink-3">{c.ecosystem}</span>
                     </td>
                     <td className="px-4 py-3">
                       <GradeScore grade={c.package_grade} />
@@ -299,15 +299,15 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.purchase_price.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">{c.max_payout.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-300">
+                    <td className="px-4 py-3 text-right tabular-nums text-ink-2">{c.purchase_price.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-ink-2">{c.max_payout.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-ink-2">
                       {c.status === "open" ? (c.current_value?.toLocaleString() ?? "") : ""}
                     </td>
                     <td className={`px-4 py-3 text-right tabular-nums font-medium ${pnlColor(pnl)}`}>
                       {pnl >= 0 ? "+" : ""}{pnl.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-xs text-zinc-400">
+                    <td className="px-4 py-3 text-xs text-ink-2">
                       {c.status === "open" ? (
                         days === 0 ? <span className="text-red-400">Today</span> : `${days}d`
                       ) : (
@@ -316,7 +316,7 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
                     </td>
                   </tr>
                   {isOpen && (
-                    <tr className="bg-zinc-900/60 border-b border-zinc-800/60">
+                    <tr className="bg-surface-1/60 border-b border-line-1/60">
                       <td colSpan={9} className="px-8 py-4">
                         <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-xs sm:grid-cols-4 mb-4">
                           <Detail label="Contract ID" value={c.id.slice(0, 8) + "…"} />
@@ -344,8 +344,8 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-zinc-600">{label}</p>
-      <p className="font-mono text-zinc-300">{value}</p>
+      <p className="text-ink-4">{label}</p>
+      <p className="font-mono text-ink-2">{value}</p>
     </div>
   )
 }

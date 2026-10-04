@@ -120,16 +120,16 @@ export default function EpssChart({
     <div ref={containerRef} className="relative flex-1" onMouseLeave={() => setHover(null)}>
     {/* Chart title + legend */}
     <div className="absolute top-2 left-3 z-10 flex items-center gap-3">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">EPSS Trend</span>
-      <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+      <span className="text-[11px] font-semibold text-ink-3">EPSS Trend</span>
+      <span className="flex items-center gap-1 text-[11px] text-ink-4">
         <span className="inline-block h-px w-4 bg-emerald-400" />
         EPSS
       </span>
-      <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+      <span className="flex items-center gap-1 text-[11px] text-ink-4">
         <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
         CVE
       </span>
-      {!pinned && <span className="text-[10px] text-zinc-700">click to pin</span>}
+      {!pinned && <span className="text-[11px] text-ink-4">click to pin</span>}
     </div>
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
@@ -241,32 +241,32 @@ export default function EpssChart({
 
     {focus && (
       <div
-        className={`absolute z-20 w-[220px] rounded border bg-zinc-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur ${pinned ? "border-[#FDE832]/60" : "border-zinc-700 pointer-events-none"}`}
+        className={`absolute z-20 w-[220px] rounded border bg-surface-1/95 px-3 py-2 text-xs shadow-xl backdrop-blur ${pinned ? "border-brand/60" : "border-line-2 pointer-events-none"}`}
         style={{ left: tooltipLeft, top: tooltipTop }}
       >
         <div className="flex items-center justify-between gap-2 mb-1">
-          <span className="text-zinc-400 font-medium">{fmtDate(focus.date)}</span>
+          <span className="text-ink-2 font-medium">{fmtDate(focus.date)}</span>
           {pinned ? (
-            <button onClick={() => setPinned(null)} className="text-[10px] text-[#FDE832] hover:underline">unpin</button>
+            <button onClick={() => setPinned(null)} className="text-[11px] text-brand hover:underline">unpin</button>
           ) : (
-            <span className="text-[10px] text-zinc-600">hover</span>
+            <span className="text-[11px] text-ink-4">hover</span>
           )}
         </div>
         {focus.epss != null && (
           <div className="flex items-baseline justify-between">
             <span className="text-emerald-400 font-semibold tabular-nums">EPSS {(focus.epss * 100).toFixed(2)}%</span>
             {focus.prevEpss != null && focus.prevEpss !== focus.epss && (
-              <span className={`tabular-nums text-[10px] ${focus.epss > focus.prevEpss ? "text-rose-400" : "text-emerald-500"}`}>
+              <span className={`tabular-nums text-[11px] ${focus.epss > focus.prevEpss ? "text-rose-400" : "text-emerald-500"}`}>
                 {focus.epss > focus.prevEpss ? "▲" : "▼"} {Math.abs((focus.epss - focus.prevEpss) * 100).toFixed(2)} pts
               </span>
             )}
           </div>
         )}
         {focus.cves.length > 0 && (
-          <div className="mt-1.5 pt-1.5 border-t border-zinc-800 space-y-1">
+          <div className="mt-1.5 pt-1.5 border-t border-line-1 space-y-1">
             {focus.cves.map((c) => (
               <div key={c.cve_id ?? c.x} className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] text-zinc-200 truncate">{c.cve_id ?? "CVE"}</span>
+                <span className="font-mono text-[11px] text-ink-1 truncate">{c.cve_id ?? "CVE"}</span>
                 <span className="shrink-0 tabular-nums font-semibold" style={{ color: dotColor(c.cvss, c.severity) }}>
                   {c.cvss.toFixed(1)}{c.severity ? ` · ${c.severity}` : ""}
                 </span>
@@ -275,7 +275,7 @@ export default function EpssChart({
           </div>
         )}
         {focus.cves.length === 0 && focus.epss == null && (
-          <p className="text-zinc-600">No data</p>
+          <p className="text-ink-4">No data</p>
         )}
       </div>
     )}

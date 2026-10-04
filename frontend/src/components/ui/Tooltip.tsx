@@ -28,12 +28,12 @@ export function Tooltip({ children, content }: TooltipProps) {
       {pos &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full rounded border border-zinc-700 bg-zinc-900 p-3 shadow-xl
+            className="pointer-events-none fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full rounded border border-line-2 bg-surface-1 p-3 shadow-xl
               animate-in fade-in zoom-in-95 duration-150"
             style={{ left: pos.x, top: pos.y }}
           >
             {content}
-            <span className="absolute left-1/2 top-full -translate-x-1/2 h-0 w-0 border-4 border-transparent border-t-zinc-800" />
+            <span className="absolute left-1/2 top-full -translate-x-1/2 h-0 w-0 border-4 border-transparent border-t-surface-2" />
           </div>,
           document.body,
         )}

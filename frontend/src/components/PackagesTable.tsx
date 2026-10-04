@@ -13,6 +13,7 @@ import {
   packageFilterParsers, type PackageSort,
 } from "@/lib/filters";
 import { useApi } from "@/lib/api";
+import { EcoBadge, MalBadge, SeverityLabel } from "@/components/ui/Badges";
 const PAGE_SIZE = 50;
 
 const col = createColumnHelper<Package>();
@@ -32,14 +33,14 @@ function ColHeader({
     <Tooltip
       content={
         <div className="space-y-1.5">
-          <p className="text-xs text-zinc-200 leading-snug">{tip}</p>
+          <p className="text-xs text-ink-1 leading-snug">{tip}</p>
           {source && (
             <a
               href={source}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-[10px] text-[#FDE832] hover:underline pointer-events-auto"
+              className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline pointer-events-auto"
             >
               ↗ {sourceLabel ?? "Source"}
             </a>
@@ -47,21 +48,14 @@ function ColHeader({
         </div>
       }
     >
-      <span className="border-b border-dashed border-zinc-600 cursor-help">
+      <span className="border-b border-dashed border-line-3 cursor-help">
         {label}
       </span>
     </Tooltip>
   );
 }
 
-const SEVERITY_COLOR: Record<string, string> = {
-  critical: "text-red-400",
-  high: "text-orange-400",
-  medium: "text-yellow-400",
-  low: "text-zinc-400",
-};
-
-const columns = [
+const makeColumns = (singleEco: boolean) => [
   col.accessor("name", {
     header: () => (
       <ColHeader
@@ -76,16 +70,8 @@ const columns = [
       const eco = info.row.original.ecosystem;
       return (
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-              eco === "npm"
-                ? "bg-red-900/50 text-red-300"
-                : "bg-blue-900/50 text-blue-300"
-            }`}
-          >
-            {eco}
-          </span>
-          <span className="truncate font-mono text-sm text-zinc-100">
+          {!singleEco && <EcoBadge ecosystem={eco} />}
+          <span className="truncate font-mono text-sm text-ink-1">
             {info.getValue()}
           </span>
         </div>
@@ -104,9 +90,9 @@ const columns = [
     ),
     cell: (info) => {
       const v = info.getValue();
-      if (!v) return <span className="text-zinc-600"> </span>;
+      if (!v) return <span className="text-ink-4"> </span>;
       return (
-        <span className="text-zinc-300 tabular-nums">
+        <span className="text-ink-2 tabular-nums">
           {(v / 1_000_000).toFixed(1)}M
         </span>
       );
@@ -124,19 +110,19 @@ const columns = [
     cell: (info) => {
       const v = info.getValue();
       if (v === null || v === undefined)
-        return <span className="text-zinc-600"> </span>;
+        return <span className="text-ink-4"> </span>;
       const pct = Math.round(v * 100);
       const color =
-        pct >= 70 ? "bg-red-500" : pct >= 30 ? "bg-orange-400" : "bg-zinc-500";
+        pct >= 70 ? "bg-red-500" : pct >= 30 ? "bg-orange-400" : "bg-surface-3";
       return (
         <div className="flex items-center gap-2">
-          <div className="w-16 h-1.5 rounded-full bg-zinc-700">
+          <div className="w-16 h-1.5 rounded-full bg-surface-3">
             <div
               className={`h-1.5 rounded-full ${color}`}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="tabular-nums text-xs text-zinc-300">{pct}%</span>
+          <span className="tabular-nums text-xs text-ink-2">{pct}%</span>
         </div>
       );
     },
@@ -153,9 +139,9 @@ const columns = [
     cell: (info) => {
       const v = info.getValue();
       const maxCvss = info.row.original.max_cvss_score;
-      if (!v) return <span className="text-zinc-600">0</span>;
+      if (!v) return <span className="text-ink-4">0</span>;
       const badge = (
-        <span className="rounded bg-zinc-700 px-2 py-0.5 text-xs font-medium text-zinc-200 cursor-default">
+        <span className="rounded bg-surface-3 px-2 py-0.5 text-xs font-medium text-ink-1 cursor-default">
           {v}
         </span>
       );
@@ -178,13 +164,9 @@ const columns = [
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue();
-      if (!v) return <span className="text-zinc-600"> </span>;
+      if (!v) return <span className="text-ink-4"> </span>;
       return (
-        <span
-          className={`text-xs font-medium capitalize ${SEVERITY_COLOR[v] ?? "text-zinc-400"}`}
-        >
-          {v}
-        </span>
+        <SeverityLabel severity={v} />
       );
     },
   }),
@@ -198,9 +180,9 @@ const columns = [
     ),
     cell: (info) => {
       const v = info.getValue();
-      if (!v) return <span className="text-zinc-600"> </span>;
+      if (!v) return <span className="text-ink-4"> </span>;
       return (
-        <span className="tabular-nums text-sm text-zinc-200">
+        <span className="tabular-nums text-sm text-ink-1">
           {(v / 1_000_000).toFixed(1)}M
         </span>
       );
@@ -219,9 +201,7 @@ const columns = [
     enableSorting: false,
     cell: (info) =>
       info.getValue() ? (
-        <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
-          MAL
-        </span>
+        <MalBadge />
       ) : null,
   }),
   // latest_cve_date injected inside component (need state closure)
@@ -280,7 +260,7 @@ export function PackagesTable({ ecosystem }: Props) {
         <Tooltip
           content={
             <div className="space-y-1.5">
-              <p className="text-xs text-zinc-200 leading-snug">
+              <p className="text-xs text-ink-1 leading-snug">
                 Publication date of the most recently disclosed CVE for this
                 package. Sourced from OSV.
               </p>
@@ -289,14 +269,14 @@ export function PackagesTable({ ecosystem }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[10px] text-[#FDE832] hover:underline pointer-events-auto"
+                className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline pointer-events-auto"
               >
                 ↗ osv.dev
               </a>
             </div>
           }
         >
-          <span className="border-b border-dashed border-zinc-600 cursor-help">
+          <span className="border-b border-dashed border-line-3 cursor-help">
             Latest CVE
           </span>
         </Tooltip>
@@ -305,8 +285,8 @@ export function PackagesTable({ ecosystem }: Props) {
     enableSorting: false,
     cell: (info) => {
       const v = info.getValue();
-      if (!v) return <span className="text-zinc-600"> </span>;
-      return <span className="text-xs text-zinc-400">{v}</span>;
+      if (!v) return <span className="text-ink-4"> </span>;
+      return <span className="text-xs text-ink-2">{v}</span>;
     },
   });
 
@@ -326,7 +306,7 @@ export function PackagesTable({ ecosystem }: Props) {
     has_mal_advisory: <FilterToggle compact label="Only MAL-flagged" value={mal} onChange={(v) => setFilter({ mal: v })} />,
     latest_cve_date: <FilterSelect compact label="Latest CVE" value={latestCveDays} options={CVE_WINDOW_OPTIONS} onChange={(v) => setFilter({ cve: v })} />,
   };
-  const allColumns = [...columns, latestCveDateCol].map((c) =>
+  const allColumns = [...makeColumns(!!ecosystem), latestCveDateCol].map((c) =>
     c.id && headerFilters[c.id] ? { ...c, meta: { ...c.meta, filter: headerFilters[c.id] } } : c,
   );
 
@@ -379,13 +359,13 @@ export function PackagesTable({ ecosystem }: Props) {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const pagination = (
-    <div className="flex items-center justify-between text-xs text-zinc-500">
+    <div className="flex items-center justify-between text-xs text-ink-3">
       <span>{total.toLocaleString()} packages</span>
       <div className="flex items-center gap-2">
         <button
           onClick={() => setPage(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="rounded border border-line-2 px-2.5 py-1 hover:border-line-3 hover:text-ink-2 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           ←
         </button>
@@ -395,7 +375,7 @@ export function PackagesTable({ ecosystem }: Props) {
         <button
           onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
-          className="rounded border border-zinc-700 px-2.5 py-1 hover:border-zinc-500 hover:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="rounded border border-line-2 px-2.5 py-1 hover:border-line-3 hover:text-ink-2 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           →
         </button>
@@ -415,14 +395,14 @@ export function PackagesTable({ ecosystem }: Props) {
 
   const searchBar = (
     <div className="relative flex-1 min-w-0">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3 pointer-events-none" />
       <input
         ref={searchRef}
         type="text"
         placeholder="Search packages…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+        className="w-full bg-transparent pl-8 pr-8 py-2.5 text-sm text-ink-1 placeholder-ink-4 outline-none"
       />
       {search && (
         <button
@@ -430,7 +410,7 @@ export function PackagesTable({ ecosystem }: Props) {
             setSearch("");
             searchRef.current?.focus();
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
           aria-label="Clear search"
         >
           ✕
@@ -443,14 +423,14 @@ export function PackagesTable({ ecosystem }: Props) {
     <div className="space-y-3">
       {/* Mobile card list */}
       <div className="sm:hidden space-y-2">
-        <div className="rounded border border-zinc-700 bg-zinc-800/70 px-2">
+        <div className="rounded border border-line-2 bg-surface-2/70 px-2">
           {searchBar}
           {filterChips}
         </div>
         {loading ? (
-          <p className="py-12 text-center text-zinc-500 text-sm">Loading…</p>
+          <p className="py-12 text-center text-ink-3 text-sm">Loading…</p>
         ) : data.length === 0 ? (
-          <p className="py-12 text-center text-zinc-500 text-sm">
+          <p className="py-12 text-center text-ink-3 text-sm">
             No packages found
           </p>
         ) : (
@@ -465,13 +445,13 @@ export function PackagesTable({ ecosystem }: Props) {
                   ? "bg-red-500"
                   : epssPct >= 30
                     ? "bg-orange-400"
-                    : "bg-zinc-500"
-                : "bg-zinc-500";
+                    : "bg-surface-3"
+                : "bg-surface-3";
             return (
               <div
                 key={key}
                 data-tour={i === 0 ? "pkg-row-0" : undefined}
-                className="rounded border border-zinc-800 bg-[#1C2229]"
+                className="rounded border border-line-1 bg-surface-2"
               >
                 <button
                   className="w-full text-left px-4 py-3"
@@ -479,26 +459,16 @@ export function PackagesTable({ ecosystem }: Props) {
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                          pkg.ecosystem === "npm"
-                            ? "bg-red-900/50 text-red-300"
-                            : "bg-blue-900/50 text-blue-300"
-                        }`}
-                      >
-                        {pkg.ecosystem}
-                      </span>
-                      <span className="truncate font-mono text-sm text-zinc-100">
+                      {!ecosystem && <EcoBadge ecosystem={pkg.ecosystem} />}
+                      <span className="truncate font-mono text-sm text-ink-1">
                         {pkg.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {pkg.has_mal_advisory && (
-                        <span className="rounded bg-rose-900/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
-                          MAL
-                        </span>
+                        <MalBadge />
                       )}
-                      <span className="text-zinc-600 text-xs">
+                      <span className="text-ink-4 text-xs">
                         {isExpanded ? "▲" : "▼"}
                       </span>
                     </div>
@@ -507,34 +477,30 @@ export function PackagesTable({ ecosystem }: Props) {
                   <div className="flex items-center gap-4 text-xs">
                     {epssPct != null && (
                       <div className="flex items-center gap-1.5">
-                        <div className="w-14 h-1.5 rounded-full bg-zinc-700">
+                        <div className="w-14 h-1.5 rounded-full bg-surface-3">
                           <div
                             className={`h-1.5 rounded-full ${epssColor}`}
                             style={{ width: `${epssPct}%` }}
                           />
                         </div>
-                        <span className="tabular-nums text-zinc-300">
+                        <span className="tabular-nums text-ink-2">
                           {epssPct}%
                         </span>
                       </div>
                     )}
                     {pkg.num_cves > 0 && (
-                      <span className="text-zinc-400">
-                        <span className="text-zinc-200 font-medium">
+                      <span className="text-ink-2">
+                        <span className="text-ink-1 font-medium">
                           {pkg.num_cves}
                         </span>{" "}
                         CVEs
                       </span>
                     )}
                     {pkg.worst_severity && (
-                      <span
-                        className={`capitalize font-medium ${SEVERITY_COLOR[pkg.worst_severity] ?? "text-zinc-400"}`}
-                      >
-                        {pkg.worst_severity}
-                      </span>
+                      <SeverityLabel severity={pkg.worst_severity} />
                     )}
                     {pkg.latest_cve_date && (
-                      <span className="text-zinc-500 ml-auto">
+                      <span className="text-ink-3 ml-auto">
                         {pkg.latest_cve_date}
                       </span>
                     )}
@@ -544,7 +510,7 @@ export function PackagesTable({ ecosystem }: Props) {
                 {isExpanded && (
                   <div
                     data-tour={i === 0 ? "pkg-expanded" : undefined}
-                    className="border-t border-zinc-800"
+                    className="border-t border-line-1"
                   >
                     <table className="w-full">
                       <tbody>
@@ -577,7 +543,7 @@ export function PackagesTable({ ecosystem }: Props) {
             <>
               {searchBar}
               <FilterClear count={activeFilterCount} onClear={() => setFilter({ cve: null, sev: null, epss: null, mal: null, dl: null })} />
-              <span className="shrink-0 text-xs text-zinc-500 pr-1">
+              <span className="shrink-0 text-xs text-ink-3 pr-1">
                 {total.toLocaleString()} packages
               </span>
             </>

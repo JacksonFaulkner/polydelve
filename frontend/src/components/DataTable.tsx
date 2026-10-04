@@ -21,7 +21,7 @@ declare module "@tanstack/react-table" {
 /**
  * Shared desktop table chrome used by the PyPI/npm packages view and the
  * Events ledger: bordered container, optional toolbar row (search / filters /
- * count), sortable uppercase headers, expandable rows, and the bottom pager.
+ * count), sortable headers, expandable rows, and the bottom pager.
  * Sorting and pagination are server-side; this only renders state.
  */
 export function DataTable<T>({
@@ -71,9 +71,9 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <div className="overflow-hidden rounded border border-line-1">
         {toolbar && (
-          <div className="flex items-center justify-between gap-3 border-b border-zinc-700 bg-zinc-800/70 px-3">
+          <div className="flex items-center justify-between gap-3 border-b border-line-2 bg-surface-2/70 px-3">
             {toolbar}
           </div>
         )}
@@ -81,19 +81,19 @@ export function DataTable<T>({
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-zinc-800">
+                <tr key={hg.id} className="border-b border-line-1">
                   {hg.headers.map((header) => (
                     <th
                       key={header.id}
-                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap ${
-                        header.column.getCanSort() ? "cursor-pointer select-none hover:text-zinc-300" : ""
+                      className={`px-3 py-2.5 text-left text-xs font-medium text-ink-3 whitespace-nowrap ${
+                        header.column.getCanSort() ? "cursor-pointer select-none hover:text-ink-2" : ""
                       }`}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <span className="flex items-center gap-1">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {header.column.getCanSort() && (
-                          <span className="text-zinc-600">
+                          <span className="text-ink-4">
                             {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? "↕"}
                           </span>
                         )}
@@ -108,11 +108,11 @@ export function DataTable<T>({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={colCount} className="py-12 text-center text-zinc-500">Loading…</td>
+                  <td colSpan={colCount} className="py-12 text-center text-ink-3">Loading…</td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={colCount} className="py-12 text-center text-zinc-500">{emptyText}</td>
+                  <td colSpan={colCount} className="py-12 text-center text-ink-3">{emptyText}</td>
                 </tr>
               ) : (
                 table.getRowModel().rows.flatMap((row, i) => {
@@ -124,17 +124,17 @@ export function DataTable<T>({
                       key={key}
                       data-tour={rowTourTag?.(i)}
                       onClick={clickable ? () => onRowClick(row.original) : undefined}
-                      className={`border-b border-zinc-800/50 transition-colors ${
-                        clickable ? "cursor-pointer hover:bg-zinc-800/30" : ""
-                      } ${isExpanded ? "bg-zinc-800/20" : ""}`}
+                      className={`border-b border-line-1/50 transition-colors ${
+                        clickable ? "cursor-pointer hover:bg-surface-2/30" : ""
+                      } ${isExpanded ? "bg-surface-2/20" : ""}`}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3 py-2.5">
+                        <td key={cell.id} className="px-3 py-2">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
                       {expandable && (
-                        <td className="px-2 py-2.5 text-zinc-600 text-xs select-none">
+                        <td className="px-2 py-2 text-ink-4 text-xs select-none">
                           {isExpanded ? "▲" : "▼"}
                         </td>
                       )}

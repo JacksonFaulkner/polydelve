@@ -49,9 +49,9 @@ export function UsernameModal({ onComplete }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded border border-zinc-700 bg-[#1C2128] p-8 shadow-2xl">
-        <h2 className="mb-1 text-xl font-semibold text-white">Choose a username</h2>
-        <p className="mb-6 text-sm text-zinc-400">
+      <div className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-8 shadow-2xl">
+        <h2 className="mb-1 text-xl font-semibold text-ink-1">Choose a username</h2>
+        <p className="mb-6 text-sm text-ink-2">
           Pick your display name for the leaderboard. You can change it later in settings.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,7 +63,7 @@ export function UsernameModal({ onComplete }: Props) {
               placeholder="e.g. cyber_wizard"
               maxLength={20}
               autoFocus
-              className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 outline-none focus:border-[#FDE832] focus:ring-1 focus:ring-[#FDE832]"
+              className="w-full rounded border border-line-3 bg-surface-2 px-4 py-2.5 text-ink-1 placeholder-ink-3 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
             {(validationError || error) && (
               <p className="mt-1.5 text-xs text-red-400">{validationError ?? error}</p>
@@ -72,7 +72,7 @@ export function UsernameModal({ onComplete }: Props) {
           <button
             type="submit"
             disabled={loading || !value || !!validationError}
-            className="w-full rounded bg-[#FDE832] py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full btn-primary py-2.5 text-sm"
           >
             {loading ? "Saving…" : "Set username"}
           </button>

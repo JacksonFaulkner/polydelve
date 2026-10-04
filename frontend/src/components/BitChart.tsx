@@ -12,11 +12,11 @@ export function BitChart({ history, current }: Props) {
   const positive = delta >= 0
 
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="rounded border border-line-1 bg-surface-1/50 p-4">
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <p className="text-xs text-zinc-500">Your bits</p>
-          <p className="text-2xl font-bold text-white">{current.toLocaleString()}</p>
+          <p className="text-xs text-ink-3">Your bits</p>
+          <p className="text-2xl font-bold text-ink-1">{current.toLocaleString()}</p>
         </div>
         <span className={`text-sm font-medium ${positive ? "text-emerald-400" : "text-red-400"}`}>
           {positive ? "+" : ""}{delta.toLocaleString()} all time
