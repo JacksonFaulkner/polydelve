@@ -1,4 +1,4 @@
-"""Security events ledger — a timeline of past CVE/EPSS/MAL events, each
+"""Security events ledger (bettable packages only) — a timeline of past CVE/EPSS/MAL events, each
 labeled with the contract type it would have won: "if a contract like this
 existed, it would've hit." Read-only, no thresholds are user-specific."""
 from datetime import datetime, timedelta, timezone
@@ -43,7 +43,9 @@ all_events AS (
         UNION ALL SELECT * FROM mal_events
         UNION ALL SELECT * FROM epss_events
     ) e
-    WHERE (%(types)s::text[] IS NULL OR e.event_type = ANY(%(types)s))
+    -- Only packages that exist in `packages` can be bet on (slips 404 otherwise).
+    WHERE EXISTS (SELECT 1 FROM packages p WHERE p.name = e.name AND p.ecosystem = e.ecosystem)
+      AND (%(types)s::text[] IS NULL OR e.event_type = ANY(%(types)s))
       AND (%(ecosystem)s::text IS NULL OR e.ecosystem = %(ecosystem)s)
       AND (%(search)s::text IS NULL OR e.name ILIKE %(search)s)
       AND (%(severity)s::text IS NULL OR e.severity = %(severity)s)
