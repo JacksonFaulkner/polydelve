@@ -23,7 +23,7 @@ from api.routes.featured import router as featured_router
 from api.routes.auth_guest import public_router as auth_guest_router
 from api.auth import _auth0
 from api.otel import setup_otel
-from features.db import seed_companies, get_db_conn
+from features.db import close_pool, open_pool, pooled_conn, seed_companies
 
 
 def _load_env() -> None:
@@ -49,14 +49,15 @@ logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    conn = get_db_conn()
-    seed_companies(conn)
-    conn.close()
+    open_pool()
+    with pooled_conn() as conn:
+        seed_companies(conn)
     try:
         await _auth0().api_client._discover()
     except Exception:
         pass
     yield
+    close_pool()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])

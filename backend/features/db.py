@@ -1,30 +1,93 @@
 import os
+import threading
+from contextlib import contextmanager
 
 import psycopg2
 from fastapi import Request
 from pgvector.psycopg2 import register_vector
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev"
 )
 POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
 POOL_MAX = int(os.getenv("DB_POOL_MAX", "10"))
+# How long a request waits for a free connection before failing.
+POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "10"))
 
-_pool: ThreadedConnectionPool | None = None
+
+class BlockingPool:
+    """ThreadedConnectionPool that waits for a free connection instead of raising.
+
+    Sync routes run on FastAPI's threadpool (40 threads by default), so more
+    concurrent requests than DB_POOL_MAX would otherwise get PoolError -> 500.
+    """
+
+    def __init__(self, minconn: int, maxconn: int, dsn: str, timeout: float) -> None:
+        self._pool = ThreadedConnectionPool(minconn, maxconn, dsn=dsn)
+        self._slots = threading.BoundedSemaphore(maxconn)
+        self._timeout = timeout
+        self._registered: set[int] = set()
+
+    def getconn(self):
+        if not self._slots.acquire(timeout=self._timeout):
+            raise PoolError(f"no database connection free after {self._timeout}s")
+        try:
+            conn = self._pool.getconn()
+            # register_vector queries pg_type, so do it once per physical connection.
+            if id(conn) not in self._registered:
+                register_vector(conn)
+                self._registered.add(id(conn))
+            return conn
+        except Exception:
+            self._slots.release()
+            raise
+
+    def putconn(self, conn) -> None:
+        close = bool(conn.closed)
+        if close:
+            self._registered.discard(id(conn))
+        try:
+            self._pool.putconn(conn, close=close)
+        finally:
+            self._slots.release()
+
+    def closeall(self) -> None:
+        self._pool.closeall()
+        self._registered.clear()
 
 
-def _get_pool() -> ThreadedConnectionPool:
+_pool: BlockingPool | None = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool() -> BlockingPool:
     global _pool
     if _pool is None:
-        _pool = ThreadedConnectionPool(POOL_MIN, POOL_MAX, dsn=DATABASE_URL)
+        with _pool_lock:
+            if _pool is None:
+                _pool = BlockingPool(POOL_MIN, POOL_MAX, DATABASE_URL, POOL_TIMEOUT)
     return _pool
 
 
-def get_db(request: Request):  # noqa: ARG001
+def open_pool() -> None:
+    """Create the pool at startup so the first request doesn't pay for it."""
+    _get_pool()
+
+
+def close_pool() -> None:
+    global _pool
+    with _pool_lock:
+        if _pool is not None:
+            _pool.closeall()
+            _pool = None
+
+
+@contextmanager
+def pooled_conn():
+    """Borrow a pooled connection outside a request (e.g. app startup)."""
     pool = _get_pool()
     conn = pool.getconn()
-    register_vector(conn)
     try:
         yield conn
     except Exception:
@@ -37,6 +100,11 @@ def get_db(request: Request):  # noqa: ARG001
         except Exception:
             pass
         pool.putconn(conn)
+
+
+def get_db(request: Request):  # noqa: ARG001
+    with pooled_conn() as conn:
+        yield conn
 
 
 def get_db_conn(autocommit: bool = False):
