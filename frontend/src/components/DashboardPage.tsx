@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, Fragment } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { useApi } from "@/lib/api"
+import { ErrorState } from "@/components/ui/ErrorState"
 import { BitTimeline } from "./BitTimeline"
 import { BitIcon } from "./BitIcon"
-import type { BitPoint } from "@/types"
+import type { BitPoint, User } from "@/types"
 
 interface UserContract {
   id: string
@@ -45,30 +46,29 @@ function pnlColor(v: number) {
 }
 
 export function DashboardPage() {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [contracts, setContracts] = useState<UserContract[]>([])
   const [timeline, setTimeline] = useState<BitPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
-      const meRes = await authFetch("/users/me")
-      const me = await meRes.json()
-
-      const [cRes, tRes] = await Promise.all([
-        authFetch("/contracts/me"),
-        authFetch(`/users/leaderboard/${me.id}/timeline`),
+      const me = await getJson<User>("/users/me")
+      const [cData, tData] = await Promise.all([
+        getJson<UserContract[]>("/contracts/me"),
+        getJson<{ points?: BitPoint[] }>(`/users/leaderboard/${me.id}/timeline`),
       ])
-      const [cData, tData] = await Promise.all([cRes.json(), tRes.json()])
       setContracts(cData)
       setTimeline(tData.points ?? [])
-    } catch (e) {
-      console.error("Dashboard load failed:", e)
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
-  }, [authFetch])
+  }, [getJson])
 
   useEffect(() => { load() }, [load])
 
@@ -86,6 +86,8 @@ export function DashboardPage() {
       </div>
     )
   }
+
+  if (error) return <ErrorState message="Couldn't load your dashboard." onRetry={load} />
 
   return (
     <div className="space-y-8">
@@ -242,7 +244,8 @@ function ContractTable({ contracts }: { contracts: UserContract[] }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const toggle = (id: string) => setExpanded((prev) => {
     const next = new Set(prev)
-    next.has(id) ? next.delete(id) : next.add(id)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
     return next
   })
 

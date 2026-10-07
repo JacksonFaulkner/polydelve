@@ -49,8 +49,8 @@ export function UsernameModal({ onComplete }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-8 shadow-2xl">
-        <h2 className="mb-1 text-xl font-semibold text-ink-1">Choose a username</h2>
+      <div role="dialog" aria-modal="true" aria-labelledby="username-modal-title" className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-8 shadow-2xl">
+        <h2 id="username-modal-title" className="mb-1 text-xl font-semibold text-ink-1">Choose a username</h2>
         <p className="mb-6 text-sm text-ink-2">
           Pick your display name for the leaderboard. You can change it later in settings.
         </p>

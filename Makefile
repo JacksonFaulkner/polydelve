@@ -5,7 +5,7 @@
 
 ifneq (,$(wildcard backend/.env))
 	include backend/.env
-	export DATABASE_URL OPENAI_API_KEY MOTHERDUCK_TOKEN EXA_API_KEY
+	export DATABASE_URL OPENAI_API_KEY EXA_API_KEY
 endif
 
 UV   := cd backend && uv run --env-file .env
@@ -84,7 +84,7 @@ fe-install: ## Install frontend dependencies
 ##@ Data pipeline — Resolution
 
 .PHONY: resolve-contracts
-resolve-contracts: ## Resolve open contracts (wins + expiries), credit schmeckles
+resolve-contracts: ## Resolve open contracts (wins + expiries), credit bits
 	$(UV) python scripts/resolve_contracts.py
 
 .PHONY: resolve-contracts-dry
@@ -104,11 +104,10 @@ etl-seed: ## Full one-time seed: stubs + CVE history + downloads + EPSS + risk_s
 
 .PHONY: build-cve-history
 build-cve-history: ## Backfill CVE history for all tracked packages (requires seed-packages first)
-	$(UV) python scripts/build_cve_history.py
+	$(UV) python -m etl.run cve
 
 ##@ Data pipeline — Scheduled (daily/frequent)
-# Target DB comes from DB_PATH in backend/.env. Override per-run for prod:
-#   make etl DB_PATH=md:polydelve
+# Target DB comes from DATABASE_URL in backend/.env.
 
 .PHONY: etl
 etl: seed-packages etl-news etl-epss etl-mal-cached etl-packages ## Run full ETL pipeline (seed + daily jobs)
@@ -132,10 +131,6 @@ etl-mal-cached: ## Ingest OSV MAL-* advisories using cached zips (no download)
 .PHONY: etl-packages
 etl-packages: ## Refresh package metadata (weekly)
 	$(UV) python -m etl.run packages
-
-.PHONY: etl-hourly
-etl-hourly: ## Run hourly pipeline: epss + news + mal (timed)
-	$(UV) python -m etl.run hourly
 
 ##@ Data pipeline — Export
 
@@ -171,8 +166,8 @@ be-lint: ## Lint backend Python (ruff)
 	uv --directory backend run ruff check .
 
 .PHONY: fe-lint
-fe-lint: ## Lint frontend TypeScript
-	$(NPM) npx tsc --noEmit
+fe-lint: ## Lint + typecheck frontend
+	$(NPM) npm run lint && npm run typecheck
 
 .PHONY: fe-build
 fe-build: ## Build frontend for production

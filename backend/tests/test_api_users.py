@@ -1,7 +1,5 @@
 """Tests for /users/me, /users/leaderboard, and /users/{id}/timeline endpoints."""
-import sys
 
-sys.path.insert(0, ".")
 
 
 # ── /users/me ─────────────────────────────────────────────────────────────────
@@ -21,7 +19,7 @@ def test_me_returns_user(client):
 
 def test_me_auto_creates_user_if_missing(db):
     """A valid JWT whose sub doesn't exist in users table should be auto-created."""
-    from conftest import _make_client, FAKE_USER
+    from conftest import FAKE_USER, _make_client
     db.cursor().execute("DELETE FROM users WHERE id = %s", (FAKE_USER["sub"],))
     client = _make_client(db, authenticated=True)
     r = client.get("/users/me")

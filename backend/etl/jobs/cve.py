@@ -1,7 +1,12 @@
 """CVE history seed job — builds the tracked package universe from OSV bulk data."""
 from typing import Any
 
-from etl.fetch.cve import build_cve_history, fetch_top_npm, fetch_top_pypi, upsert_cve_records
+from etl.fetch.cve import (
+    build_cve_history,
+    fetch_top_npm,
+    fetch_top_pypi,
+    upsert_cve_records,
+)
 
 
 async def run(conn: Any, top_n: int = 99_999) -> None:

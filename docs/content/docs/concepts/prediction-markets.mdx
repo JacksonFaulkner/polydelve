@@ -5,7 +5,7 @@ description: "How contracts are created, priced, and resolved."
 
 ## What is a contract?
 
-A contract is a bet that a target package will receive a CVE meeting specific criteria before a deadline. Users buy contracts for a fixed price; if the condition is met, they receive a payout.
+A contract is a bet on a target package. A **YES** contract pays out if a qualifying event happens before a deadline (a new CVE at or above a CVSS threshold, an EPSS crossing, or a MAL advisory). A **NO** contract pays out if no new CVE at or above the CVSS threshold appears before the deadline. You choose the stake; the payout is priced from it.
 
 ### Contract parameters
 
@@ -13,16 +13,21 @@ A contract is a bet that a target package will receive a CVE meeting specific cr
 |-------|-------------|
 | `package_name` | Target npm or PyPI package |
 | `ecosystem` | `npm` or `PyPI` |
-| `cvss_threshold` | Minimum CVSS score to trigger resolution (e.g. 7.0) |
-| `epss_threshold` | Minimum EPSS score to trigger resolution (optional) |
-| `purchase_price` | Cost in Schmeckles |
-| `duration_days` | Days until the contract expires unresolved |
+| `direction` | `yes` (default) or `no` |
+| `cvss_threshold` | Minimum CVSS score for a qualifying CVE, 0–10 (pricing defaults to 7.0 if unset) |
+| `epss_threshold` | EPSS target to reach (optional, YES only; must be above current EPSS) |
+| `purchase_price` | Stake in bits, minimum 10 |
+| `duration_days` | 7, 14, or 30 (default 30) |
+
+NO bets are only offered on packages with a CVE in the last 100 days, and only CVSS is a condition (`epss_threshold` is ignored).
+
+### Baskets
+
+On the Predict page you can add up to 10 packages to one slip. With two or more, the slip becomes a basket contract with a `threshold_count`: it wins when that many members have hit their conditions.
 
 ### Resolution
 
-Contracts resolve **YES** on any one of three independent conditions: a new CVE meeting `cvss_threshold`, an EPSS score crossing `epss_threshold`, or a new MAL advisory for the package. See [Market Resolution](/docs/concepts/market-resolution) for the full mechanics.
-
-Contracts expire **NO** if the deadline passes with none of those conditions met.
+YES contracts resolve **won** on any one of three independent conditions: a new CVE meeting `cvss_threshold`, an EPSS score reaching `epss_threshold`, or a new MAL advisory for the package. They end **expired** if the deadline passes with none met. NO contracts are **won** at the deadline and **lost** as soon as a qualifying CVE appears. See [Market Resolution](/docs/concepts/market-resolution) for the full mechanics.
 
 ## Pricing
 
@@ -31,15 +36,16 @@ Pricing lives in `features/contract_pricing.py`. One hazard model drives both be
 - **New CVEs arrive as a Poisson process.** Each package gets a daily rate λ for CVEs at or above the chosen CVSS threshold, estimated from the last 90 and 365 days of `cve_history` with a small prior so quiet packages still have a non-zero rate.
 - **Every probability is duration-aware.** `P_yes(D) = 1 − e^(−λD)`, `P_no(D) = e^(−λD)`. Longer windows make YES easier and NO harder, so a 30-day NO pays more than a 7-day NO, and the reverse for YES.
 - **EPSS** uses a logit-gap model (distance from current EPSS to the target, scaled by duration); **MAL** advisories use a small constant hazard, boosted when the news feed shows active exploitation.
-- **Payout is fair odds, no house edge:** `max_payout = stake / P(win)`, soft-capped at `MAX_MULTIPLIER = 50` so long shots stay finite. The `grade` shown in the UI is informational and does not change the payout.
+- **A YES contract is one bet on "any leg fires".** P(win) is the probability that at least one leg (CVSS, EPSS, MAL) fires, and every leg pays the same amount.
+- **Payout is fair odds, no house edge:** `max_payout = stake / P(win)`. Multipliers are linear up to 15x, then compressed toward a ceiling of `MAX_MULTIPLIER = 50` so long shots stay finite. The `grade` shown in the UI is informational and does not change the payout.
 
-An open contract is always valued mark-to-model: `Σ P_leg(remaining days) × leg_payout`, capped at `max_payout`. That number is both the sell price and the "simulated returns" curve. A YES contract decays toward zero as its window closes with nothing happening; a NO contract climbs toward full payout as the package keeps surviving.
+The dashboard values an open contract mark-to-model: `P(any leg fires in the remaining days) × max_payout`. A YES contract decays toward zero as its window closes with nothing happening; a NO contract climbs toward full payout as the package keeps surviving. The Predict page's simulator (`/contracts/simulate`) shows the profit or loss for each leg and the model win probability before you buy.
 
-## Schmeckles
+## Bits
 
-Users start with 1000 Schmeckles. Buying a contract deducts `purchase_price` immediately. Payouts credit on resolution. Balance is tracked in the `users` table.
+Users start with 1000 bits. Buying a contract deducts `purchase_price` immediately. Payouts credit on resolution. Balance is tracked in the `users` table.
 
-There is no mechanism to earn Schmeckles outside of winning contracts — scarcity is intentional.
+There is no mechanism to earn bits outside of winning contracts — scarcity is intentional.
 
 ## User accounts
 
@@ -52,12 +58,12 @@ Users are created on first `GET /users/me` call after Auth0 login. New rows get 
 | `GET` | `/users/me` | Returns or creates the current user |
 | `PATCH` | `/users/me` | Update `username` and/or `avatar_url` |
 | `GET` | `/users/me/avatar-upload-url` | Returns a presigned S3 PUT URL + final public URL |
-| `GET` | `/users/leaderboard` | Paginated leaderboard ranked by Schmeckles |
+| `GET` | `/users/leaderboard` | Public paginated leaderboard ranked by bits |
 
 ### Avatar uploads
 
-`GET /users/me/avatar-upload-url?content_type=image/jpeg` returns `{ upload_url, public_url }`. The client PUTs the file directly to S3 using `upload_url`, then calls `PATCH /users/me` with `{ avatar_url: public_url }`. Avatars land in `s3://polydelve-avatars/avatars/{user_id}/{uuid}.{ext}` and are publicly readable. Write access is restricted to the ECS task role.
+`GET /users/me/avatar-upload-url?content_type=image/jpeg` returns `{ upload_url, public_url }`. The client PUTs the file directly to S3 using `upload_url` (valid for 5 minutes), then calls `PATCH /users/me` with `{ avatar_url: public_url }`. Avatars land in `s3://polydelve-avatars/avatars/{user_id}/{uuid}.{ext}`.
 
 ## Featured contracts
 
-A **featured contract** is auto-generated by `features/featured_contracts.py` after each news ingest. The pipeline scores packages by `relevancy_score` (from GPT news analysis), EPSS, and CVE history, then creates contracts for the highest-signal packages. Featured contracts are reranked on each run and surfaced via `GET /featured-contracts`.
+A **featured contract** is auto-generated by `features/featured_contracts.py` after each news ingest. The pipeline ranks packages per ecosystem by percentile of EPSS, recent EPSS change, max CVSS, CVE count, downloads, and MAL status, then reranks the candidates with an LLM and keeps the top 12. Results are served by `GET /featured-contracts`, each with a `relevancy_score`. The web app does not currently surface them.

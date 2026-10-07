@@ -6,6 +6,7 @@ import { useApi } from "@/lib/api"
 import { usePagedFetch } from "@/lib/pagination"
 import { ECOSYSTEM_OPTIONS, EVENT_TYPE_OPTIONS, SEVERITY_OPTIONS, eventFilterParsers } from "@/lib/filters"
 import { DataTable } from "./DataTable"
+import { ErrorState } from "@/components/ui/ErrorState"
 import { FilterClear, FilterMulti, FilterSelect } from "./FilterBar"
 import { PackageExpandedRow } from "./PackageExpandedRow"
 import { Pagination } from "./Pagination"
@@ -78,7 +79,7 @@ function rowKey(e: EventRow) {
 }
 
 export function EventsPage() {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [f, setF] = useQueryStates(eventFilterParsers, { history: "push" })
   // nuqs setter input: any key may be null (= clear back to default)
   type FilterPatch = Exclude<Parameters<typeof setF>[0], (...args: never[]) => unknown>
@@ -100,7 +101,7 @@ export function EventsPage() {
     if (sev) p.set("severity", sev)
     return `/events?${p}`
   }, [window_, page, type, eco, debouncedQ, sev])
-  const { data, loading } = usePagedFetch<EventRow>(url, authFetch)
+  const { data, loading, error, retry } = usePagedFetch<EventRow>(url, getJson)
   const events = useMemo(() => data?.items ?? [], [data])
   const totalPages = data?.total_pages ?? 1
   const activeCount = [type.length ? 1 : null, eco, sev, window_ === "shallow" ? 1 : null].filter((v) => v != null).length
@@ -156,6 +157,7 @@ export function EventsPage() {
         data={events}
         loading={loading}
         emptyText="No events in this window."
+        error={error ? <ErrorState onRetry={retry} /> : undefined}
         toolbar={toolbar}
         rowKey={rowKey}
         expandedKey={expandedKey}

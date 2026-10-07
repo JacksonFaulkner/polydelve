@@ -1,6 +1,6 @@
-from typing import Any
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,14 +10,28 @@ from api.cache import cache_get, cache_set, ttl_for
 from features.db import get_db
 from features.markets_repo import (
     count_news as repo_count_news,
+)
+from features.markets_repo import (
     create_market as repo_create_market,
+)
+from features.markets_repo import (
     get_company_grade,
-    get_market as repo_get_market,
     get_market_price_status,
     get_user_basic,
+)
+from features.markets_repo import (
+    get_market as repo_get_market,
+)
+from features.markets_repo import (
     list_companies as repo_list_companies,
+)
+from features.markets_repo import (
     list_markets as repo_list_markets,
+)
+from features.markets_repo import (
     list_news as repo_list_news,
+)
+from features.markets_repo import (
     place_bet as repo_place_bet,
 )
 from features.prediction_market import calculate_payout
@@ -181,7 +195,7 @@ def create_market(
 
     payout = calculate_payout(grade, req.duration_days, req.price)
     market_id = str(uuid.uuid4())
-    end_date = datetime.now(timezone.utc) + timedelta(days=req.duration_days)
+    end_date = datetime.now(UTC) + timedelta(days=req.duration_days)
 
     repo_create_market(conn, market_id, req.company_id, req.title, req.description, grade, req.price, payout, end_date)
 
@@ -213,7 +227,7 @@ def place_bet(
 
     bet_id = str(uuid.uuid4())
     try:
-        repo_place_bet(conn, bet_id, user_id, req.market_id, datetime.now(timezone.utc), price)
+        repo_place_bet(conn, bet_id, user_id, req.market_id, datetime.now(UTC), price)
     except Exception as e:
         raise HTTPException(500, "Failed to place bet") from e
 

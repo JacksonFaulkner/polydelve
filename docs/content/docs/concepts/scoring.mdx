@@ -5,17 +5,18 @@ description: "How the leaderboard ranks users."
 
 ## How the leaderboard works
 
-There is no per-user prediction-accuracy or calibration score. The leaderboard ranks users strictly by **Schmeckle balance** — `ORDER BY schmeckles DESC` (`features/users_repo.py`).
+There is no per-user prediction-accuracy or calibration score. The leaderboard ranks users strictly by **bits balance** — `ORDER BY bits DESC` (`features/users_repo.py`).
 
-Balance moves only when a contract resolves:
+Balance moves in two ways:
 
-- **Won contract** — the holder's Schmeckle balance increases by `max_payout`.
-- **Expired contract** — no payout; balance is unaffected.
+- **Buying a contract** — `purchase_price` is deducted immediately.
+- **Won contract** — the holder's balance increases by `max_payout`. This covers YES contracts that hit a win condition and NO contracts that survive to expiry.
+- **Expired or lost contract** — no payout. A YES contract that reaches its deadline is `expired`; a NO contract hit by a qualifying CVE is `lost`.
 
-There is no separate "accuracy" or "calibration" metric anywhere in the schema or API. Buying a contract that resolves YES simply pays out; there is no bonus for having bought in at a worse implied probability.
+There is no separate "accuracy" or "calibration" metric anywhere in the schema or API. Payouts are fair odds, so there is no bonus for having bought in at a worse implied probability.
 
 ## Leaderboard
 
-The leaderboard is served from `GET /users/leaderboard` and rendered by the `LeaderboardTable` component. Each row shows Schmeckle balance, total contracts, open contracts, and won contracts (`LeaderboardUser` model).
+The leaderboard is served from `GET /users/leaderboard` (public, paginated, with a `search` parameter) and rendered by the `LeaderboardTable` component. Each row shows rank, username, bits balance, total contracts, open contracts, won contracts, and a win rate (won / total). Clicking a row expands that user's recent contracts.
 
-Users with zero resolved contracts still appear on the leaderboard — ranking is purely by balance, so a new user (starting at 1000 Schmeckles) is ranked alongside everyone else.
+Users with zero resolved contracts still appear on the leaderboard — ranking is purely by balance, so a new user (starting at 1000 bits) is ranked alongside everyone else.

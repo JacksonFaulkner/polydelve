@@ -1,6 +1,6 @@
-from typing import Any
 import uuid
 from datetime import date, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -9,6 +9,8 @@ from api.cache import cache_get, cache_invalidate, cache_set
 from features.contract_pricing import current_value, price_contract
 from features.contracts_repo import (
     buy_contract as repo_buy_contract,
+)
+from features.contracts_repo import (
     get_package_epss,
     get_user_bits,
     is_no_bet_eligible,
@@ -17,9 +19,13 @@ from features.contracts_repo import (
 from features.db import get_db
 from models.models import (
     NO_BET_ELIGIBILITY_DAYS,
-    BuyRequest, BuyResponse, ContractDetail,
-    QuoteRequest, QuoteResponse,
-    SimulateRequest, SimulateResponse,
+    BuyRequest,
+    BuyResponse,
+    ContractDetail,
+    QuoteRequest,
+    QuoteResponse,
+    SimulateRequest,
+    SimulateResponse,
 )
 
 # Browse-level: guests may simulate/quote. buy/me each require a real

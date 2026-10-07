@@ -41,7 +41,7 @@ Auth0 requires an API resource to issue access tokens with an audience claim.
 ### Backend
 
 ```bash
-cp backend/secrets/.env.example backend/secrets/.env
+cp backend/.env.example backend/.env
 ```
 
 Fill in the Auth0 block:
@@ -55,12 +55,12 @@ Find `AUTH0_DOMAIN` on the application Settings page (labelled **Domain**).
 
 ### Frontend
 
-Check `.env.example` at the repo root for exact variable names. They are likely:
+Copy `frontend/.env.example` to `frontend/.env.local` and set:
 
 ```dotenv
-NEXT_PUBLIC_AUTH0_DOMAIN=your-tenant.us.auth0.com
-NEXT_PUBLIC_AUTH0_CLIENT_ID=<Client ID from application Settings>
-NEXT_PUBLIC_AUTH0_AUDIENCE=https://api.polydelve.local
+VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
+VITE_AUTH0_CLIENT_ID=<Client ID from application Settings>
+VITE_AUTH0_AUDIENCE=https://api.polydelve.local
 ```
 
 `Client ID` is on the same Settings page as the domain.
@@ -73,7 +73,11 @@ make dev
 
 Open `http://localhost:5173`. Click **Log in** — you should be redirected to the Auth0 Universal Login page and returned to the app after authenticating.
 
-On first successful login the frontend calls `POST /users` to provision your account. You will then see the **UsernameModal** prompting you to pick a username (3–20 characters, letters, numbers, and underscores only). After submitting, the modal will not appear again.
+On first successful login the frontend calls `/users/me` to provision your account. You will then see the **UsernameModal** prompting you to pick a username (3–20 characters, letters, numbers, and underscores only). After submitting, the modal will not appear again.
+
+## Managing tenant config as code
+
+The repo keeps tenant config in `auth0/tenant.yaml`. `make auth0-export` pulls the current tenant into `auth0/`, and `make auth0-import` applies `auth0/tenant.yaml` to a tenant (requires the `a0deploy` CLI).
 
 ## Troubleshooting
 
@@ -81,4 +85,4 @@ On first successful login the frontend calls `POST /users` to provision your acc
 
 **401 from the API** — confirm `AUTH0_AUDIENCE` in both `.env` files matches the API Identifier you registered.
 
-**`UsernameModal` appears on every load** — the `POST /users` call is failing; check the backend logs for a 422 or database error.
+**`UsernameModal` appears on every load** — the `/users/me` call is failing; check the backend logs for a 422 or database error.

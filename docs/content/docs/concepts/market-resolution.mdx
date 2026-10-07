@@ -5,27 +5,44 @@ description: "How and when contracts settle."
 
 ## Resolution outcomes
 
-Every contract has one of three independent win conditions, checked by `scripts/resolve_contracts.py`:
+Settlement logic lives in `backend/features/settlement.py`. A contract is either a YES bet or a NO bet.
+
+### YES contracts
+
+Three independent win conditions; any one triggers a win, and wins can fire before the deadline:
 
 - **CVE win** — a new CVE with `cvss_score >= cvss_threshold` was published (per `cve_history`) after the contract was created (requires `cvss_threshold` set).
 - **EPSS win** — `epss_history` recorded a score `>= epss_threshold` after `created_at` (requires `epss_threshold` set).
 - **MAL win** — a non-withdrawn MAL advisory was published for the package after `created_at`.
 
-Any one of these triggers a **won** contract; the deadline passing with none met resolves it **expired**, with no payout.
+The deadline passing with none met resolves the contract **expired**, with no payout.
+
+### NO contracts
+
+NO bets are CVSS-only and the inverse of the CVE win:
+
+- **Lost** immediately if a CVE with `cvss_score >= cvss_threshold` is published after `created_at`. No payout.
+- **Won** if the deadline passes with no such CVE. Pays `max_payout`.
+
+NO bets are only offered on packages with a CVE in the last 100 days.
+
+### Baskets
+
+A basket contract holds several packages and a `threshold_count`. Each member is checked with the YES rules above; the basket is **won** once `threshold_count` members have won, and **expired** at the deadline otherwise.
 
 ## How resolution is triggered
 
-`resolve_contracts.py` does not poll OSV live per contract. It reads from tables already populated by upstream ETL jobs:
+Settlement does not poll OSV live per contract. It reads from tables already populated by upstream ETL jobs:
 
 - `cve_history` — populated by the `cve` job (OSV bulk data)
-- `epss_history` — populated by `epss-history` / daily `epss` refresh
+- `epss_history` — populated by the daily `epss` refresh (FIRST bulk file)
 - `mal_advisories` — populated by the `mal` job
 
-For each open contract, it checks these tables for a qualifying row created after the contract's `created_at`. Won contracts get `status='won'` and `schmeckles += max_payout`; expired contracts get `status='expired'` with no payout.
+For each open contract, it checks these tables for a qualifying row after the contract's `created_at`. Won contracts get `status='won'` and `bits += max_payout`; expired contracts get `status='expired'`; lost NO contracts get `status='lost'`. Expired and lost contracts pay nothing.
 
 ## Timing and cadence
 
-Resolution runs via `make resolve-contracts`, invoked as part of the daily ETL cycle. The scheduled Fargate task (EventBridge Scheduler) runs at **9am, 12pm, and 5pm ET** — not on a fixed interval. Contracts are not resolved in real time; there is a lag between an underlying advisory/score update landing in the database and resolution being recorded.
+Resolution runs as the last step of the ETL refresh (`etl.run refresh`: epss, news, mal, cve, then resolve); `make resolve-contracts` runs it manually. The scheduled Fargate task (EventBridge Scheduler) runs three times a day, at **9am, 12pm, and 5pm ET**. Contracts are not resolved in real time; there is a lag between an underlying advisory/score update landing in the database and resolution being recorded.
 
 EPSS and CVE data refresh independently of resolution (see [Vulnerability Tracking](/docs/concepts/vulnerability-tracking)).
 
@@ -34,15 +51,11 @@ EPSS and CVE data refresh independently of resolution (see [Vulnerability Tracki
 <Accordions>
 
 <Accordion title="Multiple qualifying conditions">
-If a contract has both `cvss_threshold` and `epss_threshold` set, either one alone is sufficient to resolve YES — they are not both required.
+If a YES contract has both `cvss_threshold` and `epss_threshold` set, either one alone is sufficient to win — they are not both required. The MAL condition is always active on YES contracts.
 </Accordion>
 
 <Accordion title="Disputed or withdrawn advisories">
-The system does not automatically re-open or reverse a resolved contract — resolution is final at the time the job runs.
-</Accordion>
-
-<Accordion title="Package removed from tracking">
-If a package is removed from Polydelve's tracked universe after a contract opens, the contract continues to run against the last known data until the deadline.
+The system does not automatically re-open or reverse a resolved contract — resolution is final at the time the job runs. Withdrawn MAL advisories are ignored when checked.
 </Accordion>
 
 <Accordion title="Data lag">

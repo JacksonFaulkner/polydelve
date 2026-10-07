@@ -3,27 +3,37 @@ title: "Environment Variables"
 description: "All environment variables for backend and frontend, with defaults and purpose."
 ---
 
-> **Note:** Source of truth is `.env.example` — this page may lag updates.
+Templates live at `backend/.env.example` and `frontend/.env.example`.
 
 ## Backend
 
-Stored in `backend/secrets/.env`.
+Stored in `backend/.env` locally. In production, secrets come from AWS Secrets Manager via the ECS task definition (`terraform/ecs.tf`, `terraform/etl.tf`).
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `AUTH0_DOMAIN` | Yes | — | Auth0 tenant domain |
-| `AUTH0_AUDIENCE` | Yes | — | Auth0 API audience |
-| `EXA_API_KEY` | Yes | — | Exa news fetch |
-| `GEMINI_API_KEY` | Yes | — | Google Gemini; news tagging + sector LLM |
-| `OPENAI_API_KEY` | No | — | OpenAI; sector classification fallback |
 | `DATABASE_URL` | Yes | `postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev` | Postgres connection string |
+| `DB_POOL_MIN` / `DB_POOL_MAX` | No | `1` / `10` | API connection pool size |
+| `DB_POOL_TIMEOUT` | No | `10` | Seconds a request waits for a free pooled connection |
+| `AUTH0_DOMAIN` | Yes (API) | — | Auth0 tenant domain |
+| `AUTH0_AUDIENCE` | Yes (API) | — | Auth0 API audience |
+| `GUEST_JWT_SECRET` | Prod | random per process | HS256 key for guest browse tokens |
+| `GUEST_JWT_TTL` | No | `604800` | Guest token lifetime (seconds) |
+| `OPENAI_API_KEY` | ETL | — | News tagging, embeddings, sector classification |
+| `EXA_API_KEY` | ETL | — | News fetch |
+| `GCP_SA_JSON` | ETL | `backend/secrets/gcp-sa.json` | Vertex AI (Gemini) service account |
+| `GCP_PROJECT_ID` | No | service account's project | Vertex AI project |
+| `BQ_SA_JSON` | ETL | `backend/secrets/polydelve-bq-sa.json` | BigQuery (EPSS, PyPI downloads) service account |
+| `AVATARS_BUCKET` / `AVATARS_REGION` | No | — / `us-east-1` | S3 bucket for user avatars |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_SERVICE_NAME` | No | — / `polydelve-backend` | OpenTelemetry export |
 
 ## Frontend
 
-Stored in `.env.local` (or `.env.example` for reference).
+Stored in `frontend/.env.local`. Vite inlines these at build time, so they are browser-visible.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_AUTH0_DOMAIN` | Yes | — | Auth0 tenant domain (browser-visible) |
-| `NEXT_PUBLIC_AUTH0_CLIENT_ID` | Yes | — | Auth0 SPA client ID (browser-visible) |
-| `NEXT_PUBLIC_AUTH0_AUDIENCE` | Yes | — | Auth0 API audience (browser-visible) |
+| `VITE_AUTH0_DOMAIN` | Yes | — | Auth0 tenant domain |
+| `VITE_AUTH0_CLIENT_ID` | Yes | — | Auth0 SPA client ID |
+| `VITE_AUTH0_AUDIENCE` | Yes | — | Auth0 API audience |
+| `VITE_API_URL` | No | `/api` | Backend base URL (dev server proxies `/api` to `:8000`) |
+| `VITE_SKIP_AUTH` | No | `false` | `true` bypasses Auth0 for local UI work |

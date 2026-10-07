@@ -21,6 +21,39 @@ function chipClasses(compact: boolean | undefined, active: boolean) {
   return `${chipBase} ${active ? chipActive : chipIdle}`
 }
 
+/** Chip face: a toggle button plus, when active, a separate clear button.
+ * Two sibling buttons (not an × nested inside one) so both are keyboard-reachable. */
+function ChipTrigger({
+  label, compact, active, onToggle, onClear, children,
+}: {
+  label: string
+  compact?: boolean
+  active: boolean
+  onToggle: () => void
+  onClear: () => void
+  children: ReactNode
+}) {
+  return (
+    <span className={chipClasses(compact, active)}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="inline-flex items-center gap-1"
+        title={compact ? `Filter by ${label.toLowerCase()}` : undefined}
+        aria-label={compact && !active ? `Filter by ${label.toLowerCase()}` : undefined}
+      >
+        {children}
+        {!active && !compact && <ChevronDown className="h-3 w-3 opacity-70" />}
+      </button>
+      {active && (
+        <button type="button" onClick={onClear} aria-label={`Clear ${label.toLowerCase()} filter`} className="ml-0.5 rounded hover:text-ink-1">
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
+  )
+}
+
 function usePopover() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -71,14 +104,15 @@ export function FilterSelect<V extends string | number>({
   const current = options.find((o) => o.value === value)
   return (
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
-      <button onClick={() => setOpen((o) => !o)} className={chipClasses(compact, !!current)} title={compact ? `Filter by ${label.toLowerCase()}` : undefined}>
+      <ChipTrigger
+        label={label}
+        compact={compact}
+        active={!!current}
+        onToggle={() => setOpen((o) => !o)}
+        onClear={() => { onChange(null); setOpen(false) }}
+      >
         {compact ? (current ? current.label : <ListFilter className="h-3 w-3" />) : <>{label}{current ? `: ${current.label}` : ""}</>}
-        {current ? (
-          <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); onChange(null); setOpen(false) }} />
-        ) : !compact ? (
-          <ChevronDown className="h-3 w-3 opacity-70" />
-        ) : null}
-      </button>
+      </ChipTrigger>
       {open && (
         <Popover>
           {options.map((o) => (
@@ -111,14 +145,15 @@ export function FilterMulti<V extends string>({
     : ""
   return (
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
-      <button onClick={() => setOpen((o) => !o)} className={chipClasses(compact, active)} title={compact ? `Filter by ${label.toLowerCase()}` : undefined}>
+      <ChipTrigger
+        label={label}
+        compact={compact}
+        active={active}
+        onToggle={() => setOpen((o) => !o)}
+        onClear={() => { onChange([]); setOpen(false) }}
+      >
         {compact ? (active ? summary : <ListFilter className="h-3 w-3" />) : <>{label}{summary ? `: ${summary}` : ""}</>}
-        {active ? (
-          <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); onChange([]); setOpen(false) }} />
-        ) : !compact ? (
-          <ChevronDown className="h-3 w-3 opacity-70" />
-        ) : null}
-      </button>
+      </ChipTrigger>
       {open && (
         <Popover>
           {options.map((o) => {

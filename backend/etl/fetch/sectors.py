@@ -198,8 +198,9 @@ async def classify_sectors_llm(
     client: httpx.AsyncClient, name: str, ecosystem: str
 ) -> list[str]:
     """Classify package sectors via LLM. Expensive — use for onboarding only."""
-    from config import get_openai_client
     from pydantic import BaseModel
+
+    from config import get_openai_client
 
     description, keywords = await fetch_package_description(client, name, ecosystem)
 

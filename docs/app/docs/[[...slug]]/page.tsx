@@ -11,6 +11,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Mermaid } from '@/app/components/Mermaid';
+import { Demo, DemoTip } from '@/app/components/Demo';
 import { ModelReference } from '@/app/components/ModelReference';
 
 export default async function Page({
@@ -34,6 +35,8 @@ export default async function Page({
             ...defaultMdxComponents,
             Mermaid,
             ModelReference,
+            Demo,
+            DemoTip,
             Step,
             Steps,
             Accordion,

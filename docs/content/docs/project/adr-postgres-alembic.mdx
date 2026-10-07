@@ -77,7 +77,7 @@ To enforce this going forward, `tests/test_schema_drift.py` introspects the live
 
 ```
 DuckDB (local file)          →   Postgres 16 (Docker local / RDS prod)
-MotherDuck (cloud DuckDB)    →   RDS db.t4g.micro
+MotherDuck (cloud DuckDB)    →   RDS db.t3.micro
 init_db() + _safe() hacks    →   Alembic versioned migrations
 ? placeholders               →   %s placeholders (psycopg2)
 list_contains(col, val)      →   val = ANY(col)

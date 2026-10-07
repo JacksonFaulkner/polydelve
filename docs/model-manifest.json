@@ -29,14 +29,14 @@
       {
         "name": "price",
         "type": "int",
-        "default": "Field(description='Cost in Schmeckles to enter this market.')",
-        "description": "Cost in Schmeckles to enter this market."
+        "default": "Field(description='Cost in Bits to enter this market.')",
+        "description": "Cost in Bits to enter this market."
       },
       {
         "name": "payout",
         "type": "int",
-        "default": "Field(description='Schmeckle payout if the market resolves YES.')",
-        "description": "Schmeckle payout if the market resolves YES."
+        "default": "Field(description='Bit payout if the market resolves YES.')",
+        "description": "Bit payout if the market resolves YES."
       },
       {
         "name": "end_date",
@@ -51,7 +51,7 @@
         "description": "Current market state."
       }
     ],
-    "lineno": 30
+    "lineno": 32
   },
   {
     "name": "Bet",
@@ -81,7 +81,7 @@
         "description": "Timestamp when the bet was placed."
       }
     ],
-    "lineno": 58
+    "lineno": 60
   },
   {
     "name": "Company",
@@ -111,7 +111,7 @@
         "description": "Security risk grade. A = lowest risk, F = highest."
       }
     ],
-    "lineno": 65
+    "lineno": 67
   },
   {
     "name": "User",
@@ -135,7 +135,7 @@
         "description": "Display name chosen by the user."
       },
       {
-        "name": "schmeckles",
+        "name": "bits",
         "type": "int",
         "default": "Field(default=1000, description='In-game currency balance. New users start with 1000.')",
         "description": "In-game currency balance. New users start with 1000."
@@ -147,7 +147,7 @@
         "description": "Public URL of user's avatar image."
       }
     ],
-    "lineno": 77
+    "lineno": 79
   },
   {
     "name": "ContractBase",
@@ -179,27 +179,33 @@
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(ge=10, description='Schmeckles paid upfront to open the contract.')",
-        "description": "Schmeckles paid upfront to open the contract."
+        "default": "Field(ge=10, description='Bits paid upfront to open the contract.')",
+        "description": "Bits paid upfront to open the contract."
       },
       {
         "name": "duration_days",
         "type": "ContractDuration",
         "default": "Field(default=30, description='Contract lifetime in days. One of 7, 14, or 30.')",
         "description": "Contract lifetime in days. One of 7, 14, or 30."
+      },
+      {
+        "name": "direction",
+        "type": "Direction",
+        "default": "Field(default='yes', description=f\"'yes' bets a qualifying event happens before expiry. 'no' bets it doesn't \u2014 only offered on packages with a CVE in the last {NO_BET_ELIGIBILITY_DAYS} days, and only CVSS is a win condition (epss_threshold is ignored).\")",
+        "description": null
       }
     ],
-    "lineno": 96
+    "lineno": 98
   },
   {
     "name": "QuoteRequest",
     "fields": [],
-    "lineno": 120
+    "lineno": 130
   },
   {
     "name": "BuyRequest",
     "fields": [],
-    "lineno": 124
+    "lineno": 134
   },
   {
     "name": "SimulateRequest",
@@ -225,8 +231,8 @@
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(description='Hypothetical Schmeckle cost to simulate.')",
-        "description": "Hypothetical Schmeckle cost to simulate."
+        "default": "Field(description='Hypothetical Bit cost to simulate.')",
+        "description": "Hypothetical Bit cost to simulate."
       },
       {
         "name": "duration_days",
@@ -239,45 +245,15 @@
         "type": "float",
         "default": "Field(default=1.0, ge=0, description='Multiplier applied to current EPSS to model future drift. 1.0 = no change.')",
         "description": "Multiplier applied to current EPSS to model future drift. 1.0 = no change."
+      },
+      {
+        "name": "direction",
+        "type": "Direction",
+        "default": "Field(default='yes', description=\"'yes' or 'no' bet direction.\")",
+        "description": "'yes' or 'no' bet direction."
       }
     ],
-    "lineno": 128
-  },
-  {
-    "name": "SimCurvePoint",
-    "fields": [
-      {
-        "name": "label",
-        "type": "str",
-        "default": "Field(description='X-axis label for this point on the payout curve (e.g. day or scenario name).')",
-        "description": "X-axis label for this point on the payout curve (e.g. day or scenario name)."
-      },
-      {
-        "name": "sell_pnl",
-        "type": "int",
-        "default": "Field(description='Profit/loss in Schmeckles if the contract is sold at this point.')",
-        "description": "Profit/loss in Schmeckles if the contract is sold at this point."
-      },
-      {
-        "name": "epss_win",
-        "type": "int",
-        "default": "Field(description='Schmeckle payout if the EPSS win condition triggers at this point.')",
-        "description": "Schmeckle payout if the EPSS win condition triggers at this point."
-      },
-      {
-        "name": "cvss_win",
-        "type": "int",
-        "default": "Field(description='Schmeckle payout if the CVSS win condition triggers at this point.')",
-        "description": "Schmeckle payout if the CVSS win condition triggers at this point."
-      },
-      {
-        "name": "mal_win",
-        "type": "int",
-        "default": "Field(description='Schmeckle payout if the MAL advisory win condition triggers at this point.')",
-        "description": "Schmeckle payout if the MAL advisory win condition triggers at this point."
-      }
-    ],
-    "lineno": 146
+    "lineno": 138
   },
   {
     "name": "SimulateResponse",
@@ -285,71 +261,59 @@
       {
         "name": "epss_payout",
         "type": "int",
-        "default": "Field(description='Max payout if the EPSS condition wins.')",
-        "description": "Max payout if the EPSS condition wins."
+        "default": "Field(description='Payout if the EPSS condition wins (0 if no EPSS leg).')",
+        "description": "Payout if the EPSS condition wins (0 if no EPSS leg)."
       },
       {
         "name": "cvss_payout",
         "type": "int",
-        "default": "Field(description='Max payout if the CVSS condition wins.')",
-        "description": "Max payout if the CVSS condition wins."
+        "default": "Field(description='Payout if the CVSS condition wins.')",
+        "description": "Payout if the CVSS condition wins."
       },
       {
         "name": "mal_payout",
         "type": "int",
-        "default": "Field(description='Max payout if the MAL advisory condition wins.')",
-        "description": "Max payout if the MAL advisory condition wins."
+        "default": "Field(description='Payout if the MAL advisory condition wins (0 for NO bets).')",
+        "description": "Payout if the MAL advisory condition wins (0 for NO bets)."
       },
       {
         "name": "epss_win",
         "type": "int",
-        "default": "Field(description='Estimated Schmeckle profit on an EPSS win (payout minus purchase price).')",
-        "description": "Estimated Schmeckle profit on an EPSS win (payout minus purchase price)."
+        "default": "Field(description='Bit profit on an EPSS win (payout minus purchase price).')",
+        "description": "Bit profit on an EPSS win (payout minus purchase price)."
       },
       {
         "name": "cvss_win",
         "type": "int",
-        "default": "Field(description='Estimated Schmeckle profit on a CVSS win.')",
-        "description": "Estimated Schmeckle profit on a CVSS win."
+        "default": "Field(description='Bit profit on a CVSS win.')",
+        "description": "Bit profit on a CVSS win."
       },
       {
         "name": "mal_win",
         "type": "int",
-        "default": "Field(description='Estimated Schmeckle profit on a MAL win.')",
-        "description": "Estimated Schmeckle profit on a MAL win."
+        "default": "Field(description='Bit profit on a MAL win.')",
+        "description": "Bit profit on a MAL win."
       },
       {
         "name": "max_win",
         "type": "int",
-        "default": "Field(description='Best-case profit across all win conditions.')",
-        "description": "Best-case profit across all win conditions."
+        "default": "Field(description='Profit if the contract wins.')",
+        "description": "Profit if the contract wins."
       },
       {
         "name": "max_loss",
         "type": "int",
-        "default": "Field(description='Worst-case loss (negative) if the contract expires without winning.')",
-        "description": "Worst-case loss (negative) if the contract expires without winning."
+        "default": "Field(description='Loss (negative) if the contract expires without winning.')",
+        "description": "Loss (negative) if the contract expires without winning."
       },
       {
-        "name": "y_min",
-        "type": "int",
-        "default": "Field(description='Chart Y-axis minimum for the payout curve.')",
-        "description": "Chart Y-axis minimum for the payout curve."
-      },
-      {
-        "name": "y_max",
-        "type": "int",
-        "default": "Field(description='Chart Y-axis maximum for the payout curve.')",
-        "description": "Chart Y-axis maximum for the payout curve."
-      },
-      {
-        "name": "curve",
-        "type": "list[SimCurvePoint]",
-        "default": "Field(description='Series of payout curve points for charting expected value over time.')",
-        "description": "Series of payout curve points for charting expected value over time."
+        "name": "win_probability",
+        "type": "float",
+        "default": "Field(description='Model P(win) over the full contract window, 0\u20131.')",
+        "description": "Model P(win) over the full contract window, 0\u20131."
       }
     ],
-    "lineno": 164
+    "lineno": 157
   },
   {
     "name": "QuoteResponse",
@@ -373,6 +337,12 @@
         "description": "Win condition type inferred from thresholds."
       },
       {
+        "name": "direction",
+        "type": "Direction",
+        "default": "Field(description=\"'yes' or 'no' bet direction.\")",
+        "description": "'yes' or 'no' bet direction."
+      },
+      {
         "name": "cvss_threshold",
         "type": "float | None",
         "default": "Field(description='CVSS threshold used in this quote. Null if not applicable.')",
@@ -387,14 +357,14 @@
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(description='Schmeckle cost to buy this contract.')",
-        "description": "Schmeckle cost to buy this contract."
+        "default": "Field(description='Bit cost to buy this contract.')",
+        "description": "Bit cost to buy this contract."
       },
       {
         "name": "max_payout",
         "type": "int",
-        "default": "Field(description='Maximum Schmeckle payout on a win.')",
-        "description": "Maximum Schmeckle payout on a win."
+        "default": "Field(description='Maximum Bit payout on a win.')",
+        "description": "Maximum Bit payout on a win."
       },
       {
         "name": "opening_probability",
@@ -427,7 +397,7 @@
         "description": "Payout multiplier applied based on risk and duration."
       }
     ],
-    "lineno": 186
+    "lineno": 169
   },
   {
     "name": "BuyResponse",
@@ -439,10 +409,16 @@
         "description": "UUID of the newly created contract."
       },
       {
+        "name": "direction",
+        "type": "Direction",
+        "default": "Field(description=\"'yes' or 'no' bet direction.\")",
+        "description": "'yes' or 'no' bet direction."
+      },
+      {
         "name": "max_payout",
         "type": "int",
-        "default": "Field(description='Maximum Schmeckle payout if the contract wins.')",
-        "description": "Maximum Schmeckle payout if the contract wins."
+        "default": "Field(description='Maximum Bit payout if the contract wins.')",
+        "description": "Maximum Bit payout if the contract wins."
       },
       {
         "name": "opening_probability",
@@ -475,7 +451,7 @@
         "description": "Human-readable summary of the contract terms."
       }
     ],
-    "lineno": 213
+    "lineno": 197
   },
   {
     "name": "ContractDetail",
@@ -505,6 +481,12 @@
         "description": "Win condition type: all, epss_threshold, or new_cve."
       },
       {
+        "name": "direction",
+        "type": "Direction",
+        "default": "Field(default='yes', description=\"'yes' or 'no' bet direction.\")",
+        "description": "'yes' or 'no' bet direction."
+      },
+      {
         "name": "cvss_threshold",
         "type": "float | None",
         "default": "Field(description='CVSS threshold for a win. Null if not applicable.')",
@@ -519,14 +501,14 @@
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(description='Schmeckles paid to open this contract.')",
-        "description": "Schmeckles paid to open this contract."
+        "default": "Field(description='Bits paid to open this contract.')",
+        "description": "Bits paid to open this contract."
       },
       {
         "name": "max_payout",
         "type": "int",
-        "default": "Field(description='Maximum Schmeckle payout if the contract wins.')",
-        "description": "Maximum Schmeckle payout if the contract wins."
+        "default": "Field(description='Maximum Bit payout if the contract wins.')",
+        "description": "Maximum Bit payout if the contract wins."
       },
       {
         "name": "opening_probability",
@@ -561,8 +543,8 @@
       {
         "name": "sell_price",
         "type": "int | None",
-        "default": "Field(description='Schmeckles received if the contract was sold early. Null otherwise.')",
-        "description": "Schmeckles received if the contract was sold early. Null otherwise."
+        "default": "Field(description='Bits received if the contract was sold early. Null otherwise.')",
+        "description": "Bits received if the contract was sold early. Null otherwise."
       },
       {
         "name": "created_at",
@@ -571,10 +553,16 @@
         "description": "ISO datetime when the contract was purchased."
       },
       {
-        "name": "current_sell_value",
+        "name": "opening_epss",
+        "type": "float | None",
+        "default": "Field(default=None, description='EPSS score of the package at time of purchase.')",
+        "description": "EPSS score of the package at time of purchase."
+      },
+      {
+        "name": "current_value",
         "type": "int | None",
-        "default": "Field(description='Current early-exit sell value in Schmeckles. Null if not open.')",
-        "description": "Current early-exit sell value in Schmeckles. Null if not open."
+        "default": "Field(description='Mark-to-model value in Bits (P(win) \u00d7 payout over the remaining window). Null if not open.')",
+        "description": "Mark-to-model value in Bits (P(win) \u00d7 payout over the remaining window). Null if not open."
       },
       {
         "name": "multiplier",
@@ -583,25 +571,328 @@
         "description": "Payout multiplier applied at purchase based on risk and duration."
       }
     ],
-    "lineno": 229
+    "lineno": 214
   },
   {
-    "name": "SellResponse",
+    "name": "EtfMemberRequest",
     "fields": [
       {
-        "name": "sell_price",
+        "name": "package_name",
+        "type": "str",
+        "default": "Field(description='Package in the basket.')",
+        "description": "Package in the basket."
+      },
+      {
+        "name": "ecosystem",
+        "type": "Ecosystem",
+        "default": "Field(description='Registry the package belongs to.')",
+        "description": "Registry the package belongs to."
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": "Field(default=None, ge=0, le=10)",
+        "description": null
+      },
+      {
+        "name": "epss_threshold",
+        "type": "float | None",
+        "default": "Field(default=None, ge=0, le=1)",
+        "description": null
+      }
+    ],
+    "lineno": 265
+  },
+  {
+    "name": "EtfBase",
+    "fields": [
+      {
+        "name": "members",
+        "type": "list[EtfMemberRequest]",
+        "default": "Field(min_length=2, description='Packages in the basket. At least 2.')",
+        "description": "Packages in the basket. At least 2."
+      },
+      {
+        "name": "threshold_count",
         "type": "int",
-        "default": "Field(description='Schmeckles credited to the user for selling early.')",
-        "description": "Schmeckles credited to the user for selling early."
+        "default": "Field(ge=1, description='Number of members that must trigger their win condition.')",
+        "description": "Number of members that must trigger their win condition."
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": "Field(ge=10, description='Bits paid upfront.')",
+        "description": "Bits paid upfront."
+      },
+      {
+        "name": "duration_days",
+        "type": "ContractDuration",
+        "default": "Field(default=30)",
+        "description": null
+      }
+    ],
+    "lineno": 272
+  },
+  {
+    "name": "EtfQuoteRequest",
+    "fields": [],
+    "lineno": 283
+  },
+  {
+    "name": "EtfBuyRequest",
+    "fields": [],
+    "lineno": 287
+  },
+  {
+    "name": "EtfSimulateRequest",
+    "fields": [],
+    "lineno": 291
+  },
+  {
+    "name": "EtfQuoteResponse",
+    "fields": [
+      {
+        "name": "threshold_count",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "member_count",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "combined_probability",
+        "type": "float",
+        "default": "Field(description='P(at least threshold_count of member_count win).')",
+        "description": "P(at least threshold_count of member_count win)."
+      },
+      {
+        "name": "avg_grade",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": null,
+        "description": null
+      }
+    ],
+    "lineno": 295
+  },
+  {
+    "name": "EtfBuyResponse",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "combined_probability",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "avg_grade",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": null,
+        "description": null
+      }
+    ],
+    "lineno": 306
+  },
+  {
+    "name": "EtfMemberDetail",
+    "fields": [
+      {
+        "name": "package_name",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "ecosystem",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "cvss_threshold",
+        "type": "float | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "epss_threshold",
+        "type": "float | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "opening_probability",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "opening_epss",
+        "type": "float | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "won",
+        "type": "bool",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "won_at",
+        "type": "str | None",
+        "default": null,
+        "description": null
+      }
+    ],
+    "lineno": 315
+  },
+  {
+    "name": "EtfContractDetail",
+    "fields": [
+      {
+        "name": "id",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "threshold_count",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "member_count",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "purchase_price",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "max_payout",
+        "type": "int",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "combined_probability",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "avg_grade",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "expires_at",
+        "type": "str",
+        "default": null,
+        "description": null
       },
       {
         "name": "status",
         "type": "ContractStatus",
-        "default": "Field(description=\"Contract status after the sell, always 'sold'.\")",
-        "description": "Contract status after the sell, always 'sold'."
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "resolved_at",
+        "type": "str | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "sell_price",
+        "type": "int | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "created_at",
+        "type": "str",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "current_value",
+        "type": "int | None",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "multiplier",
+        "type": "float",
+        "default": null,
+        "description": null
+      },
+      {
+        "name": "members",
+        "type": "list[EtfMemberDetail]",
+        "default": null,
+        "description": null
       }
     ],
-    "lineno": 273
+    "lineno": 326
   },
   {
     "name": "LeaderboardContract",
@@ -633,14 +924,14 @@
       {
         "name": "purchase_price",
         "type": "int",
-        "default": "Field(description='Schmeckles paid to open the contract.')",
-        "description": "Schmeckles paid to open the contract."
+        "default": "Field(description='Bits paid to open the contract.')",
+        "description": "Bits paid to open the contract."
       },
       {
         "name": "max_payout",
         "type": "int",
-        "default": "Field(description='Maximum Schmeckle payout on a win.')",
-        "description": "Maximum Schmeckle payout on a win."
+        "default": "Field(description='Maximum Bit payout on a win.')",
+        "description": "Maximum Bit payout on a win."
       },
       {
         "name": "opening_probability",
@@ -667,7 +958,7 @@
         "description": "ISO datetime when the contract was purchased."
       }
     ],
-    "lineno": 285
+    "lineno": 347
   },
   {
     "name": "LeaderboardUser",
@@ -691,10 +982,10 @@
         "description": "Display name. Null if not set."
       },
       {
-        "name": "schmeckles",
+        "name": "bits",
         "type": "int",
-        "default": "Field(description='Current Schmeckle balance.')",
-        "description": "Current Schmeckle balance."
+        "default": "Field(description='Current Bit balance.')",
+        "description": "Current Bit balance."
       },
       {
         "name": "total_contracts",
@@ -721,7 +1012,7 @@
         "description": "Recent contracts for display on the leaderboard."
       }
     ],
-    "lineno": 302
+    "lineno": 364
   },
   {
     "name": "LeaderboardResponse",
@@ -751,10 +1042,10 @@
         "description": "Paginated list of leaderboard users."
       }
     ],
-    "lineno": 319
+    "lineno": 381
   },
   {
-    "name": "SchmecklePoint",
+    "name": "BitPoint",
     "fields": [
       {
         "name": "date",
@@ -765,8 +1056,8 @@
       {
         "name": "balance",
         "type": "int",
-        "default": "Field(description='Schmeckle balance at this point in time.')",
-        "description": "Schmeckle balance at this point in time."
+        "default": "Field(description='Bit balance at this point in time.')",
+        "description": "Bit balance at this point in time."
       },
       {
         "name": "event",
@@ -775,10 +1066,10 @@
         "description": "Event that caused the balance change, if any."
       }
     ],
-    "lineno": 331
+    "lineno": 393
   },
   {
-    "name": "SchmeckleTimeline",
+    "name": "BitTimeline",
     "fields": [
       {
         "name": "user_id",
@@ -788,12 +1079,12 @@
       },
       {
         "name": "points",
-        "type": "list[SchmecklePoint]",
+        "type": "list[BitPoint]",
         "default": "Field(description='Chronological list of balance snapshots.')",
         "description": "Chronological list of balance snapshots."
       }
     ],
-    "lineno": 339
+    "lineno": 401
   },
   {
     "name": "PackageRisk",
@@ -835,7 +1126,7 @@
         "description": "True if a MAL advisory exists for this package."
       }
     ],
-    "lineno": 349
+    "lineno": 411
   },
   {
     "name": "GptAnalysis",
@@ -889,7 +1180,7 @@
         "description": "How useful this article is to a software supply-chain risk app that tracks CVEs and exploits in npm/PyPI packages. 0.9-1.0 = specific vulnerability, exploit, or malicious-package incident with named packages or CVEs. 0.6-0.8 = concrete security incident or advisory affecting open-source software, packages inferable. 0.3-0.5 = general supply-chain security reporting with no specific vulnerability. 0.0-0.2 = listicles ('Top 10 ...'), vendor marketing, webinars, conference promos, product announcements."
       }
     ],
-    "lineno": 370
+    "lineno": 432
   },
   {
     "name": "ExaAnalysis",
@@ -925,7 +1216,7 @@
         "description": "Canonical URL of the article."
       }
     ],
-    "lineno": 409
+    "lineno": 471
   },
   {
     "name": "NewsAnalysis",
@@ -943,7 +1234,7 @@
         "description": "Structured LLM extraction: packages, sectors, threat actor, severity."
       }
     ],
-    "lineno": 423
+    "lineno": 485
   },
   {
     "name": "NewsEmbeddings",
@@ -967,7 +1258,7 @@
         "description": "Embedding vector for the source URL domain. Excluded from API serialization."
       }
     ],
-    "lineno": 432
+    "lineno": 494
   },
   {
     "name": "EpssHistoryRow",
@@ -997,7 +1288,7 @@
         "description": "Date the score snapshot was taken."
       }
     ],
-    "lineno": 450
+    "lineno": 512
   },
   {
     "name": "MalAdvisoryRow",
@@ -1045,7 +1336,7 @@
         "description": "Short human-readable description of the vulnerability."
       }
     ],
-    "lineno": 463
+    "lineno": 525
   },
   {
     "name": "PackageRow",
@@ -1123,7 +1414,7 @@
         "description": "Sector labels assigned via heuristic or LLM classification."
       }
     ],
-    "lineno": 484
+    "lineno": 546
   },
   {
     "name": "RecentNews",
@@ -1147,6 +1438,6 @@
         "description": "Exa source metadata + structured LLM extraction."
       }
     ],
-    "lineno": 524
+    "lineno": 586
   }
 ]

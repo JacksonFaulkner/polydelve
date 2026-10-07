@@ -9,9 +9,15 @@ const render = (ui: ReactElement) => rtlRender(<NuqsTestingAdapter>{ui}</NuqsTes
 
 const mockAuthFetch = vi.fn()
 
-vi.mock("@/lib/api", () => ({
-  useApi: () => ({ authFetch: mockAuthFetch }),
-}))
+vi.mock("@/lib/api", () => {
+  // Defined once so its identity is stable across renders, like the real hook.
+  const getJson = async (path: string, init?: RequestInit) => {
+    const res: Response = await mockAuthFetch(path, init)
+    if (!res.ok) throw new Error(`${res.status}`)
+    return res.json()
+  }
+  return { useApi: () => ({ authFetch: mockAuthFetch, getJson }) }
+})
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
@@ -74,15 +80,23 @@ describe("PackagesTable", () => {
     })
   })
 
+  it("shows an error with retry when the fetch fails", async () => {
+    mockAuthFetch.mockReturnValue(
+      Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ detail: "boom" }) } as Response)
+    )
+    render(<PackagesTable ecosystem="PyPI" />)
+    expect((await screen.findAllByRole("alert"))[0]).toHaveTextContent("Couldn't load")
+    expect(screen.queryByText("No packages found")).not.toBeInTheDocument()
+  })
+
   it("renders correct ecosystem in fetch URL", async () => {
     mockAuthFetch.mockReturnValue(
       mockResponse({ total: 0, page: 1, page_size: 50, packages: [] })
     )
     render(<PackagesTable ecosystem="npm" />)
     await waitFor(() => {
-      expect(mockAuthFetch).toHaveBeenCalledWith(
-        expect.stringContaining("ecosystem=npm")
-      )
+      const urls = mockAuthFetch.mock.calls.map(([url]) => url as string)
+      expect(urls.some((u) => u.includes("ecosystem=npm"))).toBe(true)
     })
   })
 

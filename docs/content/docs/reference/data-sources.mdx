@@ -7,33 +7,33 @@ description: "Provenance, ETL ownership, and cadence for every external data fee
 
 | Source | Access method | Owning ETL job | Cadence | Notes |
 |---|---|---|---|---|
-| EPSS | BigQuery bulk export | `refresh_epss` / `ingest_epss_history` | Daily | Never use FIRST API in a loop |
-| OSV | OSV database | `build-cve-history` | On-demand / scheduled | CVE resolution for contract settlement |
-| npm downloads | npm downloads API | `enrich-packages` | Periodic | Per-package download counts |
-| PyPI downloads | PyPI stats API | `enrich-packages` | Periodic | Per-package download counts |
-| News | Exa API | `news-update` | Periodic | Requires `EXA_API_KEY`; tagged by sector/package via Gemini |
-| MAL advisories | OSV malicious advisories | `ingest_mal_advisories` | Periodic | Run via `make etl-packages` |
+| EPSS | FIRST bulk CSV (`epss_scores-DATE.csv.gz`) | `epss` / `epss-history` | Every `refresh` (3x daily; file updates daily) | Never loop the FIRST REST API |
+| OSV (CVEs) | OSV bulk `all.zip` per ecosystem | `cve` | Every `refresh` | CVE resolution for contract settlement |
+| npm downloads | npm downloads API | `packages` / `seed` | Weekly / on demand | Per-package weekly download counts |
+| PyPI downloads | BigQuery `bigquery-public-data.pypi.file_downloads` | `packages` / `seed` | Weekly / on demand | Per-package weekly download counts; needs Google credentials |
+| News | Exa API | `news` | Every `refresh` | Requires `EXA_API_KEY`; tagged by sector/package via GPT (gpt-5.4-mini) |
+| MAL advisories | OSV bulk `all.zip` (`MAL-*` IDs) | `mal` | Every `refresh` | `make etl-mal` / `make etl-mal-cached` |
 
 ## EPSS
 
-Exploit Prediction Scoring System scores are published by FIRST to a public BigQuery dataset. The ETL pulls a full bulk export daily — **do not substitute a per-CVE loop against the FIRST REST API**; the API is rate-limited and unsuitable for bulk refresh. The `refresh_epss` job handles current scores; `ingest_epss_history` backfills historical snapshots. Both write to the `epss` table in Postgres.
+Exploit Prediction Scoring System scores are published by FIRST as a daily bulk CSV (`https://epss.empiricalsecurity.com/epss_scores-DATE.csv.gz`). The ETL downloads the file, falling back to yesterday's if today's isn't up yet, and joins it against tracked CVEs; **do not substitute a per-CVE loop against the FIRST REST API**. The `epss` job updates `packages.epss_score` and snapshots changes into `epss_history`; `epss-history` (`scripts/ingest_epss_history.py`) backfills historical snapshots from the same daily files.
 
 ## OSV
 
-The Open Source Vulnerabilities database is the authoritative source for CVE metadata used during contract settlement (`build-cve-history`). The job resolves a CVE to its affected package versions and writes the result into the CVE history tables. It runs on-demand (e.g., triggered by a new market) and on a scheduled sweep to catch late-arriving OSV records.
+The Open Source Vulnerabilities database is the source for CVE metadata used during contract settlement. The `cve` job (`make build-cve-history`) downloads the OSV bulk zip per ecosystem and writes OSV ID, CVE ID, severity and CVSS vector/score to `cve_history`. It also runs in every scheduled `refresh` to catch late-arriving records.
 
 ## npm Downloads
 
-Download counts for npm packages are fetched from the npm downloads count API by `enrich-packages`. The job iterates tracked packages and upserts counts. Cadence is periodic — run manually or via scheduler; there is no webhook trigger.
+Weekly download counts for npm packages come from the npm downloads API, fetched by the `packages` job (and the `seed` job). There is no webhook trigger.
 
 ## PyPI Downloads
 
-PyPI download statistics are fetched from the PyPI stats API by the same `enrich-packages` job that handles npm. The two feeds share job infrastructure but hit different endpoints. No API key is required; rate-limit conservatively on large package sets.
+PyPI download counts come from a BigQuery query against the public PyPI dataset (`bigquery-public-data.pypi.file_downloads`), run by the same `packages` job. It requires Google Cloud credentials (`GOOGLE_APPLICATION_CREDENTIALS` or Workload Identity).
 
 ## News
 
-News articles are sourced via the Exa API (key: `EXA_API_KEY`). The `news-update` job queries Exa with sector- and package-scoped queries, then sends results through Gemini for tagging before storing them. If `EXA_API_KEY` is absent the job will fail at startup — ensure the secret is present in the environment or Secrets Manager before scheduling.
+News articles are sourced via the Exa API (`EXA_API_KEY`). The `news` job queries Exa with security-focused queries, then sends results through OpenAI gpt-5.4-mini for structured extraction and tagging before storing them. If the Exa key is absent the job will fail; ensure the secret is present in the environment or Secrets Manager before scheduling.
 
 ## MAL Advisories
 
-Malicious package advisories are a subset of OSV. The `ingest_mal_advisories` job filters OSV for `MAL-` prefixed IDs and loads them into the advisories table. The canonical invocation is `make etl-packages`, which runs this job alongside other package enrichment steps. Check OSV schema changes when the job reports unexpected zero-row runs — FIRST occasionally restructures malicious advisory fields.
+Malicious package advisories are a subset of OSV. The `mal` job downloads the OSV bulk zips, keeps records whose IDs start with `MAL-`, and loads them into `mal_advisories`. Run it with `make etl-mal` (re-downloads) or `make etl-mal-cached`. `make etl-packages` only sets the `has_mal_advisory` flag on packages. If the job reports zero rows unexpectedly, check for OSV schema changes.

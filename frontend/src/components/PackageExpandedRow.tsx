@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import EpssChart from "./EpssChart"
 import type { PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
+import { buildEpssChartData, nvdUrl } from "@/lib/epss"
 import { SEV_COLOR, SEV_FALLBACK, scoreColor } from "@/lib/severity"
 
 function CvssScoreBadge({ score }: { score: number }) {
@@ -95,7 +96,7 @@ interface Props {
 }
 
 export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props) {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [detail, setDetail] = useState<PackageDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCveId, setSelectedCveId] = useState<string | null>(null)
@@ -103,11 +104,10 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
 
   useEffect(() => {
     setLoading(true)
-    authFetch(`/packages/${ecosystem}/${encodeURIComponent(name)}`)
-      .then((r) => r.json())
+    getJson<PackageDetail>(`/packages/${ecosystem}/${encodeURIComponent(name)}`)
       .then((d) => { setDetail(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [name, ecosystem])
+  }, [name, ecosystem, getJson])
 
   const failed = !loading && !detail
   const cves = detail?.cve_history ?? []
@@ -120,19 +120,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
   ]
   const statValue = (v: string, w: string) => (loading ? <Skel className={`h-4 ${w} mt-0.5`} /> : v)
 
-  const epssChart = detail && detail.epss_history && detail.epss_history.length > 1 ? (() => {
-    const epssStart = detail.epss_history[0].date
-    const epssEnd = detail.epss_history[detail.epss_history.length - 1].date
-    const chartData = detail.epss_history.map((pt) => ({
-      date: pt.date, epss: pt.epss,
-      cvss: null as number | null, severity: null as string | null, cve_id: null as string | null,
-    }))
-    const scatterData = (detail.cve_history ?? [])
-      .filter((c) => c.published_date && c.cvss_score != null)
-      .map((c) => ({ date: c.published_date!.slice(0, 10), epss: 0, cvss: c.cvss_score, severity: c.severity, cve_id: c.cve_id }))
-      .filter((c) => c.date >= epssStart && c.date <= epssEnd)
-    return { chartData, scatterData, cveCount: scatterData.length }
-  })() : null
+  const epssChart = detail ? buildEpssChartData(detail) : null
 
   return (
     <tr data-tour={tourTag}>
@@ -211,7 +199,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                                   <td className="px-3 py-1.5 font-mono">
                                     {c.cve_id ? (
                                       <a
-                                        href={`https://nvd.nist.gov/vuln/detail/${c.cve_id}`}
+                                        href={nvdUrl(c.cve_id)}
                                         target="_blank" rel="noopener noreferrer"
                                         className="text-ink-2 hover:text-ink-1 underline decoration-line-3 transition-colors"
                                       >{c.cve_id}</a>
@@ -282,7 +270,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                                 >
                                   <td className="px-3 py-1.5 font-mono">
                                     {c.cve_id ? (
-                                      <a href={`https://nvd.nist.gov/vuln/detail/${c.cve_id}`} target="_blank" rel="noopener noreferrer"
+                                      <a href={nvdUrl(c.cve_id)} target="_blank" rel="noopener noreferrer"
                                         className="text-ink-2 hover:text-ink-1 underline decoration-line-3 hover:decoration-ink-3 transition-colors"
                                       >{c.cve_id}</a>
                                     ) : <span className="text-ink-2">{c.osv_id}</span>}

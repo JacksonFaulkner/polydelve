@@ -1,29 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Layers, Search } from "lucide-react"
-import type { Package, PackageDetail } from "@/types"
+import type { Package, PackageDetail, PackageListResponse, User } from "@/types"
 import { useApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { SignupPrompt } from "./SignupPrompt"
 import EpssChart from "./EpssChart"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { EcoBadge } from "@/components/ui/Badges"
-
-function buildEpssChartData(detail: PackageDetail) {
-  if (!detail.epss_history || detail.epss_history.length < 2) return null
-  const epssStart = detail.epss_history[0].date
-  const epssEnd = detail.epss_history[detail.epss_history.length - 1].date
-  const chartData = detail.epss_history
-    .map((pt) => ({
-      date: pt.date, epss: pt.epss,
-      cvss: null as number | null, severity: null as string | null, cve_id: null as string | null,
-    }))
-  const scatterData = (detail.cve_history ?? [])
-    .filter((c) => c.published_date && c.cvss_score != null)
-    .map((c) => ({ date: c.published_date!.slice(0, 10), epss: 0, cvss: c.cvss_score, severity: c.severity, cve_id: c.cve_id }))
-    .filter((c) => c.date >= epssStart && c.date <= epssEnd)
-  return { chartData, scatterData }
-}
+import { buildEpssChartData } from "@/lib/epss"
 
 const DURATION_OPTIONS = [7, 14, 30]
 const STAKE_CHIPS = [25, 100, 250, 500]
@@ -79,7 +64,7 @@ interface SimResult {
 }
 
 export function PredictPage({ onBuy }: { onBuy?: () => void }) {
-  const { authFetch } = useApi()
+  const { authFetch, getJson } = useApi()
   const { isAuthenticated } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -102,6 +87,10 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const [riskDetails, setRiskDetails] = useState<Record<string, PackageDetail>>({})
   const [direction, setDirection] = useState<"yes" | "no">(() => storedSlipRef.current?.direction ?? "yes")
   const [noPackages, setNoPackages] = useState<Package[] | null>(null)
+  const [packagesError, setPackagesError] = useState(false)
+  // NO bets hold a single package, so some actions need the user to confirm
+  // or choose which package survives.
+  const [pending, setPending] = useState<{ kind: "replace"; pkg: Package } | { kind: "pick" } | { kind: "ineligible"; name: string } | null>(null)
 
   useEffect(() => {
     try {
@@ -124,27 +113,20 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const soloDrift = solo ? soloTarget / Math.max(soloEpss, 0.001) : 1
 
   useEffect(() => {
-    authFetch(`/packages?sort=weekly_downloads&page_size=500&has_cves=true`)
-      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
+    getJson<PackageListResponse>(`/packages?sort=weekly_downloads&page_size=500&has_cves=true`)
       .then((d) => setPackages(d.packages ?? []))
-      .catch((e) => console.error("packages fetch failed:", e))
-  }, [])
+      .catch(() => setPackagesError(true))
+  }, [getJson])
 
   // NO bets ("this package won't get another vulnerability") only make sense
   // on packages that have actually had one recently — fetch that narrower
   // list lazily, the first time the user switches to NO.
   useEffect(() => {
-    if (direction !== "no" || noPackages !== null) return
-    authFetch(`/packages?sort=weekly_downloads&page_size=500&has_cves=true&latest_cve_days=${NO_BET_ELIGIBILITY_DAYS}`)
-      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
+    if ((direction !== "no" && pending?.kind !== "pick") || noPackages !== null) return
+    getJson<PackageListResponse>(`/packages?sort=weekly_downloads&page_size=500&has_cves=true&latest_cve_days=${NO_BET_ELIGIBILITY_DAYS}`)
       .then((d) => setNoPackages(d.packages ?? []))
-      .catch((e) => console.error("no-bet packages fetch failed:", e))
-  }, [direction, noPackages, authFetch])
-
-  // NO bets are single-package only — a basket forces YES.
-  useEffect(() => {
-    if (isBasket) setDirection("yes")
-  }, [isBasket])
+      .catch(() => setPackagesError(true))
+  }, [direction, pending, noPackages, getJson])
 
   // A leg added under YES may not be NO-eligible (needs a CVE in the last
   // 100 days) — once the eligible list loads, drop it rather than let a
@@ -158,11 +140,10 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   }, [direction, noPackages, legs])
 
   const refreshUser = useCallback(() => {
-    authFetch(`/users/me`)
-      .then((r) => r.json())
+    getJson<User>(`/users/me`)
       .then((d) => setBits(d.bits))
       .catch(() => {})
-  }, [authFetch])
+  }, [getJson])
 
   useEffect(() => { refreshUser() }, [refreshUser])
 
@@ -212,14 +193,11 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
     if (missing.length === 0) return
     missing.forEach((l) => {
       const key = legKey(l.pkg)
-      authFetch(`/packages/${l.pkg.ecosystem}/${encodeURIComponent(l.pkg.name)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: PackageDetail | null) => {
-          if (d) setRiskDetails((prev) => ({ ...prev, [key]: d }))
-        })
+      getJson<PackageDetail>(`/packages/${l.pkg.ecosystem}/${encodeURIComponent(l.pkg.name)}`)
+        .then((d) => setRiskDetails((prev) => ({ ...prev, [key]: d })))
         .catch(() => {})
     })
-  }, [legs, riskDetails, authFetch])
+  }, [legs, riskDetails, getJson])
 
   function legKey(p: Package) { return `${p.ecosystem}:${p.name}` }
 
@@ -248,11 +226,68 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   const sectionLabel = "text-xs font-medium text-ink-3"
   function addLeg(p: Package) {
     if (legs.length >= MAX_LEGS) return
-    if (direction === "no" && legs.length >= 1) return // NO bets are single-package only
     if (legs.some((l) => legKey(l.pkg) === legKey(p))) return
+    if (direction === "no" && legs.length >= 1) { // NO bets are single-package only
+      setPending({ kind: "replace", pkg: p })
+      setSearch("")
+      return
+    }
     setLegs((prev) => [...prev, { pkg: p, cvssThreshold: DEFAULT_CVSS, epssSliderPos: defaultEpssPos(p.epss_score) }])
     setSearch("")
     setExpandedLeg(legKey(p))
+  }
+
+  function newLeg(p: Package): Leg {
+    return { pkg: p, cvssThreshold: DEFAULT_CVSS, epssSliderPos: defaultEpssPos(p.epss_score) }
+  }
+
+  function confirmReplace(p: Package) {
+    setLegs([newLeg(p)])
+    setExpandedLeg(legKey(p))
+    setPending(null)
+  }
+
+  function chooseDirection(d: "yes" | "no") {
+    if (d === direction) return
+    if (d === "no" && legs.length > 1) {
+      setPending({ kind: "pick" })
+      return
+    }
+    if (d === "no" && legs.length === 1) {
+      void switchToNo(legs[0])
+      return
+    }
+    setPending(null)
+    setDirection(d)
+  }
+
+  // Switch to NO holding only `l`. If `l` has no recent CVE it can't be bet
+  // NO, so ask before the switch clears it from the slip.
+  async function switchToNo(l: Leg) {
+    let eligible = noPackages
+    if (eligible === null) {
+      try {
+        const d = await getJson<PackageListResponse>(`/packages?sort=weekly_downloads&page_size=500&has_cves=true&latest_cve_days=${NO_BET_ELIGIBILITY_DAYS}`)
+        eligible = d.packages ?? []
+        setNoPackages(eligible)
+      } catch {
+        setPackagesError(true)
+        return
+      }
+    }
+    if (eligible.some((p) => legKey(p) === legKey(l.pkg))) {
+      setLegs([l])
+      setDirection("no")
+      setPending(null)
+    } else {
+      setPending({ kind: "ineligible", name: l.pkg.name })
+    }
+  }
+
+  function confirmClearForNo() {
+    setLegs([])
+    setDirection("no")
+    setPending(null)
   }
 
   function removeLeg(key: string) {
@@ -290,6 +325,10 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           epssSliderPos: defaultEpssPos(m.epss_score),
         })
         existing.add(key)
+      }
+      if (additions.length > 0) {
+        setDirection("yes")
+        setPending(null)
       }
       setLegs((prev) => [...prev, ...additions])
       if ((data.unmatched ?? []).length > 0 && additions.length === 0)
@@ -353,11 +392,68 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
   return (
     <div className="w-full h-full flex flex-col gap-3 overflow-y-auto lg:overflow-hidden">
       <SignupPrompt open={showSignup} onClose={() => setShowSignup(false)} />
+      {pending && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={() => setPending(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {pending.kind === "replace" ? (
+              <>
+                <h2 className="text-lg font-bold text-ink-1">Replace your pick?</h2>
+                <p className="mt-2 text-sm text-ink-2">
+                  No-vulnerability bets hold one package. Swap <span className="font-mono text-ink-1">{legs[0]?.pkg.name}</span> for{" "}
+                  <span className="font-mono text-ink-1">{pending.pkg.name}</span>?
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  <button onClick={() => confirmReplace(pending.pkg)} className="btn-primary px-4 py-2 text-sm">Replace</button>
+                  <button onClick={() => setPending(null)} className="rounded px-4 py-2 text-sm font-medium text-ink-2 hover:text-ink-1">Keep current</button>
+                </div>
+              </>
+            ) : pending.kind === "ineligible" ? (
+              <>
+                <h2 className="text-lg font-bold text-ink-1">Can't bet NO on this</h2>
+                <p className="mt-2 text-sm text-ink-2">
+                  <span className="font-mono text-ink-1">{pending.name}</span> has had no CVE in the last {NO_BET_ELIGIBILITY_DAYS} days.
+                  Switching will remove it from your slip.
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  <button onClick={confirmClearForNo} className="btn-primary px-4 py-2 text-sm">Switch &amp; remove</button>
+                  <button onClick={() => setPending(null)} className="rounded px-4 py-2 text-sm font-medium text-ink-2 hover:text-ink-1">Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-ink-1">Keep which package?</h2>
+                <p className="mt-2 text-sm text-ink-2">No-vulnerability bets hold one package.</p>
+                <div className="mt-5 flex flex-col gap-2">
+                  {legs.map((l) => {
+                    const ineligible = noPackages !== null && !noPackages.some((p) => legKey(p) === legKey(l.pkg))
+                    return (
+                      <button
+                        key={legKey(l.pkg)}
+                        onClick={() => void switchToNo(l)}
+                        disabled={noPackages === null || ineligible}
+                        className="chip px-4 py-2 font-mono text-sm disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {l.pkg.name}
+                        {ineligible && <span className="ml-2 font-sans text-xs">no CVE in {NO_BET_ELIGIBILITY_DAYS}d</span>}
+                      </button>
+                    )
+                  })}
+                  <button onClick={() => setPending(null)} className="rounded px-4 py-2 text-sm font-medium text-ink-2 hover:text-ink-1">Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 flex flex-col rounded border border-line-1 bg-surface-1">
 
       {/* Search / add */}
-      {!(direction === "no" && legs.length >= 1) && (
       <div className="relative z-20 shrink-0 rounded-t border-b border-line-2 bg-surface-2/70 px-4 py-2.5">
         <div className="flex items-center gap-2.5">
           <Search className="w-4 h-4 text-ink-2 shrink-0" />
@@ -369,7 +465,9 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
                 ? direction === "no"
                   ? "Search a recently-vulnerable package…"
                   : "Search package to start a slip… (e.g. pandas, lodash)"
-                : "Add another package…"
+                : direction === "no"
+                  ? "Swap in another package…"
+                  : "Add another package…"
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -398,7 +496,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               <p className="px-3 py-1.5 text-xs font-medium text-ink-4">Trending risk</p>
             )}
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-ink-4">{packagesLoading ? "Loading…" : "No results"}</p>
+              <p className="px-3 py-2 text-sm text-ink-4">{packagesError ? "Couldn't load packages" : packagesLoading ? "Loading…" : "No results"}</p>
             ) : filtered.map((p) => (
               <button key={legKey(p)} data-tour="predict-add-result" onClick={() => addLeg(p)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-2/50"
@@ -414,7 +512,6 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           </div>
         )}
       </div>
-      )}
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden rounded-b divide-y divide-line-1 lg:divide-y-0">
 
@@ -615,22 +712,20 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
               </div>
             )}
 
-            {/* Direction — NO bets are single-package only, so hidden once a basket forms */}
-            {!isBasket && (
-              <div>
-                <p className={`${sectionLabel} mb-1.5`}>Betting on</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setDirection("yes")} aria-pressed={direction === "yes"} className="chip px-3 py-2">
-                    Vulnerability happens
+            {/* Direction — NO bets are single-package only; switching with a basket asks which leg to keep */}
+            <div>
+              <p className={`${sectionLabel} mb-1.5`}>Betting on</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button data-demo="direction-yes" onClick={() => chooseDirection("yes")} aria-pressed={direction === "yes"} className="chip px-3 py-2">
+                  Vulnerability happens
+                </button>
+                <Tooltip content={`Only packages with a CVE in the last ${NO_BET_ELIGIBILITY_DAYS} days are eligible.`}>
+                  <button data-demo="direction-no" onClick={() => chooseDirection("no")} aria-pressed={direction === "no"} className="chip w-full px-3 py-2">
+                    No vulnerability
                   </button>
-                  <Tooltip content={`Only packages with a CVE in the last ${NO_BET_ELIGIBILITY_DAYS} days are eligible.`}>
-                    <button onClick={() => setDirection("no")} aria-pressed={direction === "no"} className="chip w-full px-3 py-2">
-                      No vulnerability
-                    </button>
-                  </Tooltip>
-                </div>
+                </Tooltip>
               </div>
-            )}
+            </div>
 
             <div>
               <p className={`${sectionLabel} mb-1.5`}>Stake</p>

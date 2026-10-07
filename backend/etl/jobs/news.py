@@ -1,15 +1,18 @@
 """Daily news ingest job."""
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from etl.fetch.news import fetch_news_gpt_structured
-from features.featured_contracts import generate_featured_contracts, rerank_featured_contracts
+from features.featured_contracts import (
+    generate_featured_contracts,
+    rerank_featured_contracts,
+)
 from features.news_repository import ingest_many
 
 
 async def run(conn: Any, days_back: int = 1) -> None:
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     totals: dict[str, int] = defaultdict(int)
 
     for offset in range(days_back, 0, -1):

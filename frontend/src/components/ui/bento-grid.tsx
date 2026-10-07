@@ -11,10 +11,7 @@ interface BentoCardProps extends ComponentPropsWithoutRef<"div"> {
   name: string
   className: string
   background: ReactNode
-  Icon: React.ElementType
-  description: string
   href: string
-  cta: string
 }
 
 const BentoGrid = ({ children, className, ...props }: BentoGridProps) => {
@@ -35,10 +32,7 @@ const BentoCard = ({
   name,
   className,
   background,
-  Icon,
-  description,
   href,
-  cta,
   ...props
 }: BentoCardProps) => (
   <div

@@ -7,50 +7,54 @@ description: "Place your first bet in five steps."
 
 ### Step 1 — Log in
 
-Open the app and click **Sign In** in the top-right navbar. Auth0 handles authentication. If this is your first visit, you will land on the **UsernameModal** after login — pick a username (3–20 chars, letters/numbers/underscores) before continuing.
+Open the app and click **Sign in** in the top-right navbar. Auth0 handles authentication. If this is your first visit, you will land on the **UsernameModal** after login — pick a username (3–20 chars, letters/numbers/underscores) before continuing. You start with 1000 bits.
 
-> Unauthenticated users who click **Bet** on any market card are redirected to the Auth0 login page automatically. Complete login and you will be returned to the contract.
+> You can browse and simulate bets while signed out. Clicking **Buy** while signed out opens a signup prompt.
 
 ### Step 2 — Find a package
 
-The home feed shows the **Market Spotlight** (top featured contract) and a grid of active markets below it, each ranked by `relevancy_score`. Use the sector tabs (**npm**, **PyPI**) to filter by ecosystem, or go to **Predict** to search by name.
+The app opens on **Predict**. Search for a package by name and add it to your slip. To browse first, use the **PyPI** and **npm** tabs and expand a row for details.
 
 ![Home feed showing Market Spotlight and market grid](https://assets.polydelve.com/screenshots/qs-1-home.png)
 
 ### Step 3 — Gauge risk with the EPSS chart
 
-Each market card shows an EPSS trend chart. The green line plots daily EPSS scores; orange dots mark past CVE publication dates on the same axis.
+The EPSS chart plots daily EPSS scores as a green line; dots mark past CVE publication dates, colored by CVSS severity.
 
-- **Higher EPSS** → higher probability of exploitation → higher contract cost and higher potential payout.
-- A rising trend line signals the community considers this package increasingly exploitable.
+- **Higher EPSS** means the package is considered more likely to be exploited, so a win is more likely and the payout multiplier is lower.
+- A rising trend line signals increasing exploitation risk.
 
-Use the chart to decide whether the price is worth the risk before committing Schmeckles.
+Use the chart to decide whether the payout is worth the risk before committing bits.
 
 ### Step 4 — Configure and buy
 
-**Option A — Market card.** Click **Bet** directly on any market card. Price and payout multiplier are pre-set based on the current EPSS score.
+On the Predict page:
 
-**Option B — Predict page.** Navigate to **Predict**, search for a package, and dial in your own CVSS/EPSS thresholds and contract duration. The live simulator updates `max_payout` and `multiplier` as you adjust.
+1. Choose **YES** (a qualifying event happens) or **NO** (no new CVE at or above your CVSS threshold; only for packages with a CVE in the last 100 days).
+2. Set the CVSS threshold, duration (7, 14, or 30 days), and your stake (minimum 10 bits). For a single-package YES bet you can also set an EPSS target.
+3. Watch the simulator update the win amount, multiplier, and win probability. Adding more packages turns the slip into a basket.
 
 ![Predict page — configure thresholds and see simulated returns before buying](https://assets.polydelve.com/screenshots/predict-simulated-returns.png)
 
-When satisfied, click **Buy**. A confirmation shows your cost in Schmeckles, `max_payout`, and the contract deadline.
+When satisfied, click **Buy slip**. The stake is deducted immediately.
 
 ### Step 5 — Track your position
 
-Go to **Dashboard** to see your open contracts, Schmeckle balance over time, and per-contract P&L. Check the **Leaderboard** to see where you rank against other players.
+Go to **Dashboard** (avatar menu) to see your open contracts, bits balance over time, and per-contract P&L. Check the **Leaderboard** to see where you rank against other players.
 
-![Leaderboard showing Schmeckle balances and win rates](https://assets.polydelve.com/screenshots/qs-5-leaderboard.png)
+![Leaderboard showing bits balances and win rates](https://assets.polydelve.com/screenshots/qs-5-leaderboard.png)
 
 ---
 
 ## What happens next
 
-Contracts resolve automatically — no manual action required.
+Contracts resolve automatically — no manual action required. Resolution runs three times a day (9am, 12pm, 5pm ET).
 
-| Outcome | Condition | Result |
-|---|---|---|
-| **YES** | A CVE is published for the package in OSV before the deadline | Payout credited to your Schmeckle balance |
-| **NO** | Deadline passes with no CVE published in OSV | Contract closes; cost is not refunded |
+| Bet | Outcome | Condition | Result |
+|---|---|---|---|
+| YES | **Won** | A new CVE at or above your CVSS threshold, an EPSS crossing of your target, or a MAL advisory, before the deadline | Payout credited to your bits balance |
+| YES | **Expired** | Deadline passes with none of those | No payout; stake is not refunded |
+| NO | **Won** | Deadline passes with no CVE at or above your threshold | Payout credited |
+| NO | **Lost** | A qualifying CVE is published before the deadline | No payout |
 
-Schmeckle balance updates on the **Dashboard** immediately after resolution. Check the **Leaderboard** to see where you rank.
+Check the **Dashboard** and **Leaderboard** after the next run to see updated balances.

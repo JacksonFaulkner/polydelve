@@ -1,7 +1,5 @@
 """Guest-token browse flow: logged-out visitors get a self-issued JWT that
 unlocks read-only endpoints but never betting."""
-import sys
-sys.path.insert(0, ".")
 
 import pytest
 from fastapi import HTTPException

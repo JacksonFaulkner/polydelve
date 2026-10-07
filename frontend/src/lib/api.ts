@@ -65,6 +65,7 @@ export function useApi() {
           return new Response(null, { status: 401 })
         }
         // not logged in — fall back to a guest token below
+        console.warn("getAccessTokenSilently failed", e)
       }
       if (!token) token = await getGuestToken()
       if (token) headers["Authorization"] = `Bearer ${token}`
@@ -73,5 +74,24 @@ export function useApi() {
     [getAccessTokenSilently, loginWithRedirect],
   )
 
-  return { authFetch }
+  /** authFetch + JSON parse that throws on non-2xx, so error bodies never
+   * end up in component state shaped like real data. */
+  const getJson = useCallback(
+    async <T,>(path: string, init?: RequestInit): Promise<T> => {
+      const res = await authFetch(path, init)
+      if (!res.ok) throw new ApiError(res.status, path)
+      return res.json() as Promise<T>
+    },
+    [authFetch],
+  )
+
+  return { authFetch, getJson }
+}
+
+export class ApiError extends Error {
+  readonly status: number
+  constructor(status: number, path: string) {
+    super(`${path} failed with ${status}`)
+    this.status = status
+  }
 }

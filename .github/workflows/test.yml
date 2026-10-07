@@ -42,6 +42,10 @@ jobs:
         working-directory: backend
         run: uv sync
 
+      - name: Lint backend
+        working-directory: backend
+        run: uv run ruff check .
+
       - name: Run database migrations
         working-directory: backend
         env:
@@ -63,6 +67,14 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npm run typecheck
 
       - name: Run frontend tests
         working-directory: frontend

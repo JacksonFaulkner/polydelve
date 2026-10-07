@@ -1,11 +1,12 @@
 import logging
 import os
+import secrets
 import time
 import uuid
 from functools import lru_cache
 
-from authlib.jose import jwt, JoseError
-from fastapi import Request
+from authlib.jose import JoseError, jwt
+from fastapi import HTTPException, Request
 from fastapi_plugin.fast_api_client import Auth0FastAPI
 
 log = logging.getLogger(__name__)
@@ -15,7 +16,12 @@ log = logging.getLogger(__name__)
 # anonymous. They are deliberately NOT accepted by get_current_user, so they
 # can never place bets — those require a real Auth0 login.
 GUEST_ISSUER = "polydelve-guest"
-GUEST_SECRET = os.getenv("GUEST_JWT_SECRET", "dev-guest-secret-change-me")
+GUEST_SECRET = os.getenv("GUEST_JWT_SECRET")
+if not GUEST_SECRET:
+    # Never fall back to a known string: anyone could forge guest tokens.
+    # A per-process key is fine for dev; guest tokens just reset on restart.
+    log.warning("GUEST_JWT_SECRET unset; using a random per-process key")
+    GUEST_SECRET = secrets.token_hex(32)
 GUEST_TTL_SECONDS = int(os.getenv("GUEST_JWT_TTL", str(7 * 24 * 3600)))
 
 
@@ -68,9 +74,9 @@ async def get_browse_user(request: Request) -> dict | None:
     trips the deployment error-rate alarm and rolls the service back."""
     try:
         return await _auth0().require_auth()(request)
-    except Exception:
-        pass
-    return _verify_guest(request)
+    except HTTPException:
+        # require_auth wraps every failure (missing/invalid token) as HTTPException.
+        return _verify_guest(request)
 
 
 async def get_optional_user(request: Request) -> dict | None:

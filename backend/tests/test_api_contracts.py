@@ -1,8 +1,5 @@
 """Contract buy flow, invalid input, auth enforcement."""
-import sys
 from datetime import date, timedelta
-
-sys.path.insert(0, ".")
 
 
 def _seed_contract(db, contract_id="contract-1", status="open", user_id="auth0|testuser123"):

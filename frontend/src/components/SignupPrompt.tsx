@@ -1,9 +1,16 @@
+import { useEffect } from "react"
 import { useAuth } from "@/lib/auth"
 
 // Soft gate for logged-out visitors who try to place a bet. Keeps them on the
 // page (no hard Auth0 redirect) and lets them opt in if they want to.
 export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { loginWithRedirect } = useAuth()
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [open, onClose])
   if (!open) return null
 
   return (
@@ -12,13 +19,16 @@ export function SignupPrompt({ open, onClose }: { open: boolean; onClose: () => 
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="signup-prompt-title"
         className="w-full max-w-sm rounded border border-line-2 bg-surface-1 p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-ink-1">Create a free account to bet</h2>
+        <h2 id="signup-prompt-title" className="text-lg font-bold text-ink-1">Create a free account to bet</h2>
         <p className="mt-2 text-sm text-ink-2">
           You can browse packages and run simulations without an account. To place a
-          contract and earn bits, sign up. it takes a few seconds.
+          contract and earn bits, sign up; it takes a few seconds.
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button

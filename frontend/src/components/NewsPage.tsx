@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import type { NewsItem, NewsResponse } from "@/types"
 import { useApi } from "@/lib/api"
+import { ErrorState } from "@/components/ui/ErrorState"
 import { PackageModal } from "./PackageModal"
 import { BentoCard, BentoGrid } from "@/components/ui/bento-grid"
 
@@ -102,26 +103,26 @@ const BENTO_LAYOUTS = [
 ]
 
 export function NewsPage() {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [items, setItems] = useState<NewsItem[]>([])
-  const [page, setPage] = useState(1)
   const [slide, setSlide] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [selectedPkg, setSelectedPkg] = useState<SelectedPkg | null>(null)
 
   const fetchNews = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
+    setError(false)
+    const params = new URLSearchParams({ page: "1", page_size: String(PAGE_SIZE) })
     try {
-      const res = await authFetch(`/news?${params}`)
-      const json: NewsResponse = await res.json()
+      const json = await getJson<NewsResponse>(`/news?${params}`)
       setItems(json.items)
-    } catch (e) {
-      console.error("Failed to fetch news", e)
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
-  }, [page, authFetch])
+  }, [getJson])
 
   useEffect(() => { fetchNews() }, [fetchNews])
 
@@ -165,6 +166,8 @@ export function NewsPage() {
         {/* Content */}
         {loading ? (
           <div className="flex flex-1 items-center justify-center text-ink-3 text-sm">Loading…</div>
+        ) : error ? (
+          <ErrorState onRetry={fetchNews} />
         ) : items.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-ink-3 text-sm">No articles found</div>
         ) : (
@@ -176,10 +179,7 @@ export function NewsPage() {
                   <BentoCard
                     key={item.id}
                     name=""
-                    description=""
                     href={item.url}
-                    cta="Read article"
-                    Icon={() => null}
                     background={newsBackground(item, size)}
                     className={BENTO_LAYOUTS[i] ?? ""}
                   />

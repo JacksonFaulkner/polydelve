@@ -52,8 +52,8 @@ resource "aws_db_instance" "main" {
   # pgvector is available as an extension — enabled via Alembic migration
   parameter_group_name = "default.postgres16"
 
-  backup_retention_period = 0
-  skip_final_snapshot     = false
+  backup_retention_period   = 7
+  skip_final_snapshot       = false
   final_snapshot_identifier = "${var.app_name}-final"
 
   deletion_protection = true

@@ -1,5 +1,5 @@
-from typing import Any
 from datetime import date, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -10,20 +10,26 @@ from features.etf_pricing import basket_value
 from features.etf_repo import (
     MemberInput,
     build_member_terms,
-    buy_etf_contract as repo_buy_etf_contract,
-    member_remaining_probs,
     get_user_bits,
     list_etf_contracts,
     list_etf_members,
+    member_remaining_probs,
     price_etf,
+)
+from features.etf_repo import (
+    buy_etf_contract as repo_buy_etf_contract,
 )
 from features.manifest_parser import ParsedDependency, parse_manifest
 from features.packages_repo import get_package as repo_get_package
 from models.models import (
-    EtfBuyRequest, EtfBuyResponse,
-    EtfContractDetail, EtfMemberDetail,
-    EtfQuoteRequest, EtfQuoteResponse,
-    EtfSimulateRequest, SimulateResponse,
+    EtfBuyRequest,
+    EtfBuyResponse,
+    EtfContractDetail,
+    EtfMemberDetail,
+    EtfQuoteRequest,
+    EtfQuoteResponse,
+    EtfSimulateRequest,
+    SimulateResponse,
 )
 
 router = APIRouter(prefix="/etf", dependencies=[Depends(get_browse_user)])

@@ -14,6 +14,7 @@ import {
 } from "@/lib/filters";
 import { useApi } from "@/lib/api";
 import { EcoBadge, MalBadge, SeverityLabel } from "@/components/ui/Badges";
+import { ErrorState } from "@/components/ui/ErrorState";
 const PAGE_SIZE = 50;
 
 const col = createColumnHelper<Package>();
@@ -212,7 +213,7 @@ interface Props {
 }
 
 export function PackagesTable({ ecosystem }: Props) {
-  const { authFetch } = useApi();
+  const { getJson } = useApi();
   const [data, setData] = useState<Package[]>([]);
   const [total, setTotal] = useState(0);
   // Filters, sort and page live in the URL (shareable, back-button safe).
@@ -222,6 +223,7 @@ export function PackagesTable({ ecosystem }: Props) {
   const { q: search, cve: latestCveDays, sev, epss, mal, dl, sort, page } = f;
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const autoExpanded = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -312,6 +314,7 @@ export function PackagesTable({ ecosystem }: Props) {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(false);
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(PAGE_SIZE),
@@ -326,13 +329,7 @@ export function PackagesTable({ ecosystem }: Props) {
     if (dl != null) params.set("min_downloads", String(dl));
 
     try {
-      const res = await authFetch(`/packages?${params}`);
-      if (!res.ok) {
-        setData([]);
-        setTotal(0);
-        return;
-      }
-      const json: PackageListResponse = await res.json();
+      const json = await getJson<PackageListResponse>(`/packages?${params}`);
       const packages = json.packages ?? [];
       setData(packages);
       setTotal(json.total ?? 0);
@@ -341,12 +338,14 @@ export function PackagesTable({ ecosystem }: Props) {
         autoExpanded.current = true;
         setExpandedKey(`${packages[0].ecosystem}::${packages[0].name}`);
       }
-    } catch (e) {
-      console.error("Failed to fetch packages", e);
+    } catch {
+      setData([]);
+      setTotal(0);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [page, sort, ecosystem, latestCveDays, debouncedSearch, sev, epss, mal, dl, authFetch]);
+  }, [page, sort, ecosystem, latestCveDays, debouncedSearch, sev, epss, mal, dl, getJson]);
 
   useEffect(() => {
     fetchData();
@@ -429,6 +428,8 @@ export function PackagesTable({ ecosystem }: Props) {
         </div>
         {loading ? (
           <p className="py-12 text-center text-ink-3 text-sm">Loading…</p>
+        ) : error ? (
+          <ErrorState onRetry={fetchData} />
         ) : data.length === 0 ? (
           <p className="py-12 text-center text-ink-3 text-sm">
             No packages found
@@ -537,6 +538,7 @@ export function PackagesTable({ ecosystem }: Props) {
           data={data}
           loading={loading}
           emptyText="No packages found"
+          error={error ? <ErrorState onRetry={fetchData} /> : undefined}
           sorting={sorting}
           onSortingChange={setSorting}
           toolbar={

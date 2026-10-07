@@ -1,9 +1,10 @@
 locals {
   secrets = {
-    openai_api_key = var.openai_api_key
-    exa_api_key    = var.exa_api_key
-    gcp_sa_json    = var.gcp_sa_json
-    bq_sa_json     = var.bq_sa_json
+    openai_api_key   = var.openai_api_key
+    exa_api_key      = var.exa_api_key
+    gcp_sa_json      = var.gcp_sa_json
+    bq_sa_json       = var.bq_sa_json
+    guest_jwt_secret = var.guest_jwt_secret
   }
 }
 

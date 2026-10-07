@@ -7,6 +7,7 @@ from etl.fetch.epss import CACHE_DIR, download_day, load_epss_for_packages
 
 async def run(conn: Any) -> None:
     from datetime import timedelta
+
     import httpx as _httpx
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     # FIRST publishes T+1; fall back to yesterday if today's file isn't up yet
@@ -17,7 +18,7 @@ async def run(conn: Any) -> None:
             break
         except _httpx.HTTPStatusError as e:
             if e.response.status_code in (403, 404) and delta == 0:
-                print(f"[epss] today's file not ready, trying yesterday...", flush=True)
+                print("[epss] today's file not ready, trying yesterday...", flush=True)
                 continue
             raise
     print(f"[epss] refreshing for {day}...", flush=True)

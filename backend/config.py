@@ -9,11 +9,10 @@ from google.genai.types import HttpOptions
 from google.oauth2 import service_account
 from openai import AsyncOpenAI
 
-MOTHERDUCK_ACCESS_TOKEN = os.getenv("MOTHERDUCK_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EXA_API_KEY = os.getenv("EXA_API_KEY")
 
-GCP_PROJECT_ID = "motion-off-the-ocean"
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 GCP_LOCATION = "us-central1"
 
 # Local fallback for dev — in prod, GCP_SA_JSON env var holds the JSON string
@@ -51,7 +50,8 @@ def get_exa_client() -> AsyncExa:
 def get_gemini_client() -> genai.Client:
     return genai.Client(
         vertexai=True,
-        project=GCP_PROJECT_ID,
+        # Default to the service account's own project.
+        project=GCP_PROJECT_ID or _gcp_credentials().project_id,
         location=GCP_LOCATION,
         credentials=_gcp_credentials(),
         http_options=HttpOptions(api_version="v1beta1"),

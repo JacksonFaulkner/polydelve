@@ -29,9 +29,10 @@ Value of an open contract (dashboard) = mark-to-model
   NO:  climbs toward max_payout as the package keeps surviving.
 """
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Sequence
+from typing import Any
 
 
 @dataclass
@@ -239,7 +240,10 @@ def build_legs(
         # NO bets are CVSS-only: "no new qualifying CVE before expiry".
         # P(win over remaining R days | survived so far) = exp(-λR).
         rate = cve_hazard(stats.recent_cves, thr)
-        prob = lambda rem: 1.0 - hazard_to_probability(rate, rem)  # noqa: E731
+
+        def prob(rem: float) -> float:
+            return 1.0 - hazard_to_probability(rate, rem)
+
         return [Leg("cvss", prob, compute_payout(purchase_price, prob(duration_days)))]
 
     # YES: one stake, one payout, paid by whichever leg fires first. Priced as

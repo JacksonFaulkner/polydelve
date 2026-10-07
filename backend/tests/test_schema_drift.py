@@ -7,12 +7,9 @@ Fields in the DB but absent from the model → warning (intentional extras are f
 Skipped automatically if DATABASE_URL is not reachable.
 """
 import os
-import sys
 import warnings
 
 import pytest
-
-sys.path.insert(0, ".")
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://polydelve:polydelve@localhost:5432/polydelve_dev"

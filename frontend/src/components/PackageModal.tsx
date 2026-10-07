@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import EpssChart from "./EpssChart"
 import type { PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
+import { buildEpssChartData, nvdUrl } from "@/lib/epss"
 import { SEV_COLOR, SEV_FALLBACK, scoreColor } from "@/lib/severity"
 
 interface Props {
@@ -12,17 +13,16 @@ interface Props {
 }
 
 export function PackageModal({ name, ecosystem, onClose }: Props) {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [detail, setDetail] = useState<PackageDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCveId, setSelectedCveId] = useState<string | null>(null)
 
   useEffect(() => {
-    authFetch(`/packages/${ecosystem}/${encodeURIComponent(name)}`)
-      .then((r) => r.json())
+    getJson<PackageDetail>(`/packages/${ecosystem}/${encodeURIComponent(name)}`)
       .then((d) => { setDetail(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [name, ecosystem])
+  }, [name, ecosystem, getJson])
 
   const onKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onClose()
@@ -33,19 +33,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKey)
   }, [onKey])
 
-  const epssChart = detail && detail.epss_history.length > 1 ? (() => {
-    const epssStart = detail.epss_history[0].date
-    const epssEnd = detail.epss_history[detail.epss_history.length - 1].date
-    const chartData = detail.epss_history.map((pt) => ({
-      date: pt.date, epss: pt.epss,
-      cvss: null as number | null, severity: null as string | null, cve_id: null as string | null,
-    }))
-    const scatterData = detail.cve_history
-      .filter((c) => c.published_date && c.cvss_score != null)
-      .map((c) => ({ date: c.published_date!.slice(0, 10), epss: 0, cvss: c.cvss_score, severity: c.severity, cve_id: c.cve_id }))
-      .filter((c) => c.date >= epssStart && c.date <= epssEnd)
-    return { chartData, scatterData }
-  })() : null
+  const epssChart = detail ? buildEpssChartData(detail) : null
 
   return createPortal(
     <div
@@ -53,6 +41,9 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${name} details`}
         className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded border border-line-2 bg-surface-0 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -136,7 +127,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                           <td className="px-3 py-1.5 font-mono">
                             {c.cve_id ? (
                               <a
-                                href={`https://nvd.nist.gov/vuln/detail/${c.cve_id}`}
+                                href={nvdUrl(c.cve_id)}
                                 target="_blank" rel="noopener noreferrer"
                                 className="text-ink-2 underline decoration-line-3 hover:text-ink-1 hover:decoration-ink-3 transition-colors"
                               >{c.cve_id}</a>

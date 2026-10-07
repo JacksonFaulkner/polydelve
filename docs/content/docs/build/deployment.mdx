@@ -61,15 +61,15 @@ In practice, use `scripts/deploy-backend.sh` (`make deploy-be`) — it builds, t
 **Run migrations** if the release includes schema changes:
 
 ```bash
-alembic upgrade head
+cd backend && DATABASE_URL=<rds-url> uv run alembic upgrade head
 ```
 
-Run migrations against the live RDS instance before or immediately after the new task starts, depending on whether the change is backward-compatible.
+The deploy script does not run migrations. RDS only accepts connections from inside the VPC, so temporarily allowlist your IP (see [Infrastructure](/docs/build/infrastructure#rds-access)) or run the command as an ECS task override. Run it before or right after the new task starts, depending on whether the change is backward-compatible.
 </Step>
 
 </Steps>
 
-ECS task definition updates (new image tag, env vars, resource limits) are managed via Terraform. See [Infrastructure](/docs/build/infrastructure) for the full resource reference.
+The backend image is tagged `latest` (or `$IMAGE_TAG`) and rolled out by `--force-new-deployment`. Env vars, secrets and resource limits are managed via Terraform. See [Infrastructure](/docs/build/infrastructure) for the full resource reference.
 
 ## ETL job scheduling
 
@@ -80,9 +80,9 @@ ETL jobs run via `python -m etl.run <job>` (see `backend/etl/run.py`). The prima
 | 9am, 12pm, 5pm ET (EventBridge) | `refresh` composite | EPSS refresh + news + MAL advisories + CVE history, then resolves contracts |
 | On-demand | `make etl-epss` | Refresh EPSS scores from the daily bulk file |
 | On-demand | `make etl-news` | Fetch security news, generate + rerank featured contracts |
-| On-demand | `make build-cve-history` | Backfill CVE history for all tracked packages (`scripts/build_cve_history.py`) |
+| On-demand | `make build-cve-history` | Backfill CVE history for all tracked packages (`etl.run cve`) |
 | On-demand | `make etl-packages` | Refresh package metadata (downloads, risk score) |
-| On-demand | `make resolve-contracts` | Resolve open contracts (wins + expiries), credit schmeckles |
+| On-demand | `make resolve-contracts` | Resolve open contracts (wins + expiries), credit bits |
 
 See [Data Pipeline](/docs/build/data-pipeline) for the full ETL architecture and bootstrap order.
 

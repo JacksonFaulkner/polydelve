@@ -11,24 +11,21 @@ All ETL jobs run via `python -m etl.run <job>` from the backend container or vir
 |-----|-------------|---------|--------------|-------------|
 | `cve` | `make build-cve-history` | `python -m etl.run cve` | Builds the tracked npm/PyPI candidate universe from OSV bulk data and upserts CVE history. Prerequisite for `seed` and `epss-history`. | `cve_history` table |
 | `packages` | `make etl-packages` | `python -m etl.run packages` | Refreshes package metadata: download stats (`_pass_downloads`) and CVE/MAL checks (`_pass_cves_and_mal`), then recomputes `risk_score`. Does not fetch EPSS scores. | `packages` table rows updated |
-| `epss` | `make etl-epss` | `python -m etl.run epss` | Downloads the day's EPSS bulk CSV and loads scores for tracked packages. Does not trigger contract resolution. | Updated `epss_score` on `packages`, `epss_history` rows |
-| `epss-history` | — | `python -m etl.run epss-history` | Ingests historical EPSS time-series from BigQuery back to 2021-04-14. Delegates to `scripts/ingest_epss_history.py`. | `epss_history` table |
+| `epss` | `make etl-epss` | `python -m etl.run epss` | Downloads the day's FIRST EPSS bulk CSV (falls back to yesterday) and loads scores for tracked packages. Does not trigger contract resolution. | Updated `epss_score` on `packages`, `epss_history` rows |
+| `epss-history` | `make ingest-epss-history` | `python -m etl.run epss-history` | Ingests historical EPSS time-series from the FIRST daily CSVs back to 2021-04-14. Delegates to `scripts/ingest_epss_history.py`. | `epss_history` table |
 | `mal` | `make etl-mal` / `make etl-mal-cached` | `python -m etl.run mal [--skip-download]` | Fetches malicious package advisories from the OSV dataset. `--skip-download` reuses cached zip files. | `mal_advisories` table |
 | `news` | `make etl-news` | `python -m etl.run news [--days-back N]` | Fetches recent security news, generates and reranks featured contracts. Defaults to 1 day back. | `news` table, featured contracts |
 | `seed` | `make etl-seed` | `python -m etl.run seed` | One-shot bootstrap: runs `packages.run_seed` from `cve_history`/`epss_history`, refreshes download counts, then computes `risk_score = weekly_downloads × epss_score`. | Fully populated `packages` table with `risk_score` |
-| `refresh` | — | `python -m etl.run refresh` | Composite job: runs `epss` → `news` → `mal` in sequence. This is what the scheduled EventBridge task runs. | Same as constituent jobs above |
+| `resolve` | `make resolve-contracts` | `python -m etl.run resolve` | Settles open contracts against `cve_history`, `epss_history` and `mal_advisories` and credits wins. | Contract statuses, payouts |
+| `refresh` | — | `python -m etl.run refresh` | Composite job: runs `epss` → `news` → `mal` → `cve` → `resolve` in sequence. This is what the scheduled EventBridge task runs. | Same as constituent jobs above |
 
-Contract resolution is a separate script, not an ETL job: `scripts/resolve_contracts.py` (`make resolve-contracts`) checks open contracts against `cve_history`, `epss_history`, and `mal_advisories` and credits wins.
+Contract resolution (`features/settlement.py`) runs as the last step of `refresh`, or on its own via `python -m etl.run resolve`. `make resolve-contracts` runs `scripts/resolve_contracts.py` (add `--dry-run` via `make resolve-contracts-dry`).
 
 ## Scheduling
 
 EventBridge Scheduler runs the `refresh` composite job on the schedule below; everything else is manual or CI-triggered.
 
-- `refresh` — 9am, 12pm, 5pm ET (EPSS scores, news, mal advisories)
+- `refresh` — 9am, 12pm, 5pm ET (EPSS scores, news, mal advisories, CVE history, contract resolution)
 - `packages` — weekly or on demand after schema/universe changes
-- `cve`, `epss-history`, `seed` — one-time on fresh deploys; re-run only when rebuilding from scratch
-- `resolve-contracts` — run daily alongside/after `refresh`
-
-<Callout type="warn">
-  `epss-history` pulls from BigQuery. Ensure `GOOGLE_APPLICATION_CREDENTIALS` or Workload Identity is configured before running.
-</Callout>
+- `epss-history`, `seed` — one-time on fresh deploys; re-run only when rebuilding from scratch
+- `resolve` — already part of `refresh`; run by hand only for ad hoc settlement

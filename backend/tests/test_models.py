@@ -1,16 +1,13 @@
-import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pydantic import ValidationError
-
-sys.path.insert(0, ".")
 
 from models.models import BuyRequest, Market, QuoteRequest
 
 
 def _future(days: int) -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=days)
+    return datetime.now(UTC) + timedelta(days=days)
 
 
 # ── Market.end_date validator ─────────────────────────────────────────────────

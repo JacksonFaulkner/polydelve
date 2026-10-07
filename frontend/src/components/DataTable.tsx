@@ -38,6 +38,7 @@ export function DataTable<T>({
   renderExpanded,
   rowTourTag,
   footer,
+  error,
 }: {
   columns: ColumnDef<T, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   data: T[];
@@ -55,6 +56,8 @@ export function DataTable<T>({
   rowTourTag?: (index: number) => string | undefined;
   /** Rendered below the table (pagination, totals). */
   footer?: ReactNode;
+  /** Replaces the rows when the fetch failed (e.g. an <ErrorState>). */
+  error?: ReactNode;
 }) {
   const table = useReactTable({
     data,
@@ -109,6 +112,10 @@ export function DataTable<T>({
               {loading ? (
                 <tr>
                   <td colSpan={colCount} className="py-12 text-center text-ink-3">Loading…</td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={colCount}>{error}</td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>

@@ -43,8 +43,8 @@ resource "aws_iam_role_policy" "execution_secrets" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
       Resource = concat(
         [for s in aws_secretsmanager_secret.app : s.arn],
         [aws_secretsmanager_secret.db_url.arn]

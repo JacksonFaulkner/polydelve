@@ -48,3 +48,10 @@ docs/public/*.mp4
 docs/public/*.png
 docs/public/*.gif
 docs/animation/out/
+
+# Scratch media dropped at the repo root
+/*.mp4
+/*.mov
+/*.png
+/*.jpg
+/*.gif

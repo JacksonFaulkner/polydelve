@@ -24,16 +24,12 @@ make fe-install    # frontend deps via npm
 **Set environment variables.** Copy the secrets template and fill in keys:
 
 ```bash
-cp backend/secrets/.env.example backend/secrets/.env
+cp backend/.env.example backend/.env
 ```
 
-| Variable | Service | Required for |
-|----------|---------|-------------|
-| `AUTH0_DOMAIN` | Auth0 | Auth (can use dev tenant) |
-| `AUTH0_AUDIENCE` | Auth0 | Auth |
-| `EXA_API_KEY` | Exa | News fetch |
-| `GEMINI_API_KEY` | Google Gemini | News tagging, sector LLM |
-| `OPENAI_API_KEY` | OpenAI | Sector classification fallback |
+Only `DATABASE_URL` is needed to run the API and tests. Auth0 keys enable login; OpenAI, Exa and the GCP service accounts are only needed for ETL jobs. Full list: [Environment Variables](/docs/reference/env-vars).
+
+For the frontend, copy `frontend/.env.example` to `frontend/.env.local`, or set `VITE_SKIP_AUTH=true` to skip Auth0 entirely.
 
 For local dev the app runs against a local Postgres instance — no cloud DB token needed.
 </Step>
@@ -71,22 +67,26 @@ make etl-news               fetch news, generate + rerank featured contracts
 make build-cve-history      pull CVE data from OSV for all tracked packages
 make etl-packages           refresh package metadata (downloads, risk score)
 make etl-epss               update EPSS scores from the daily bulk file
-make resolve-contracts      resolve open contracts (wins + expiries)
+make resolve-contracts      resolve open contracts (wins + expiries), credit bits
 make be-test                run backend test suite
-make lint                   lint frontend TypeScript
+make lint                   lint backend (ruff) and frontend (lint + typecheck)
 ```
 
 Run `make help` to see all targets.
 
 ## nvim-dbee
 
-[nvim-dbee](https://github.com/kndndrj/nvim-dbee) is wired to the local connection out of the box via `~/.config/nvim/lua/plugins/dbee.lua`.
+[nvim-dbee](https://github.com/kndndrj/nvim-dbee) works well for browsing the local database. Add a connection to your dbee config:
 
-```
-:Dbee   — open the UI
+```lua
+{
+  name = "polydelve-local",
+  type = "postgres",
+  url = "postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev",
+},
 ```
 
-The `polydelve-local` connection is pre-configured. No env vars needed for local dev.
+Then run `:Dbee` to open the UI.
 
 <img src="https://assets.polydelve.com/dbee-local.png" alt="nvim-dbee querying the local Postgres DB" />
 
@@ -101,7 +101,7 @@ The `polydelve-local` connection is pre-configured. No env vars needed for local
 
 ## Connecting to RDS (prod)
 
-When RDS is provisioned, temporarily allowlist your IP in the RDS security group (port 5432) and add a second connection to `dbee.lua`:
+When RDS is provisioned, temporarily allowlist your IP in the RDS security group (port 5432) and add a second connection to your dbee config:
 
 ```lua
 {

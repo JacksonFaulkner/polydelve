@@ -31,7 +31,7 @@ interface Props {
 }
 
 export function UserExpandedRow({ user, colSpan }: Props) {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [tab, setTab] = useState<Tab>("Contracts")
   const [timeline, setTimeline] = useState<BitPoint[] | null>(null)
   const [timelineLoading, setTimelineLoading] = useState(false)
@@ -39,11 +39,10 @@ export function UserExpandedRow({ user, colSpan }: Props) {
   useEffect(() => {
     if (tab !== "Timeline" || timeline !== null) return
     setTimelineLoading(true)
-    authFetch(`/users/leaderboard/${encodeURIComponent(user.id)}/timeline`)
-      .then((r) => r.json())
+    getJson<{ points?: BitPoint[] }>(`/users/leaderboard/${encodeURIComponent(user.id)}/timeline`)
       .then((d) => { setTimeline(d.points ?? []); setTimelineLoading(false) })
       .catch(() => setTimelineLoading(false))
-  }, [tab, user.id, timeline])
+  }, [tab, user.id, timeline, getJson])
 
   const sorted = [...user.contracts].sort((a, b) => {
     const order = { open: 0, won: 1, sold: 2, lost: 3 }

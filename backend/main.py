@@ -1,6 +1,6 @@
-from contextlib import asynccontextmanager
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
@@ -9,21 +9,21 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from api.auth import _auth0
 from api.middleware.cors import add_cors
-from api.routes.health import router as health_router
+from api.otel import setup_otel
+from api.routes.auth_guest import public_router as auth_guest_router
 from api.routes.contracts import router as contracts_router
 from api.routes.etf import router as etf_router
 from api.routes.events import router as events_router
+from api.routes.featured import router as featured_router
+from api.routes.health import router as health_router
 from api.routes.packages import router as packages_router
 from api.routes.prediction_market import public_router as pm_public_router
 from api.routes.prediction_market import router as pm_router
 from api.routes.users import public_router as users_public_router
 from api.routes.users import router as users_router
-from api.routes.featured import router as featured_router
-from api.routes.auth_guest import public_router as auth_guest_router
-from api.auth import _auth0
-from api.otel import setup_otel
-from features.db import seed_companies, get_db_conn
+from features.db import close_pool, open_pool, pooled_conn, seed_companies
 
 
 def _load_env() -> None:
@@ -49,14 +49,16 @@ logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    conn = get_db_conn()
-    seed_companies(conn)
-    conn.close()
+    open_pool()
+    with pooled_conn() as conn:
+        seed_companies(conn)
     try:
         await _auth0().api_client._discover()
-    except Exception:
-        pass
+    except Exception as e:
+        # Non-fatal: JWKS discovery retries lazily on the first authed request.
+        logging.getLogger(__name__).warning("Auth0 discovery failed at startup: %s", e)
     yield
+    close_pool()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])

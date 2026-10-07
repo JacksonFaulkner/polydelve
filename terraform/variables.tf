@@ -15,6 +15,11 @@ variable "exa_api_key" {
   sensitive = true
 }
 
+variable "guest_jwt_secret" {
+  description = "HS256 key for guest browse tokens (openssl rand -hex 32)"
+  sensitive   = true
+}
+
 variable "gcp_sa_json" {
   description = "Full GCP service account JSON string"
   sensitive   = true

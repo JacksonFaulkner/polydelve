@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "studio": "remotion studio src/index.ts",
+    "demos": "node scripts/demos.mjs",
     "render": "remotion render src/index.ts PolydelveIntro out/intro.mp4"
   },
   "keywords": [],
@@ -12,19 +13,28 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@remotion/cli": "^4.0.476",
-    "@remotion/google-fonts": "4.0.476",
-    "@remotion/paths": "4.0.476",
-    "@remotion/player": "^4.0.476",
-    "@remotion/shapes": "4.0.476",
-    "@remotion/transitions": "4.0.476",
+    "@huggingface/transformers": "4.2.0",
+    "@mediabunny/server": "1.56.1",
+    "@remotion/cli": "4.0.532",
+    "@remotion/effects": "4.0.532",
+    "@remotion/google-fonts": "4.0.532",
+    "@remotion/media": "4.0.532",
+    "@remotion/motion-blur": "4.0.532",
+    "@remotion/paths": "4.0.532",
+    "@remotion/player": "4.0.532",
+    "@remotion/rough-notation": "4.0.532",
+    "@remotion/shapes": "4.0.532",
+    "@remotion/transitions": "4.0.532",
+    "@remotion/whisper-webgpu": "4.0.532",
     "lucide-react": "^1.18.0",
-    "remotion": "^4.0.476"
+    "mediabunny": "1.56.1",
+    "remotion": "4.0.532"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "copy-webpack-plugin": "^14.0.0",
+    "playwright-core": "^1.63.0",
     "typescript": "^6.0.3"
   }
 }

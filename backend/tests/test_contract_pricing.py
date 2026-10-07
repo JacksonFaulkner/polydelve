@@ -1,6 +1,4 @@
-import sys
 
-sys.path.insert(0, ".")
 
 from features.contract_pricing import (
     MAX_MULTIPLIER,

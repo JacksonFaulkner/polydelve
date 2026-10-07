@@ -3,7 +3,13 @@ node_modules/
 out/
 .remotion/
 
-# Curated render inputs live in public/ — keep them tracked even though the
-# root .gitignore globs *.mov (which is meant for raw recordings in assets/).
-!public/
-!public/*.mov
+# Render inputs (video, audio, images) are local-only; hosted copies live on
+# assets.polydelve.com. Keeps large binaries and third-party media out of git.
+public/
+
+# Private compositions and local tooling
+src/compositions/dario/
+src/compositions/linkedin/
+.agents/
+.claude/
+skills-lock.json

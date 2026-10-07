@@ -9,5 +9,8 @@ export const docs = defineDocs({
 export default defineConfig({
   mdxOptions: {
     remarkPlugins: [remarkMdxMermaid, remarkModelLinks],
+    // External images are size-probed at build time; an unreachable host should
+    // only drop the size hint, not fail the whole build.
+    remarkImageOptions: { onError: 'ignore' },
   },
 });

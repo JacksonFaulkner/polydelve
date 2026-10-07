@@ -1,7 +1,4 @@
-import sys
 import pytest
-
-sys.path.insert(0, ".")
 
 from features.prediction_market import calculate_payout
 from models.models import GRADE_ODDS

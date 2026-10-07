@@ -5,44 +5,64 @@ description: "Key terms used across Polydelve docs."
 
 ## Contract
 
-A bet that a target package receives a CVE meeting specified criteria (e.g. EPSS threshold, CVSS severity) before a deadline. Contracts resolve YES or NO at expiry. A YES resolution pays out `max_payout` Schmeckles to holders; NO returns nothing.
+A bet on a target package. A YES contract wins if a qualifying event happens before the deadline (a CVE meeting a CVSS threshold, an EPSS crossing, or a MAL advisory), and can win before expiry. A NO contract wins if no CVE meeting the CVSS threshold appears before the deadline. Statuses are `open`, `won`, `lost` (NO bet hit early), `expired` (YES bet reached its deadline), and `sold`. A win pays `max_payout` bits.
+
+## NO bet
+
+A contract with `direction='no'`: it bets that a package gets no new CVE at or above the CVSS threshold before expiry. CVSS-only, and only offered on packages with a CVE in the last 100 days.
+
+## Basket
+
+A slip with two or more packages and a `threshold_count`. It wins when that many members have hit their win conditions.
 
 ## CVE
 
-Common Vulnerabilities and Exposures. A public identifier assigned by MITRE to a disclosed software vulnerability (e.g. `CVE-2024-12345`). CVEs are the primary resolution signal for contracts on Polydelve.
+Common Vulnerabilities and Exposures. A public identifier assigned to a disclosed software vulnerability (e.g. `CVE-2024-12345`). New CVEs at or above a CVSS threshold are the main contract signal on Polydelve.
 
 ## CVSS
 
-Common Vulnerability Scoring System. A numeric severity score from 0 to 10 assigned to a CVE. Higher scores indicate greater severity. Contracts may specify a minimum CVSS as part of their resolution criteria.
+Common Vulnerability Scoring System. A numeric severity score from 0 to 10 assigned to a CVE. Higher scores indicate greater severity. Contracts specify a minimum CVSS as part of their resolution criteria.
 
 ## EPSS
 
-Exploit Prediction Scoring System. A daily probability score between 0 and 1, published by FIRST, expressing the likelihood that a CVE will be exploited in the wild within the next 30 days. Polydelve refreshes current scores from FIRST's daily bulk file, backfills history from BigQuery, and uses EPSS to price contracts and as an independent contract win condition (see [Market Resolution](/docs/concepts/market-resolution)).
+Exploit Prediction Scoring System. A daily probability score between 0 and 1, published by FIRST, expressing the likelihood that a CVE will be exploited in the wild within the next 30 days. Polydelve ingests FIRST's daily bulk CSV for both current scores and history, uses EPSS to price contracts, and treats an EPSS crossing as an independent YES win condition (see [Market Resolution](/docs/concepts/market-resolution)).
 
 ## EPSS History
 
-A time-series of daily EPSS values for a given package or CVE. Polydelve stores this history to show trend charts on contract detail pages and to support calibration scoring at purchase time.
+A time-series of daily EPSS values for a given package or CVE. Polydelve stores this history to draw trend charts and to settle EPSS win conditions.
+
+## Grade
+
+A 0–10 danger score for a package, computed from CVE count, EPSS, max CVSS, and MAL status. Display only; it does not affect payout.
+
+## Hazard (λ)
+
+The daily rate at which new qualifying CVEs arrive for a package, estimated from the last 90 and 365 days of CVE history. It drives all pricing (see [Prediction Markets](/docs/concepts/prediction-markets)).
 
 ## MAL Advisory
 
-A malicious package advisory sourced from OSV. Unlike CVEs, MAL advisories flag packages that are themselves intentionally harmful (e.g. typosquats, dependency confusion attacks). Polydelve surfaces MAL advisories alongside CVE-based contracts.
+A malicious package advisory sourced from OSV. Unlike CVEs, MAL advisories flag packages that are themselves intentionally harmful (e.g. typosquats, dependency confusion attacks). A MAL advisory published after purchase is a YES win condition.
 
 ## max_payout
 
-The number of Schmeckles returned to a contract holder if the contract resolves YES. Equivalent to the payout side of the multiplier: `max_payout = cost × multiplier`.
+The number of bits returned to a contract holder on a win. Equivalent to `max_payout = cost × multiplier`.
 
 ## Multiplier
 
-The payout-to-cost ratio for a contract. A multiplier of 3 means a 10 Schmeckle purchase returns 30 Schmeckles on a YES resolution. Higher multipliers reflect lower implied probability of the event occurring.
+The payout-to-cost ratio for a contract. A multiplier of 3 means a 10-bit purchase returns 30 bits on a win. Higher multipliers reflect lower implied probability of the event occurring.
 
 ## OSV
 
-Open Source Vulnerabilities. A database aggregating vulnerability advisories across ecosystems (npm, PyPI, Composer, etc.). OSV is Polydelve's source of truth for the tracked package universe and CVE history, but it is not the only resolution path — contracts can also resolve on an EPSS-threshold crossing or a MAL advisory, independent of OSV CVE data (see [Market Resolution](/docs/concepts/market-resolution)).
+Open Source Vulnerabilities. A database aggregating vulnerability advisories across ecosystems. Polydelve uses OSV for CVE history and MAL advisories on npm and PyPI packages. Contracts can also resolve on an EPSS crossing, independent of OSV CVE data (see [Market Resolution](/docs/concepts/market-resolution)).
 
 ## relevancy_score
 
-An internal numeric field on featured contracts used to rank which contracts surface prominently in the browse view. Higher values indicate contracts Polydelve considers more timely or significant. Not exposed directly in the UI.
+A numeric field on featured contracts, returned by `GET /featured-contracts`, used to rank them. Higher values indicate contracts Polydelve considers more timely or significant. The web app does not currently display it.
 
-## Schmeckle
+## Slip
 
-Polydelve's in-app currency. New users start with 1000 Schmeckles; balance changes only from buying contracts and collecting payouts on wins. They have no real-world monetary value and exist solely for ranking and gameplay purposes.
+The bet slip on the Predict page where you add packages, choose YES or NO, and set thresholds, duration, and stake before buying.
+
+## Bit
+
+Polydelve's in-app currency. New users start with 1000 bits; balance changes only from buying contracts and collecting payouts on wins. They have no real-world monetary value and exist solely for ranking and gameplay purposes.

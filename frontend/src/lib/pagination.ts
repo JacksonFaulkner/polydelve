@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 export interface PagedResponse<T> {
   items: T[]
@@ -12,22 +12,24 @@ export interface PagedResponse<T> {
  * Page state is owned by the caller (typically the URL via nuqs). */
 export function usePagedFetch<T>(
   url: string,
-  authFetch: (url: string) => Promise<Response>,
+  getJson: <R>(path: string) => Promise<R>,
 ) {
   const [data, setData] = useState<PagedResponse<T> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    authFetch(url)
-      .then((r) => r.json())
+    setError(false)
+    getJson<PagedResponse<T>>(url)
       .then((d) => { if (!cancelled) setData(d) })
-      .catch(() => { if (!cancelled) setData(null) })
+      .catch(() => { if (!cancelled) { setData(null); setError(true) } })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url])
+  }, [url, getJson, attempt])
 
-  return { data, loading }
+  return { data, loading, error, retry }
 }

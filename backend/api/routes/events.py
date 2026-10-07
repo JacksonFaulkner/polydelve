@@ -1,7 +1,7 @@
 """Security events ledger (bettable packages only) — a timeline of past CVE/EPSS/MAL events, each
 labeled with the contract type it would have won: "if a contract like this
 existed, it would've hit." Read-only, no thresholds are user-specific."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -54,7 +54,7 @@ all_events AS (
 
 
 def _since_for(window: str) -> datetime | None:
-    return datetime.now(timezone.utc) - timedelta(days=30) if window == "dense" else None
+    return datetime.now(UTC) - timedelta(days=30) if window == "dense" else None
 
 
 @router.get("")

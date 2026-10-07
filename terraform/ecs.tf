@@ -66,13 +66,18 @@ resource "aws_ecs_express_gateway_service" "backend" {
       name       = "GCP_SA_JSON"
       value_from = aws_secretsmanager_secret.app["gcp_sa_json"].arn
     }
+
+    secret {
+      name       = "GUEST_JWT_SECRET"
+      value_from = aws_secretsmanager_secret.app["guest_jwt_secret"].arn
+    }
   }
 
   scaling_target {
-    min_task_count             = 1
-    max_task_count             = 5
-    auto_scaling_metric        = "AVERAGE_CPU"
-    auto_scaling_target_value  = 70
+    min_task_count            = 1
+    max_task_count            = 5
+    auto_scaling_metric       = "AVERAGE_CPU"
+    auto_scaling_target_value = 70
   }
 
   depends_on = [

@@ -11,9 +11,24 @@ Usage:
 """
 import argparse
 import asyncio
+import subprocess
+import sys
 import time
+from urllib.parse import urlsplit
+
 from etl.jobs import cve, epss, mal, news, packages
+from features import settlement
 from features.db import DATABASE_URL, get_db_conn
+
+
+def _resolve_contracts() -> None:
+    # Own connection: settlement relies on transactions (won contract + payout
+    # commit together), which the autocommit ETL connection would break.
+    conn = get_db_conn()
+    try:
+        settlement.run(conn)
+    finally:
+        conn.close()
 
 
 def _timed(label: str):
@@ -35,15 +50,14 @@ async def main() -> None:
     parser.add_argument("--skip-download", action="store_true", help="mal only: use cached zips")
     args = parser.parse_args()
 
-    print(f"[etl] job={args.job} db={DATABASE_URL}", flush=True)
+    db = urlsplit(DATABASE_URL)
+    print(f"[etl] job={args.job} db={db.hostname}{db.path}", flush=True)
     conn = get_db_conn(autocommit=True)
     try:
         if args.job == "cve":
             await cve.run(conn)
         elif args.job == "resolve":
-            import subprocess
-            import sys as _sys
-            raise SystemExit(subprocess.run([_sys.executable, "/app/scripts/resolve_contracts.py"]).returncode)
+            _resolve_contracts()
         elif args.job == "news":
             await news.run(conn, days_back=args.days_back)
         elif args.job == "epss":
@@ -73,10 +87,8 @@ async def main() -> None:
                 print(f"[seed] risk_score set for {cur.fetchone()[0]} packages", flush=True)
             print(f"[seed] total={time.monotonic() - t0:.1f}s", flush=True)
         elif args.job == "epss-history":
-            import subprocess
-            import sys as _sys
             result = subprocess.run(
-                [_sys.executable, "/app/scripts/ingest_epss_history.py", "--start", "2021-04-14"],
+                [sys.executable, "scripts/ingest_epss_history.py", "--start", "2021-04-14"],
             )
             if result.returncode != 0:
                 raise SystemExit(result.returncode)
@@ -93,11 +105,7 @@ async def main() -> None:
             # Contracts settle automatically: any leg that fired in the data
             # just ingested pays out now, no manual sell step.
             with _timed("resolve"):
-                import subprocess
-                import sys as _sys
-                result = subprocess.run([_sys.executable, "/app/scripts/resolve_contracts.py"])
-                if result.returncode != 0:
-                    raise SystemExit(result.returncode)
+                _resolve_contracts()
             print(f"[refresh] total={time.monotonic() - t0:.1f}s", flush=True)
     finally:
         conn.close()

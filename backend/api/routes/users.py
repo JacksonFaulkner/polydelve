@@ -1,16 +1,16 @@
-from typing import Any
 import os
 import re
 import uuid
 from collections import defaultdict
 from datetime import date as dt
+from typing import Any
 
 import boto3
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
 from api.auth import get_current_user, get_optional_user
-from api.cache import cache_get, cache_set, cache_invalidate, ttl_for
+from api.cache import cache_get, cache_invalidate, cache_set, ttl_for
 from features.db import get_db
 from features.users_repo import (
     check_username_taken,
@@ -18,16 +18,19 @@ from features.users_repo import (
     get_contracts_for_users,
     get_ranked_users,
     get_user,
-    get_user_basic,
-    get_user_contract_history,
     get_user_bits,
+    get_user_contract_history,
     set_avatar_url,
     set_username,
     upsert_user,
 )
 from models.models import (
-    LeaderboardContract, LeaderboardResponse, LeaderboardUser,
-    BitPoint, BitTimeline, User,
+    BitPoint,
+    BitTimeline,
+    LeaderboardContract,
+    LeaderboardResponse,
+    LeaderboardUser,
+    User,
 )
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
@@ -185,7 +188,6 @@ def get_bit_timeline(
     bits = get_user_bits(conn, user_id)
     if bits is None:
         raise HTTPException(404, "User not found")
-    user_row = (bits,)
 
     rows = get_user_contract_history(conn, user_id)
 

@@ -10,6 +10,7 @@ import type { LeaderboardUser, LeaderboardResponse } from "@/types"
 import { BitIcon } from "./BitIcon"
 import { UserExpandedRow } from "./UserExpandedRow"
 import { useApi } from "@/lib/api"
+import { ErrorState } from "@/components/ui/ErrorState"
 const PAGE_SIZE = 50
 
 const col = createColumnHelper<LeaderboardUser>()
@@ -106,11 +107,12 @@ const columns = [
 ]
 
 export function LeaderboardTable() {
-  const { authFetch } = useApi()
+  const { getJson } = useApi()
   const [data, setData] = useState<LeaderboardUser[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -127,19 +129,19 @@ export function LeaderboardTable() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
       const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
       if (debouncedSearch) params.set("search", debouncedSearch)
-      const res = await authFetch(`/users/leaderboard?${params}`)
-      const json: LeaderboardResponse = await res.json()
+      const json = await getJson<LeaderboardResponse>(`/users/leaderboard?${params}`)
       setData(json.users)
       setTotal(json.total)
-    } catch (e) {
-      console.error("Failed to fetch leaderboard", e)
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch, authFetch])
+  }, [page, debouncedSearch, getJson])
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { setPage(1) }, [debouncedSearch])
@@ -202,6 +204,10 @@ export function LeaderboardTable() {
             {loading ? (
               <tr>
                 <td colSpan={colCount + 1} className="py-12 text-center text-ink-3">Loading…</td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={colCount + 1}><ErrorState onRetry={fetchData} /></td>
               </tr>
             ) : data.length === 0 ? (
               <tr>

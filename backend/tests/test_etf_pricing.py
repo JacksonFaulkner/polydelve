@@ -1,6 +1,4 @@
-import sys
 
-sys.path.insert(0, ".")
 
 from features.etf_pricing import EtfMemberTerms, poisson_binomial_at_least, price_basket
 

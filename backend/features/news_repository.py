@@ -1,6 +1,7 @@
+from datetime import UTC
 from typing import Any
 
-from features.package_enrichment import validate_packages
+from etl.fetch.enrichment import validate_packages
 from models.models import PackageRisk, RecentNews
 
 _SIMILARITY_THRESHOLD = 0.08  # cosine distance threshold (lower = more similar)
@@ -131,11 +132,11 @@ async def _insert_packages(
 
 async def ingest(conn: Any, article: RecentNews) -> str:
     """Insert article if not already stored. Returns 'inserted', 'url_duplicate', 'semantic_duplicate', or 'too_old'."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     pub = article.analysis.exa.published_date
     if pub:
-        pub_aware = pub if pub.tzinfo else pub.replace(tzinfo=timezone.utc)
-        age = datetime.now(timezone.utc) - pub_aware
+        pub_aware = pub if pub.tzinfo else pub.replace(tzinfo=UTC)
+        age = datetime.now(UTC) - pub_aware
         if age > timedelta(days=14):
             return "too_old"
 

@@ -1,6 +1,6 @@
-from typing import Any
 """Featured contracts endpoint — home screen market data."""
 from datetime import date
+from typing import Any
 
 from fastapi import APIRouter, Depends
 

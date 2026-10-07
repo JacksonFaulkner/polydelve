@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -50,8 +50,8 @@ class Market(BaseModel):
     @field_validator("end_date")
     @classmethod
     def end_date_within_one_month(cls, v: datetime) -> datetime:
-        now = datetime.now(timezone.utc)
-        end = v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+        now = datetime.now(UTC)
+        end = v if v.tzinfo else v.replace(tzinfo=UTC)
         if (end - now) > timedelta(days=31):
             raise ValueError("end_date cannot be more than 1 month from now")
         return v

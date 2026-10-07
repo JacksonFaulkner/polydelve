@@ -1,6 +1,4 @@
 """Package search, detail, CVE lookup, auth enforcement."""
-import sys
-sys.path.insert(0, ".")
 
 
 # ── Auth enforcement ──────────────────────────────────────────────────────────

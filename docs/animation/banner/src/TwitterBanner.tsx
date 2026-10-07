@@ -14,7 +14,7 @@ const ZINC_400 = "#a1a1aa";
 const ZINC_600 = "#52525b";
 const ZINC_800 = "#27272a";
 
-export interface BannerProps {
+export type BannerProps = {
   /** Headline. Wrap a word in *asterisks* to paint it yellow. */
   headline: string;
   tagline: string;

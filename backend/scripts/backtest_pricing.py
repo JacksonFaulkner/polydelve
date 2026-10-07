@@ -22,8 +22,8 @@ from datetime import date, timedelta
 
 sys.path.insert(0, ".")
 
-from features.contract_pricing import compute_cvss_probability  # noqa: E402
-from features.db import get_db_conn  # noqa: E402
+from features.contract_pricing import compute_cvss_probability
+from features.db import get_db_conn
 
 DURATIONS = (7, 14, 30)
 THRESHOLDS = (5.0, 7.0)

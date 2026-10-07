@@ -37,11 +37,11 @@ resource "aws_ecs_task_definition" "etl" {
     ]
 
     secrets = [
-      { name = "DATABASE_URL",   valueFrom = aws_secretsmanager_secret.db_url.arn },
+      { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.db_url.arn },
       { name = "OPENAI_API_KEY", valueFrom = aws_secretsmanager_secret.app["openai_api_key"].arn },
-      { name = "EXA_API_KEY",    valueFrom = aws_secretsmanager_secret.app["exa_api_key"].arn },
-      { name = "GCP_SA_JSON",    valueFrom = aws_secretsmanager_secret.app["gcp_sa_json"].arn },
-      { name = "BQ_SA_JSON",     valueFrom = aws_secretsmanager_secret.app["bq_sa_json"].arn },
+      { name = "EXA_API_KEY", valueFrom = aws_secretsmanager_secret.app["exa_api_key"].arn },
+      { name = "GCP_SA_JSON", valueFrom = aws_secretsmanager_secret.app["gcp_sa_json"].arn },
+      { name = "BQ_SA_JSON", valueFrom = aws_secretsmanager_secret.app["bq_sa_json"].arn },
     ]
   }])
 }
@@ -74,8 +74,8 @@ resource "aws_iam_role_policy" "eventbridge_etl_run_task" {
         Resource = aws_ecs_task_definition.etl.arn
       },
       {
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
         Resource = [
           aws_iam_role.execution.arn,
           aws_iam_role.task.arn,

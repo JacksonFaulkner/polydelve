@@ -22,7 +22,7 @@ from pathlib import Path
 import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from features.db import get_db_conn  # noqa: E402
+from features.db import get_db_conn
 
 BULK_URL = "https://epss.empiricalsecurity.com/epss_scores-{date}.csv.gz"
 CACHE_DIR = Path("/tmp/epss_csv")

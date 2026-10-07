@@ -1,6 +1,7 @@
 # Copy to terraform.tfvars or export as TF_VAR_* env vars — never commit real values
 openai_api_key    = "..."
 exa_api_key       = "..."
+guest_jwt_secret  = "..."
 gcp_sa_json       = "{...}"
 bq_sa_json        = "{...}"
 auth0_domain      = "your-tenant.auth0.com"

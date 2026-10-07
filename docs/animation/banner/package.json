@@ -9,9 +9,9 @@
     "render:avatar": "remotion still src/index.ts Avatar out/avatar.png --image-format=png"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.476",
-    "@remotion/google-fonts": "4.0.476",
-    "remotion": "^4.0.476"
+    "@remotion/cli": "4.0.532",
+    "@remotion/google-fonts": "4.0.532",
+    "remotion": "4.0.532"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

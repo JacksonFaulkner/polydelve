@@ -1,7 +1,5 @@
 """Tests for markets, bets, and users endpoints in prediction_market router."""
-import sys
 
-sys.path.insert(0, ".")
 
 
 def _seed_company(db):

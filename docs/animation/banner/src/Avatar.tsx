@@ -2,7 +2,7 @@ import { AbsoluteFill, Img, staticFile } from "remotion";
 
 const BG = "#15191D";
 
-export interface AvatarProps {
+export type AvatarProps = {
   /** background fill behind the mark */
   bg: string;
   /** invert the logo to white (true) or leave dark (false) */

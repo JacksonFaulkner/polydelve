@@ -19,13 +19,30 @@ Polydelve lets users bet on software supply-chain risk — whether a package wil
 
 ## What it does
 
-- **Prediction markets** — buy contracts on packages you believe are at risk. Payout on a qualifying CVE, EPSS threshold, or MAL advisory before expiry.
-- **ETFs** — basket contracts spanning a manifest of multiple packages, for betting on ecosystem-wide risk rather than a single package.
+- <DemoTip name="place-bet">**Prediction markets**</DemoTip> — buy contracts on packages you believe are at risk. Payout on a qualifying CVE, EPSS threshold, or MAL advisory before expiry.
+- <DemoTip name="basket">**ETFs**</DemoTip> — basket contracts spanning a manifest of multiple packages, for betting on ecosystem-wide risk rather than a single package.
 - **CVE tracking** — tracks the full npm and PyPI candidate universe against the OSV advisory database (no fixed package cap).
-- **EPSS trend charts** — exploitation probability over time with CVE scatter overlay.
+- <DemoTip name="epss-trend">**EPSS trend charts**</DemoTip> — exploitation probability over time with CVE scatter overlay.
 - **Exploit signals** — PoC flags, active exploit flags, and OSV malicious advisory detection.
-- **Leaderboard** — users ranked by Schmeckle balance.
+- **Leaderboard** — users ranked by bits balance.
 - **Security news** — curated feed of security events tagged by package and sector.
+
+## See it in action
+
+<Tabs items={['Place a bet', 'Basket (ETF)', 'EPSS trend', 'No vulnerability']}>
+  <Tab value="Place a bet">
+    <Demo name="place-bet" caption="Search a package, add it to your slip, and see odds and the payout curve fill in." />
+  </Tab>
+  <Tab value="Basket (ETF)">
+    <Demo name="basket" caption="Add several packages and the slip becomes a basket — choose how many legs must hit." />
+  </Tab>
+  <Tab value="EPSS trend">
+    <Demo name="epss-trend" caption="Open any package to see its exploitation-probability history with CVEs overlaid." />
+  </Tab>
+  <Tab value="No vulnerability">
+    <Demo name="no-vulnerability" caption="Bet the other way: the package stays clean until expiry. Only packages with a recent CVE are eligible." />
+  </Tab>
+</Tabs>
 
 ## Core concepts
 
@@ -33,7 +50,7 @@ Polydelve lets users bet on software supply-chain risk — whether a package wil
 |---------|-------------|
 | **Contract** | A bet that a specific package meets a win condition (CVE + CVSS threshold, EPSS threshold, or MAL advisory) before a deadline. |
 | **ETF** | A basket contract spanning multiple packages from an uploaded manifest. |
-| **Schmeckles** | In-platform currency. New users start with 1000. |
+| **Bits** | In-platform currency. New users start with 1000. |
 | **EPSS** | Exploit Prediction Scoring System — probability a CVE gets exploited in the wild. |
 | **OSV** | Open Source Vulnerability database. Source of the tracked package universe and CVE history. |
 | **Market** | A featured contract displayed on the home feed, curated for high-interest packages. |

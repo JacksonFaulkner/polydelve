@@ -1,30 +1,97 @@
+import logging
 import os
+import threading
+from contextlib import contextmanager
 
 import psycopg2
 from fastapi import Request
 from pgvector.psycopg2 import register_vector
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://polydelve:polydelve@127.0.0.1:5432/polydelve_dev"
 )
+log = logging.getLogger(__name__)
+
 POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
 POOL_MAX = int(os.getenv("DB_POOL_MAX", "10"))
+# How long a request waits for a free connection before failing.
+POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "10"))
 
-_pool: ThreadedConnectionPool | None = None
+
+class BlockingPool:
+    """ThreadedConnectionPool that waits for a free connection instead of raising.
+
+    Sync routes run on FastAPI's threadpool (40 threads by default), so more
+    concurrent requests than DB_POOL_MAX would otherwise get PoolError -> 500.
+    """
+
+    def __init__(self, minconn: int, maxconn: int, dsn: str, timeout: float) -> None:
+        self._pool = ThreadedConnectionPool(minconn, maxconn, dsn=dsn)
+        self._slots = threading.BoundedSemaphore(maxconn)
+        self._timeout = timeout
+        self._registered: set[int] = set()
+
+    def getconn(self):
+        if not self._slots.acquire(timeout=self._timeout):
+            raise PoolError(f"no database connection free after {self._timeout}s")
+        try:
+            conn = self._pool.getconn()
+            # register_vector queries pg_type, so do it once per physical connection.
+            if id(conn) not in self._registered:
+                register_vector(conn)
+                self._registered.add(id(conn))
+            return conn
+        except Exception:
+            self._slots.release()
+            raise
+
+    def putconn(self, conn) -> None:
+        try:
+            self._pool.putconn(conn, close=bool(conn.closed))
+        finally:
+            # The pool closes connections beyond minconn; forget their ids so a
+            # new connection that reuses the id still gets register_vector.
+            if conn.closed:
+                self._registered.discard(id(conn))
+            self._slots.release()
+
+    def closeall(self) -> None:
+        self._pool.closeall()
+        self._registered.clear()
 
 
-def _get_pool() -> ThreadedConnectionPool:
+_pool: BlockingPool | None = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool() -> BlockingPool:
     global _pool
     if _pool is None:
-        _pool = ThreadedConnectionPool(POOL_MIN, POOL_MAX, dsn=DATABASE_URL)
+        with _pool_lock:
+            if _pool is None:
+                _pool = BlockingPool(POOL_MIN, POOL_MAX, DATABASE_URL, POOL_TIMEOUT)
     return _pool
 
 
-def get_db(request: Request):  # noqa: ARG001
+def open_pool() -> None:
+    """Create the pool at startup so the first request doesn't pay for it."""
+    _get_pool()
+
+
+def close_pool() -> None:
+    global _pool
+    with _pool_lock:
+        if _pool is not None:
+            _pool.closeall()
+            _pool = None
+
+
+@contextmanager
+def pooled_conn():
+    """Borrow a pooled connection outside a request (e.g. app startup)."""
     pool = _get_pool()
     conn = pool.getconn()
-    register_vector(conn)
     try:
         yield conn
     except Exception:
@@ -39,6 +106,11 @@ def get_db(request: Request):  # noqa: ARG001
         pool.putconn(conn)
 
 
+def get_db(request: Request):
+    with pooled_conn() as conn:
+        yield conn
+
+
 def get_db_conn(autocommit: bool = False):
     """Direct connection for scripts (no FastAPI Request context)."""
     conn = psycopg2.connect(DATABASE_URL)
@@ -46,212 +118,6 @@ def get_db_conn(autocommit: bool = False):
         conn.autocommit = True
     register_vector(conn)
     return conn
-
-
-def init_db(conn) -> None:  # kept for test compat, no-op — schema managed by Alembic
-    def _safe(sql: str) -> None:
-        try:
-            conn.execute(sql)
-        except Exception:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS companies (
-            id      VARCHAR PRIMARY KEY,
-            title   VARCHAR NOT NULL,
-            logo    VARCHAR,
-            grade   VARCHAR NOT NULL
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS markets (
-            id          VARCHAR PRIMARY KEY,
-            company_id  VARCHAR NOT NULL,
-            title       VARCHAR NOT NULL,
-            description VARCHAR NOT NULL,
-            grade       VARCHAR NOT NULL,
-            price       INTEGER NOT NULL,
-            payout      INTEGER NOT NULL,
-            end_date    TIMESTAMP NOT NULL,
-            status      VARCHAR NOT NULL DEFAULT 'open'
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id         VARCHAR PRIMARY KEY,
-            username   VARCHAR NOT NULL,
-            bits INTEGER NOT NULL DEFAULT 1000
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS bets (
-            id         VARCHAR PRIMARY KEY,
-            user_id    VARCHAR NOT NULL,
-            market_id  VARCHAR NOT NULL,
-            placed_at  TIMESTAMP NOT NULL
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS news (
-            id                 VARCHAR PRIMARY KEY,
-            title              VARCHAR NOT NULL,
-            description        VARCHAR,
-            summary            VARCHAR,
-            source_name        VARCHAR,
-            primary_company_id VARCHAR,
-            published_date     TIMESTAMPTZ,
-            source_url         VARCHAR NOT NULL,
-            threat_actor       VARCHAR,
-            exploit_status     VARCHAR,
-            severity           VARCHAR,
-            company_labels     VARCHAR[],
-            sector_labels      VARCHAR[],
-            embed_title        FLOAT[3072],
-            embed_description  FLOAT[3072],
-            embed_source       FLOAT[3072],
-            ingested_at        TIMESTAMPTZ DEFAULT now()
-        )
-    """)
-    # Migrate existing DBs that predate summary/source_name/primary_company_id columns
-    for col in ("summary VARCHAR", "source_name VARCHAR", "primary_company_id VARCHAR", "relevancy_score FLOAT"):
-        _safe(f"ALTER TABLE news ADD COLUMN {col}")
-    _safe("UPDATE news SET relevancy_score = 0.5 WHERE relevancy_score IS NULL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS packages (
-            name             VARCHAR NOT NULL,
-            ecosystem        VARCHAR NOT NULL,
-            github_org       VARCHAR,
-            logo_url         VARCHAR,
-            weekly_downloads INTEGER,
-            cve_ids          VARCHAR[],
-            epss_score       FLOAT,
-            has_mal_advisory BOOLEAN NOT NULL DEFAULT false,
-            risk_score       FLOAT,
-            last_enriched_at TIMESTAMPTZ,
-            sectors          VARCHAR[],
-            PRIMARY KEY (name, ecosystem)
-        )
-    """)
-
-    # Migrate existing DBs that predate new columns
-    _safe("ALTER TABLE packages ADD COLUMN sectors VARCHAR[]")
-    _safe("ALTER TABLE packages ADD COLUMN risk_score FLOAT")
-    _safe("ALTER TABLE packages ADD COLUMN has_mal_advisory BOOLEAN DEFAULT false")
-    _safe("UPDATE packages SET has_mal_advisory = false WHERE has_mal_advisory IS NULL")
-    _safe("ALTER TABLE packages DROP COLUMN in_cisa_kev")
-    _safe("ALTER TABLE packages ADD COLUMN mal_advisory_published_at TIMESTAMPTZ")
-    _safe("ALTER TABLE contracts ADD COLUMN opening_epss FLOAT")
-    _safe("ALTER TABLE users ADD COLUMN email VARCHAR")
-    _safe("ALTER TABLE users ALTER COLUMN username DROP NOT NULL")
-    _safe("ALTER TABLE users ADD COLUMN avatar_url VARCHAR")
-    # Null out legacy usernames that are Auth0 sub IDs or email addresses (contain | or @)
-    _safe("UPDATE users SET username = NULL WHERE username LIKE '%|%' OR username LIKE '%@%'")
-    # epss_history: daily snapshot per package for drift tracking
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS epss_history (
-            name        VARCHAR NOT NULL,
-            ecosystem   VARCHAR NOT NULL,
-            epss_score  FLOAT NOT NULL,
-            recorded_at DATE NOT NULL DEFAULT current_date,
-            PRIMARY KEY (name, ecosystem, recorded_at)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS news_packages (
-            news_id   VARCHAR NOT NULL,
-            name      VARCHAR NOT NULL,
-            ecosystem VARCHAR NOT NULL,
-            PRIMARY KEY (news_id, name)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS cve_history (
-            osv_id         VARCHAR NOT NULL,
-            cve_id         VARCHAR,
-            name           VARCHAR NOT NULL,
-            ecosystem      VARCHAR NOT NULL,
-            published_date TIMESTAMPTZ,
-            modified_date  TIMESTAMPTZ,
-            severity       VARCHAR,
-            cvss_vector    VARCHAR,
-            PRIMARY KEY (osv_id, name, ecosystem)
-        )
-    """)
-    _safe("ALTER TABLE cve_history ADD COLUMN cvss_score FLOAT")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS contracts (
-            id                   VARCHAR PRIMARY KEY,
-            user_id              VARCHAR NOT NULL,
-            package_name         VARCHAR NOT NULL,
-            package_ecosystem    VARCHAR NOT NULL,
-            market_type          VARCHAR NOT NULL,  -- new_cve | epss_threshold | all
-            cvss_threshold       FLOAT,             -- for new_cve type
-            epss_threshold       FLOAT,             -- for epss_threshold type
-            purchase_price       INTEGER NOT NULL,
-            max_payout           INTEGER NOT NULL,
-            opening_probability  FLOAT NOT NULL,
-            package_grade        FLOAT NOT NULL,
-            expires_at           DATE NOT NULL,
-            status               VARCHAR NOT NULL DEFAULT 'open',  -- open | won | lost | sold
-            resolved_at          TIMESTAMPTZ,
-            sell_price           INTEGER,
-            created_at           TIMESTAMPTZ DEFAULT now(),
-            opening_epss         FLOAT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS news_duplicates (
-            candidate_url    VARCHAR NOT NULL,
-            matched_news_id  VARCHAR NOT NULL,
-            similarity_score FLOAT NOT NULL,
-            detected_at      TIMESTAMPTZ DEFAULT now(),
-            PRIMARY KEY (candidate_url, matched_news_id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS featured_contracts (
-            id                  VARCHAR PRIMARY KEY,
-            package_name        VARCHAR NOT NULL,
-            package_ecosystem   VARCHAR NOT NULL,
-            cvss_threshold      FLOAT,
-            epss_threshold      FLOAT,
-            purchase_price      INTEGER NOT NULL DEFAULT 100,
-            duration_days       INTEGER NOT NULL,
-            max_payout          INTEGER NOT NULL,
-            opening_probability FLOAT NOT NULL,
-            package_grade       FLOAT NOT NULL,
-            expires_at          DATE NOT NULL,
-            status              VARCHAR NOT NULL DEFAULT 'open',
-            created_at          TIMESTAMPTZ DEFAULT now(),
-            news_id             VARCHAR,
-            relevancy_score     FLOAT NOT NULL DEFAULT 0.5
-        )
-    """)
-    _safe("ALTER TABLE featured_contracts ADD COLUMN relevancy_score FLOAT")
-    _safe("UPDATE featured_contracts SET relevancy_score = 0.5 WHERE relevancy_score IS NULL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS mal_advisories (
-            osv_id       VARCHAR NOT NULL,
-            name         VARCHAR NOT NULL,
-            ecosystem    VARCHAR NOT NULL,
-            published_at TIMESTAMPTZ,
-            modified_at  TIMESTAMPTZ,
-            withdrawn    BOOLEAN NOT NULL DEFAULT false,
-            summary      VARCHAR,
-            PRIMARY KEY (osv_id, name, ecosystem)
-        )
-    """)
-
-    # Indexes on high-frequency lookup columns
-    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_user_id ON contracts (user_id)")
-    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts (status)")
-    _safe("CREATE INDEX IF NOT EXISTS idx_contracts_expires_at ON contracts (expires_at)")
-    _safe("CREATE INDEX IF NOT EXISTS idx_packages_epss ON packages (epss_score)")
-    _safe("CREATE INDEX IF NOT EXISTS idx_news_published ON news (published_date)")
-    _safe("CREATE INDEX IF NOT EXISTS idx_epss_history_pkg ON epss_history (name, ecosystem)")
 
 
 _CDN = "https://cdn.simpleicons.org"
@@ -312,7 +178,7 @@ def seed_companies(conn) -> None:
         [(c["id"], c["title"], c["logo"], c["grade"]) for c in COMPANIES],
     )
     conn.commit()
-    print(f"Seeded {len(COMPANIES)} companies.")
+    log.info("Seeded %d companies", len(COMPANIES))
 
 
 if __name__ == "__main__":
