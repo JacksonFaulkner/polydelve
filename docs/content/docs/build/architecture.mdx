@@ -21,6 +21,8 @@ flowchart LR
 
 React (Vite) SPA, built to static files on S3 and served via CloudFront. Runs on port 5173 locally. Talks exclusively to the Backend API — no direct database access. Auth0 handles login; the frontend exchanges tokens with the backend on authenticated routes.
 
+![Predict page with a slip for the npm package axios, showing CVSS and EPSS threshold sliders, win chance, stake and duration options, and an EPSS history chart](https://assets.polydelve.com/screenshots/predict-slip.png)
+
 ## Backend
 
 FastAPI on Python 3.14, managed with `uv`. Runs on port 8000 locally. In production it runs on ECS Fargate (ECS Express Gateway) behind CloudFront, which proxies `/api/*` to it. Responsible for all business logic, query routing, and Auth0 token verification.

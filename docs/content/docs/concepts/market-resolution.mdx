@@ -30,6 +30,10 @@ NO bets are only offered on packages with a CVE in the last 100 days.
 
 A basket contract holds several packages and a `threshold_count`. Each member is checked with the YES rules above; the basket is **won** once `threshold_count` members have won, and **expired** at the deadline otherwise.
 
+The Dashboard shows each contract's status (Open, Won, Expired) and its P&L:
+
+![Dashboard with active contracts marked Open and history showing Won and Expired](https://assets.polydelve.com/screenshots/dashboard.png)
+
 ## How resolution is triggered
 
 Settlement does not poll OSV live per contract. It reads from tables already populated by upstream ETL jobs:

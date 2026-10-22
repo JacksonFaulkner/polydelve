@@ -19,10 +19,10 @@ Polydelve lets users bet on software supply-chain risk — whether a package wil
 
 ## What it does
 
-- <DemoTip name="place-bet">**Prediction markets**</DemoTip> — buy contracts on packages you believe are at risk. Payout on a qualifying CVE, EPSS threshold, or MAL advisory before expiry.
-- <DemoTip name="basket">**ETFs**</DemoTip> — basket contracts spanning a manifest of multiple packages, for betting on ecosystem-wide risk rather than a single package.
+- **Prediction markets** — buy contracts on packages you believe are at risk. Payout on a qualifying CVE, EPSS threshold, or MAL advisory before expiry.
+- **ETFs** — basket contracts spanning a manifest of multiple packages, for betting on ecosystem-wide risk rather than a single package.
 - **CVE tracking** — tracks the full npm and PyPI candidate universe against the OSV advisory database (no fixed package cap).
-- <DemoTip name="epss-trend">**EPSS trend charts**</DemoTip> — exploitation probability over time with CVE scatter overlay.
+- **EPSS trend charts** — exploitation probability over time with CVE scatter overlay.
 - **Exploit signals** — PoC flags, active exploit flags, and OSV malicious advisory detection.
 - **Leaderboard** — users ranked by bits balance.
 - **Security news** — curated feed of security events tagged by package and sector.
@@ -31,18 +31,28 @@ Polydelve lets users bet on software supply-chain risk — whether a package wil
 
 <Tabs items={['Place a bet', 'Basket (ETF)', 'EPSS trend', 'No vulnerability']}>
   <Tab value="Place a bet">
-    <Demo name="place-bet" caption="Search a package, add it to your slip, and see odds and the payout curve fill in." />
+    ![Predict slip with a package added: search, stake, duration](https://assets.polydelve.com/screenshots/predict-slip.png)
+
+    Search a package, add it to your slip, pick a stake and duration, and see the odds and payout update live.
   </Tab>
   <Tab value="Basket (ETF)">
-    <Demo name="basket" caption="Add several packages and the slip becomes a basket — choose how many legs must hit." />
+    ![Predict slip with three packages as a basket](https://assets.polydelve.com/screenshots/predict-basket.png)
+
+    Add several packages and the slip becomes a basket. Choose how many legs must hit.
   </Tab>
   <Tab value="EPSS trend">
-    <Demo name="epss-trend" caption="Open any package to see its exploitation-probability history with CVEs overlaid." />
+    ![PyPI package table with one row expanded: CVE list and EPSS trend](https://assets.polydelve.com/screenshots/package-epss.png)
+
+    Open any package to see its exploitation-probability history with CVEs overlaid.
   </Tab>
   <Tab value="No vulnerability">
-    <Demo name="no-vulnerability" caption="Bet the other way: the package stays clean until expiry. Only packages with a recent CVE are eligible." />
+    ![Predict slip with the No vulnerability direction selected](https://assets.polydelve.com/screenshots/predict-no.png)
+
+    Bet the other way: the package stays clean until expiry. Only packages with a recent CVE are eligible.
   </Tab>
 </Tabs>
+
+How the UI got here: see [Progression](/docs/project/progression).
 
 ## Core concepts
 

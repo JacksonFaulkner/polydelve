@@ -8,6 +8,9 @@ on:
       - 'backend/models/models.py'
       - 'scripts/extract_models.py'
       - '.github/workflows/docs.yml'
+      - 'frontend/src/**'
+      - 'scripts/upload-docs-screenshots.sh'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,7 +22,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Captures current-UI stills with Playwright against the vite dev server (reads proxy to prod API).
+  # History shots are static; run `npm run history` locally once. Any failed capture fails the job
+  # before upload, so the bucket keeps the last good images.
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            docs/animation/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install animation deps
+        working-directory: docs/animation
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: docs/animation
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Start frontend
+        working-directory: frontend
+        env:
+          VITE_SKIP_AUTH: 'true'
+          VITE_API_URL: /api
+        run: |
+          nohup npx vite --port 5180 > /tmp/vite.log 2>&1 &
+          npx --yes wait-on http://localhost:5180 --timeout 60000
+
+      - name: Capture screenshots
+        working-directory: docs/animation
+        run: npm run screenshots
+
+      - name: Fail on failed captures
+        run: |
+          if ls docs/animation/out/docs/*FAILED* >/dev/null 2>&1; then
+            echo "failed captures:"; ls docs/animation/out/docs/*FAILED*; exit 1
+          fi
+
+      - name: Upload screenshots to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CI_ASSETS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CI_ASSETS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: scripts/upload-docs-screenshots.sh
+
+      - name: Vite log on failure
+        if: failure()
+        run: cat /tmp/vite.log || true
+
   sync-assets:
+    needs: screenshots
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

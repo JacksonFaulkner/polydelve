@@ -14,6 +14,10 @@ description: "Provenance, ETL ownership, and cadence for every external data fee
 | News | Exa API | `news` | Every `refresh` | Requires `EXA_API_KEY`; tagged by sector/package via GPT (gpt-5.4-mini) |
 | MAL advisories | OSV bulk `all.zip` (`MAL-*` IDs) | `mal` | Every `refresh` | `make etl-mal` / `make etl-mal-cached` |
 
+The sources above surface together in the PyPI package table: downloads, EPSS, CVE count and severity, MAL flag and latest CVE date.
+
+![PyPI package table showing weekly downloads, EPSS, CVE count, severity, risk score and MAL flag per package](https://assets.polydelve.com/screenshots/packages-pypi.png)
+
 ## EPSS
 
 Exploit Prediction Scoring System scores are published by FIRST as a daily bulk CSV (`https://epss.empiricalsecurity.com/epss_scores-DATE.csv.gz`). The ETL downloads the file, falling back to yesterday's if today's isn't up yet, and joins it against tracked CVEs; **do not substitute a per-CVE loop against the FIRST REST API**. The `epss` job updates `packages.epss_score` and snapshots changes into `epss_history`; `epss-history` (`scripts/ingest_epss_history.py`) backfills historical snapshots from the same daily files.

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "demos": "node scripts/demos.mjs",
+    "screenshots": "node scripts/demos.mjs",
+    "history": "node scripts/history.mjs",
     "render": "remotion render src/index.ts PolydelveIntro out/intro.mp4"
   },
   "keywords": [],

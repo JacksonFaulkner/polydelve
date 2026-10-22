@@ -25,9 +25,13 @@ NO bets are only offered on packages with a CVE in the last 100 days, and only C
 
 On the Predict page you can add up to 10 packages to one slip. With two or more, the slip becomes a basket contract with a `threshold_count`: it wins when that many members have hit their conditions.
 
+![Basket slip with axios, express, and lodash and the "Legs that must hit" slider at any 1 of 3](https://assets.polydelve.com/screenshots/predict-basket.png)
+
 ### Resolution
 
 YES contracts resolve **won** on any one of three independent conditions: a new CVE meeting `cvss_threshold`, an EPSS score reaching `epss_threshold`, or a new MAL advisory for the package. They end **expired** if the deadline passes with none met. NO contracts are **won** at the deadline and **lost** as soon as a qualifying CVE appears. See [Market Resolution](/docs/concepts/market-resolution) for the full mechanics.
+
+![Predict slip on the No vulnerability side: If it survives, Win chance, and Max loss](https://assets.polydelve.com/screenshots/predict-no.png)
 
 ## Pricing
 

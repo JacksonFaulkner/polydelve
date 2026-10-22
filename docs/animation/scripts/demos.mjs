@@ -1,15 +1,14 @@
-// Docs media pipeline. Every file in scripts/demos/ is one asset:
+// Docs screenshot pipeline. Every file in scripts/demos/ is one still:
 //
-//   export default { kind: "video" | "still", async run(h) { … } }
+//   export default { kind: "still", async run(h) { … } }
 //
-// videos are recorded with Playwright (supersampled), then framed through the
-// DocsClip Remotion composition; stills are 2× screenshots, optionally with
+// Stills are 2× Playwright screenshots of the live UI, optionally with
 // annotation overlays.
 //
 //   (frontend) VITE_SKIP_AUTH=true VITE_API_URL=/api npx vite --port 5180
 //   node scripts/demos.mjs [name ...]        # default: all
 //
-// Output: out/docs/<name>.mp4 + <name>.png (video poster) or <name>.png (still).
+// Output: out/docs/<name>.png
 //
 // Flows locate elements through data-tour / data-demo attributes only and must
 // throw if the UI is not in the expected state. A failure exits non-zero BEFORE
@@ -120,12 +119,46 @@ function drawOverlays(items) {
 const guest = await fetch(`${PROD_API}/auth/guest`, { method: "POST" }).then((r) => r.json());
 const json = (route, body, status = 200) =>
   route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+const DAY = 86400000;
+const iso = (d) => new Date(Date.now() + d * DAY).toISOString();
+const day = (d) => iso(d).slice(0, 10);
+const DEMO_CONTRACTS = () => [
+  { id: "c1", package_name: "axios", ecosystem: "npm", market_type: "cvss", cvss_threshold: 7, epss_threshold: null, purchase_price: 100, max_payout: 420, opening_probability: 0.24, package_grade: 0.6, expires_at: iso(9), status: "open", resolved_at: null, sell_price: null, created_at: iso(-5), current_value: 131, multiplier: 4.2 },
+  { id: "c2", package_name: "requests", ecosystem: "PyPI", market_type: "epss", cvss_threshold: null, epss_threshold: 0.1, purchase_price: 50, max_payout: 310, opening_probability: 0.16, package_grade: 0.5, expires_at: iso(21), status: "open", resolved_at: null, sell_price: null, created_at: iso(-9), current_value: 72, multiplier: 6.2 },
+  { id: "c3", package_name: "lodash", ecosystem: "npm", market_type: "cvss", cvss_threshold: 7, epss_threshold: null, purchase_price: 250, max_payout: 640, opening_probability: 0.39, package_grade: 0.7, expires_at: iso(-12), status: "won", resolved_at: iso(-14), sell_price: null, created_at: iso(-30), current_value: null, multiplier: 2.56 },
+  { id: "c4", package_name: "flask", ecosystem: "PyPI", market_type: "cvss", cvss_threshold: 9, epss_threshold: null, purchase_price: 100, max_payout: 900, opening_probability: 0.11, package_grade: 0.4, expires_at: iso(-3), status: "expired", resolved_at: iso(-3), sell_price: null, created_at: iso(-33), current_value: null, multiplier: 9 },
+];
+const DEMO_TIMELINE = () => ({
+  user_id: "auth0|demo",
+  points: [
+    { date: day(-34), balance: 1000, event: null },
+    { date: day(-33), balance: 900, event: "buy" },
+    { date: day(-30), balance: 650, event: "buy" },
+    { date: day(-14), balance: 1290, event: "won" },
+    { date: day(-9), balance: 1240, event: "buy" },
+    { date: day(-5), balance: 1140, event: "buy" },
+  ],
+});
+const DEMO_LEADERBOARD = () => {
+  const rows = [["ada_l", 5900, 14, 3, 9], ["grace_h", 3420, 9, 2, 5], ["linus_t", 2180, 11, 4, 4], ["margaret_h", 1640, 6, 1, 3], ["dennis_r", 1310, 5, 0, 2], ["demo_user", 1000, 0, 0, 0]];
+  return {
+    total: rows.length,
+    page: 1,
+    page_size: 50,
+    users: rows.map(([username, bits, total, open, won], i) => ({ rank: i + 1, id: `demo|${i}`, username, bits, total_contracts: total, open_contracts: open, won_contracts: won, contracts: [] })),
+  };
+};
 const handleApi = async (route) => {
   const url = new URL(route.request().url());
   const apiPath = url.pathname.replace(/^\/api/, "");
   if (apiPath === "/users/me" && route.request().method() === "GET") {
     return json(route, { id: "auth0|demo", email: null, username: "jackson", bits: 1000, avatar_url: null });
   }
+  // Fictional leaderboard: never put real usernames or balances in public docs.
+  if (apiPath === "/users/leaderboard") return json(route, DEMO_LEADERBOARD());
+  // Demo-only fixtures for the signed-in dashboard (guest tokens have no contracts).
+  if (apiPath === "/contracts/me") return json(route, DEMO_CONTRACTS());
+  if (apiPath.startsWith("/users/leaderboard/") && apiPath.endsWith("/timeline")) return json(route, DEMO_TIMELINE());
   const headers = { ...route.request().headers(), authorization: `Bearer ${guest.token}` };
   delete headers.host;
   delete headers.origin;
@@ -293,6 +326,7 @@ const registry = {};
 for (const f of readdirSync(dir).filter((f) => f.endsWith(".mjs")).sort()) {
   registry[f.replace(/\.mjs$/, "")] = (await import(pathToFileURL(path.join(dir, f)).href)).default;
 }
+for (const [n, d] of Object.entries(registry)) if (d.kind !== "still") throw new Error(`demo "${n}": only kind "still" is supported (docs use screenshots, not clips)`);
 const wanted = process.argv.slice(2);
 const names = wanted.length ? wanted : Object.keys(registry);
 for (const n of names) if (!registry[n]) throw new Error(`unknown demo "${n}" (have: ${Object.keys(registry).join(", ")})`);
@@ -309,21 +343,4 @@ try {
   await browser.close();
 }
 
-// Every capture passed its assertions → render the videos.
-for (const r of captured.filter((c) => c.kind === "video")) {
-  const props = path.join(OUT_DIR, `.${r.name}.props.json`);
-  writeFileSync(props, JSON.stringify(r));
-  console.log(`rendering ${r.name} …`);
-  execFileSync("npx", ["remotion", "render", "src/index.ts", "DocsClip", path.join(OUT_DIR, `${r.name}.mp4`), `--props=${props}`, "--crf=18", "--scale=2", "--log=error"], {
-    cwd: ROOT,
-    stdio: "inherit",
-  });
-  const frame = Math.max(0, Math.round((r.durationSec - 1.2) * 30));
-  execFileSync(
-    "npx",
-    ["remotion", "still", "src/index.ts", "DocsClip", path.join(OUT_DIR, `${r.name}.png`), `--props=${props}`, `--frame=${frame}`, "--scale=2", "--log=error"],
-    { cwd: ROOT, stdio: "inherit" },
-  );
-  rmSync(props, { force: true });
-}
 console.log("done:", captured.map((r) => r.name).join(", "));

@@ -174,7 +174,7 @@ function TitleCard() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: schmO }}>
-        <Img src={staticFile("schmeckle.png")} style={{ height: 16, width: 16, objectFit: "contain" }} />
+        <Img src={staticFile("bit.png")} style={{ height: 16, width: 16, objectFit: "contain" }} />
         <span style={{ fontSize: 12, color: ZINC_600 }}>1,000 schmeckles on signup</span>
       </div>
     </AbsoluteFill>

@@ -19,4 +19,6 @@ There is no separate "accuracy" or "calibration" metric anywhere in the schema o
 
 The leaderboard is served from `GET /users/leaderboard` (public, paginated, with a `search` parameter) and rendered by the `LeaderboardTable` component. Each row shows rank, username, bits balance, total contracts, open contracts, won contracts, and a win rate (won / total). Clicking a row expands that user's recent contracts.
 
+![Leaderboard](https://assets.polydelve.com/screenshots/leaderboard.png)
+
 Users with zero resolved contracts still appear on the leaderboard — ranking is purely by balance, so a new user (starting at 1000 bits) is ranked alongside everyone else.

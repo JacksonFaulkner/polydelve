@@ -15,11 +15,15 @@ Open the app and click **Sign in** in the top-right navbar. Auth0 handles authen
 
 The app opens on **Predict**. Search for a package by name and add it to your slip. To browse first, use the **PyPI** and **npm** tabs and expand a row for details.
 
-![Home feed showing Market Spotlight and market grid](https://assets.polydelve.com/screenshots/qs-1-home.png)
+![Predict page with an empty slip: search bar, Vulnerability happens / No vulnerability toggle, stake chips, and 7d/14d/30d duration](https://assets.polydelve.com/screenshots/predict-empty.png)
+
+![PyPI package table with cryptography expanded, showing its CVE list and EPSS trend chart](https://assets.polydelve.com/screenshots/packages-pypi.png)
 
 ### Step 3 — Gauge risk with the EPSS chart
 
-The EPSS chart plots daily EPSS scores as a green line; dots mark past CVE publication dates, colored by CVSS severity.
+The EPSS Trend chart plots daily EPSS scores as a green line; dots mark past CVE publication dates, colored by CVSS severity. It appears when you add a package to your slip, and when you expand a row in the PyPI or npm tables.
+
+![Expanded package row: CVE list with severity and score beside the EPSS trend chart](https://assets.polydelve.com/screenshots/package-epss.png)
 
 - **Higher EPSS** means the package is considered more likely to be exploited, so a win is more likely and the payout multiplier is lower.
 - A rising trend line signals increasing exploitation risk.
@@ -30,19 +34,22 @@ Use the chart to decide whether the payout is worth the risk before committing b
 
 On the Predict page:
 
-1. Choose **YES** (a qualifying event happens) or **NO** (no new CVE at or above your CVSS threshold; only for packages with a CVE in the last 100 days).
-2. Set the CVSS threshold, duration (7, 14, or 30 days), and your stake (minimum 10 bits). For a single-package YES bet you can also set an EPSS target.
-3. Watch the simulator update the win amount, multiplier, and win probability. Adding more packages turns the slip into a basket.
+1. Search for a package and add it to **Your slip**.
+2. Choose **Vulnerability happens** (YES) or **No vulnerability** (NO; only for packages with a CVE in the last 100 days).
+3. Set the CVSS threshold, and for a single-package YES bet an EPSS scenario target. Pick a stake (chips of 25, 100, 250, 500, or type an amount; minimum 10 bits) and a duration (7d, 14d, or 30d).
+4. Watch **If it hits**, **Win chance**, and **Max loss** update. Adding more packages turns the slip into a basket with a **Legs that must hit** slider.
 
-![Predict page — configure thresholds and see simulated returns before buying](https://assets.polydelve.com/screenshots/predict-simulated-returns.png)
+![Predict slip with axios: 1 search, 2 pick a stake, 3 choose duration; If it hits, Win chance, and Max loss shown](https://assets.polydelve.com/screenshots/predict-slip.png)
 
-When satisfied, click **Buy slip**. The stake is deducted immediately.
+When satisfied, click **Buy slip for N bits**. The stake is deducted immediately.
 
 ### Step 5 — Track your position
 
-Go to **Dashboard** (avatar menu) to see your open contracts, bits balance over time, and per-contract P&L. Check the **Leaderboard** to see where you rank against other players.
+Go to **Dashboard** (avatar menu) to see your open contracts, balance over time, and per-contract P&L. Check the **Leaderboard** to see where you rank against other players.
 
-![Leaderboard showing bits balances and win rates](https://assets.polydelve.com/screenshots/qs-5-leaderboard.png)
+![Dashboard: open contracts, total invested, current value, unrealized P&L, balance over time, active contracts and history](https://assets.polydelve.com/screenshots/dashboard.png)
+
+![Leaderboard table with bits, contracts, open, won, and win rate](https://assets.polydelve.com/screenshots/leaderboard.png)
 
 ---
 

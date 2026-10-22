@@ -1,4 +1,9 @@
 {
   "title": "Project",
-  "pages": ["lore", "adr-postgres-alembic", "roadmap"]
+  "pages": [
+    "lore",
+    "progression",
+    "adr-postgres-alembic",
+    "roadmap"
+  ]
 }

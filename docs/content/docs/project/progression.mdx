@@ -1,0 +1,61 @@
+---
+title: "Progression"
+description: "How the Polydelve UI changed, from a mock-data prototype to today's slip builder."
+---
+
+Screenshots of the real frontend at each milestone, taken from the git history. Older builds are rendered against today's read API, so the data is current while the UI is period-accurate.
+
+<Tabs items={['May 25', 'Jun 2', 'Jun 14', 'Jun 20', 'Sep 21', 'Today']}>
+  <Tab value="May 25">
+    **Action Odds: a mock-data prototype** (`d4ad397`)
+
+    The first frontend was a prediction-market board of corporate security events ("Will Microsoft suffer a supply chain attack…") backed by a JSON file. No real data yet.
+
+    ![Action Odds prototype: spotlight market, hot markets, recent news](https://assets.polydelve.com/screenshots/history/d4ad397-home.png)
+  </Tab>
+  <Tab value="Jun 2">
+    **Polydelve: real packages, real CVEs** (`3ed2711`)
+
+    Rebrand on May 26, then the package pipeline, EPSS history, CVSS-threshold contracts, auth, leaderboard and dashboard. Contracts became "will this package get a CVE with CVSS ≥ X within N days".
+
+    ![Home with spotlight contract, hot markets and recent news](https://assets.polydelve.com/screenshots/history/3ed2711-home.png)
+
+    ![PyPI package table with EPSS and CVE counts](https://assets.polydelve.com/screenshots/history/3ed2711-pypi.png)
+  </Tab>
+  <Tab value="Jun 14">
+    **Featured contracts and the Predict page** (`399dffe`)
+
+    Featured contracts (GPT-reranked) with EPSS trend charts on the home feed, a redesigned Predict page, and a news feed analysed for severity and exploit status.
+
+    ![Home: featured contracts with EPSS trend charts](https://assets.polydelve.com/screenshots/history/399dffe-home.png)
+
+    ![News feed with severity and exploit-status filters](https://assets.polydelve.com/screenshots/history/399dffe-news.png)
+  </Tab>
+  <Tab value="Jun 20">
+    **Mobile overhaul** (`2cb22da`)
+
+    Hamburger navigation and card layouts for the package list, so the whole app works on a phone.
+
+    ![Package list as cards on a phone](https://assets.polydelve.com/screenshots/history/2cb22da-m-pypi.png)
+  </Tab>
+  <Tab value="Sep 21">
+    **Slips and hazard pricing** (`40624a2`)
+
+    The landing feed went away: the app opens on Predict. Contracts became multi-package slips with a YES/NO toggle, priced by a hazard model and settled automatically. Events joined the nav.
+
+    ![Predict: empty slip with stake and duration](https://assets.polydelve.com/screenshots/history/40624a2-predict.png)
+
+    ![Package table in the new layout](https://assets.polydelve.com/screenshots/history/40624a2-pypi.png)
+  </Tab>
+  <Tab value="Today">
+    **Design tokens and baskets**
+
+    Shared badges, buttons and expanded-row skeletons, plus basket contracts: add several packages and choose how many legs must hit.
+
+    ![Predict with a three-package basket slip](https://assets.polydelve.com/screenshots/predict-basket.png)
+
+    ![Package row expanded with CVE list and EPSS trend](https://assets.polydelve.com/screenshots/package-epss.png)
+  </Tab>
+</Tabs>
+
+See [Roadmap](/docs/project/roadmap) for what shipped when, and [Using the app](/docs/concepts/using-the-app) for the current UI.

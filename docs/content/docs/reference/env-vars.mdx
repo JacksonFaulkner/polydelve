@@ -18,11 +18,11 @@ Stored in `backend/.env` locally. In production, secrets come from AWS Secrets M
 | `AUTH0_AUDIENCE` | Yes (API) | — | Auth0 API audience |
 | `GUEST_JWT_SECRET` | Prod | random per process | HS256 key for guest browse tokens |
 | `GUEST_JWT_TTL` | No | `604800` | Guest token lifetime (seconds) |
-| `OPENAI_API_KEY` | ETL | — | News tagging, embeddings, sector classification |
+| `OPENAI_API_KEY` | ETL | — | News tagging, sector classification |
 | `EXA_API_KEY` | ETL | — | News fetch |
-| `GCP_SA_JSON` | ETL | `backend/secrets/gcp-sa.json` | Vertex AI (Gemini) service account |
+| `GCP_SA_JSON` | ETL | `backend/secrets/gcp-sa.json` | Vertex AI (Gemini embeddings) service account |
 | `GCP_PROJECT_ID` | No | service account's project | Vertex AI project |
-| `BQ_SA_JSON` | ETL | `backend/secrets/polydelve-bq-sa.json` | BigQuery (EPSS, PyPI downloads) service account |
+| `BQ_SA_JSON` | ETL | `backend/secrets/polydelve-bq-sa.json` | BigQuery (PyPI downloads) service account |
 | `AVATARS_BUCKET` / `AVATARS_REGION` | No | — / `us-east-1` | S3 bucket for user avatars |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_SERVICE_NAME` | No | — / `polydelve-backend` | OpenTelemetry export |
 

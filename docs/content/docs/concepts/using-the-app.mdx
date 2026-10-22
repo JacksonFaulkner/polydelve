@@ -12,32 +12,47 @@ Navigation lives in the `Navbar` component. The tab strip is **Predict, PyPI, np
 `PredictPage` is the landing page and the only place to buy contracts. It builds a bet slip:
 
 - Search and add packages (up to 10). One package makes a single contract; two or more make a basket with a "how many must hit" count.
-- Pick **YES** or **NO**. NO is only available on packages with a CVE in the last 100 days and uses CVSS only.
-- Set a CVSS threshold per package, an EPSS target (single-package YES slips), a duration of 7, 14, or 30 days, and a stake (chips of 25, 100, 250, 500, or a custom amount; minimum 10).
-- The simulator shows the win amount, multiplier, and model win probability as you adjust.
+- Pick **Vulnerability happens** (YES) or **No vulnerability** (NO). NO is only available on packages with a CVE in the last 100 days and uses CVSS only.
+- Set a CVSS threshold per package, an EPSS scenario target (single-package YES slips), a duration of 7, 14, or 30 days, and a stake (chips of 25, 100, 250, 500, or a custom amount; minimum 10).
+- With a basket, a **Legs that must hit** slider sets how many members must win (for example "any 1 of 3").
+- **If it hits**, **Win chance**, and **Max loss** update as you adjust. An **import manifest** button pulls in the packages you depend on.
 - **Buy slip** deducts the stake. Signed-out users get a signup prompt instead.
 
-![Predict page — vite selected, simulated returns for EPSS spike, CVSS event, and MAL scenarios](https://assets.polydelve.com/screenshots/predict-simulated-returns.png)
+![Predict page with axios on the slip, EPSS chart on the left and the slip on the right](https://assets.polydelve.com/screenshots/predict-slip.png)
 
 ## PyPI and npm
 
-`PackagesTable` lists tracked packages for that ecosystem with EPSS, CVE count, max CVSS, and filters. Expanding a row shows the EPSS chart and package details.
+`PackagesTable` lists tracked packages for that ecosystem with EPSS, CVE count, max CVSS, and filters. Expanding a row shows the package's CVE list (published date, severity, score, vector) next to the EPSS chart.
+
+![PyPI package table](https://assets.polydelve.com/screenshots/packages-pypi.png)
+
+![npm package table](https://assets.polydelve.com/screenshots/npm-packages.png)
+
+![Expanded row with CVE list and EPSS trend](https://assets.polydelve.com/screenshots/package-epss.png)
 
 ## Dashboard
 
 `DashboardPage` — authenticated users see their open contracts, resolved history, bits balance over time (`BitTimeline`), and per-contract P&L. Open contracts show their mark-to-model value (see [Prediction Markets](/docs/concepts/prediction-markets)). Statuses are open, won, lost, expired, or sold.
 
+![Dashboard with stat cards, balance over time, active contracts, and history](https://assets.polydelve.com/screenshots/dashboard.png)
+
 ## Leaderboard
 
 `LeaderboardTable` — all users ranked by bits balance, with search. Shows rank, username, balance, total/open contracts, and win rate. Clicking a row expands the user's contract history.
 
+![Leaderboard](https://assets.polydelve.com/screenshots/leaderboard.png)
+
 ## News
 
-`NewsPage` — security news feed tagged by package.
+`NewsPage` — paginated security news cards with source, age, and severity.
+
+![News page](https://assets.polydelve.com/screenshots/news.png)
 
 ## Events
 
-`EventsPage` — events for packages that can be bet on.
+`EventsPage` — a ledger of security events (CVSS events and similar) for packages that can be bet on, with date, ecosystem, package, and what happened. Searchable.
+
+![Security events ledger](https://assets.polydelve.com/screenshots/events.png)
 
 ## Settings
 
@@ -45,6 +60,8 @@ Navigation lives in the `Navbar` component. The tab strip is **Predict, PyPI, np
 - **Change username** — inline edit with uniqueness validation (`PATCH /users/me`)
 - **Upload avatar** — file picker → presigned PUT to S3 → `PATCH /users/me` with the public URL
 - **Sign out**
+
+![Settings page showing username, balance, Change username and Sign out](https://assets.polydelve.com/screenshots/settings.png)
 
 ### Auth flow
 

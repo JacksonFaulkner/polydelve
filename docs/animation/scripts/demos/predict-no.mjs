@@ -1,0 +1,15 @@
+export default {
+  kind: "still",
+  async run({ page, click, type, hold, goto }) {
+    await goto("/predict", '[data-tour="predict-search"]');
+    await click(page.locator('[data-tour="predict-search"]'), 200);
+    await type("axios");
+    await hold(600);
+    await click(page.locator('[data-tour="predict-add-result"]', { hasText: "axios" }).first(), 0);
+    await hold(1500);
+    await click(page.locator('[data-demo="direction-no"]').locator("visible=true").first(), 800);
+    await hold(1500);
+    await page.mouse.move(1100, 700);
+    await page.getByText(/Buy slip for/).waitFor({ timeout: 5000 });
+  },
+};

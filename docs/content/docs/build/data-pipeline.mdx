@@ -68,6 +68,12 @@ featured_contracts generated + reranked by relevancy_score
 GET /news + GET /featured-contracts → frontend
 ```
 
+![News feed showing security articles with source, age and severity labels](https://assets.polydelve.com/screenshots/news.png)
+
+The Events page is a ledger of past CVE, MAL and EPSS-crossing events for packages that can be bet on, each labelled with the contract type it would have won:
+
+![Security events ledger listing recent events by package, with event type, CVE ID and severity](https://assets.polydelve.com/screenshots/events.png)
+
 `make etl-news` runs the full fetch + extract + store + featured-contracts cycle. It also runs as part of the scheduled `refresh`.
 
 ## Contract resolution

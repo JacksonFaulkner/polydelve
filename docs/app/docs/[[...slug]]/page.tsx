@@ -5,14 +5,24 @@ import {
   DocsTitle,
   DocsDescription,
 } from 'fumadocs-ui/page';
+import type { ComponentProps } from 'react';
 import { notFound } from 'next/navigation';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Mermaid } from '@/app/components/Mermaid';
-import { Demo, DemoTip } from '@/app/components/Demo';
 import { ModelReference } from '@/app/components/ModelReference';
+
+// fumadocs' img (next/image) needs a width. Remote images get one from the
+// build-time size probe; when the host is unreachable (e.g. not uploaded yet)
+// fall back to a plain <img> instead of crashing the page.
+const DefaultImg = defaultMdxComponents.img as (props: ComponentProps<'img'>) => React.ReactNode;
+function Img(props: ComponentProps<'img'>) {
+  if (props.width) return <DefaultImg {...props} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img {...props} alt={props.alt ?? ''} loading="lazy" style={{ maxWidth: '100%', height: 'auto', borderRadius: 8 }} />;
+}
 
 export default async function Page({
   params,
@@ -33,10 +43,9 @@ export default async function Page({
         <MDX
           components={{
             ...defaultMdxComponents,
+            img: Img,
             Mermaid,
             ModelReference,
-            Demo,
-            DemoTip,
             Step,
             Steps,
             Accordion,
