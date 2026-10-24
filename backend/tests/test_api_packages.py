@@ -81,9 +81,9 @@ def test_get_package_wrong_ecosystem(client):
 def test_package_detail_includes_cve_history(client):
     r = client.get("/packages/PyPI/requests")
     cves = r.json()["cve_history"]
-    assert len(cves) >= 1
-    assert cves[0]["osv_id"] == "OSV-001"
-    assert cves[0]["cvss_score"] == 7.5
+    fixture_cves = [c for c in cves if c["osv_id"] == "OSV-001"]
+    assert len(fixture_cves) == 1
+    assert fixture_cves[0]["cvss_score"] == 7.5
 
 
 def test_package_detail_max_cvss_computed(client):
