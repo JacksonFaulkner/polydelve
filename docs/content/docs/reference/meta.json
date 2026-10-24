@@ -1,4 +1,4 @@
 {
   "title": "Reference",
-  "pages": ["api", "models", "data-sources", "etl-jobs", "env-vars"]
+  "pages": ["api", "models", "data-sources", "etl-jobs", "env-vars", "backtesting"]
 }

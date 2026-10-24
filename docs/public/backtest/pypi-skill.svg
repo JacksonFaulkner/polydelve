@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 432" width="640" height="432" role="img" aria-label="pypi Brier skill by tier"><style>
+svg { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.surface { fill: #fcfcfb; }
+.ink { fill: #0b0b0b; }
+.ink2 { fill: #52514e; }
+.muted { fill: #898781; }
+.title { fill: #0b0b0b; font-size: 14px; font-weight: 600; }
+.label { fill: #52514e; font-size: 12px; }
+.tick { fill: #898781; font-size: 11px; }
+.grid { stroke: #e1e0d9; stroke-width: 1; }
+.axis { stroke: #c3c2b7; stroke-width: 1; }
+.ref { stroke: #898781; stroke-width: 1; }
+.series { fill: #2a78d6; stroke: #fcfcfb; stroke-width: 2; }
+.baseline { fill: #eb6834; stroke: #fcfcfb; stroke-width: 2; }
+.ci { stroke: #898781; stroke-width: 2; }
+.better { fill: #2a78d6; }
+.worse { fill: #e34948; }
+@media (prefers-color-scheme: dark) {
+  .surface { fill: #1a1a19; }
+  .ink { fill: #f0efec; }
+  .ink2 { fill: #c3c2b7; }
+  .muted { fill: #898781; }
+  .title { fill: #f0efec; }
+  .label { fill: #c3c2b7; }
+  .grid { stroke: #2c2c2a; }
+  .axis { stroke: #383835; }
+  .series { fill: #3987e5; stroke: #1a1a19; }
+  .baseline { fill: #d95926; stroke: #1a1a19; }
+  .ci { stroke: #898781; }
+  .better { fill: #3987e5; }
+  .worse { fill: #e66767; }
+}
+</style><rect class="surface" x="0" y="0" width="640" height="432"/><text class="title" x="16" y="24">Brier skill vs constant baseline, by tier</text><text class="tick" x="16" y="38">pypi · above zero = model beats the constant base rate</text><text class="ink" x="16" y="56" style="font-size:12px;font-weight:600">Top 100</text><rect class="better" x="579.1" y="64" width="6.5" height="14" rx="4"><title>30 days, CVSS ≥ 5: +0.040</title></rect><text class="tick" x="591.6" y="75" text-anchor="start">+0.040</text><text class="label" x="156" y="75" text-anchor="end">30 days, CVSS ≥ 5</text><text class="tick" x="572.2" y="93" text-anchor="end">-0.005</text><text class="label" x="156" y="93" text-anchor="end">30 days, CVSS ≥ 7</text><rect class="better" x="579.1" y="100" width="12.4" height="14" rx="4"><title>90 days, CVSS ≥ 5: +0.076</title></rect><text class="tick" x="597.5" y="111" text-anchor="start">+0.076</text><text class="label" x="156" y="111" text-anchor="end">90 days, CVSS ≥ 5</text><rect class="worse" x="572.2" y="118" width="6.9" height="14" rx="4"><title>90 days, CVSS ≥ 7: -0.042</title></rect><text class="tick" x="566.2" y="129" text-anchor="end">-0.042</text><text class="label" x="156" y="129" text-anchor="end">90 days, CVSS ≥ 7</text><text class="ink" x="16" y="168" style="font-size:12px;font-weight:600">Rank 101–1,000</text><rect class="worse" x="576.5" y="176" width="2.6" height="14" rx="4"><title>30 days, CVSS ≥ 5: -0.016</title></rect><text class="tick" x="570.5" y="187" text-anchor="end">-0.016</text><text class="label" x="156" y="187" text-anchor="end">30 days, CVSS ≥ 5</text><rect class="worse" x="568.0" y="194" width="11.0" height="14" rx="4"><title>30 days, CVSS ≥ 7: -0.068</title></rect><text class="tick" x="562.0" y="205" text-anchor="end">-0.068</text><text class="label" x="156" y="205" text-anchor="end">30 days, CVSS ≥ 7</text><rect class="worse" x="559.2" y="212" width="19.9" height="14" rx="4"><title>90 days, CVSS ≥ 5: -0.121</title></rect><text class="tick" x="553.2" y="223" text-anchor="end">-0.121</text><text class="label" x="156" y="223" text-anchor="end">90 days, CVSS ≥ 5</text><rect class="worse" x="514.2" y="230" width="64.9" height="14" rx="4"><title>90 days, CVSS ≥ 7: -0.397</title></rect><text class="tick" x="508.2" y="241" text-anchor="end">-0.397</text><text class="label" x="156" y="241" text-anchor="end">90 days, CVSS ≥ 7</text><text class="ink" x="16" y="280" style="font-size:12px;font-weight:600">Rank 1,001–10,000</text><rect class="worse" x="525.4" y="288" width="53.7" height="14" rx="4"><title>30 days, CVSS ≥ 5: -0.328</title></rect><text class="tick" x="519.4" y="299" text-anchor="end">-0.328</text><text class="label" x="156" y="299" text-anchor="end">30 days, CVSS ≥ 5</text><rect class="worse" x="466.2" y="306" width="112.9" height="14" rx="4"><title>30 days, CVSS ≥ 7: -0.690</title></rect><text class="tick" x="460.2" y="317" text-anchor="end">-0.690</text><text class="label" x="156" y="317" text-anchor="end">30 days, CVSS ≥ 7</text><rect class="worse" x="450.2" y="324" width="128.9" height="14" rx="4"><title>90 days, CVSS ≥ 5: -0.788</title></rect><text class="tick" x="444.2" y="335" text-anchor="end">-0.788</text><text class="label" x="156" y="335" text-anchor="end">90 days, CVSS ≥ 5</text><rect class="worse" x="265.3" y="342" width="313.8" height="14" rx="4"><title>90 days, CVSS ≥ 7: -1.918</title></rect><text class="tick" x="259.3" y="353" text-anchor="end">-1.918</text><text class="label" x="156" y="353" text-anchor="end">90 days, CVSS ≥ 7</text><line class="axis" x1="579.1" y1="44" x2="579.1" y2="380"/><rect class="better" x="16" y="401" width="12" height="12" rx="2"/><text class="label" x="34" y="411">model beats constant baseline</text><rect class="worse" x="236" y="401" width="12" height="12" rx="2"/><text class="label" x="254" y="411">model worse than constant baseline</text></svg>

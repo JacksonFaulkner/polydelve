@@ -1,0 +1,166 @@
+---
+title: "Backtesting"
+description: "Walk-forward backtests of the pricing models against realized CVE, malicious-package and basket outcomes. Most models do not beat their simple baselines yet."
+---
+
+We backtested the pricing models against what actually happened. Each run replays history one as-of date at a time, lets the model see only data published before that date, then scores its predicted probabilities against the outcomes that followed. The baselines are a constant base rate and, for CVEs, a 365-day-only Poisson term.
+
+**Short version: the original CVE model lost to its baselines, and the replacement beats it on held-out data.** The original over-predicted pooled rates by 2x to 15x, and quiet packages by 4x to 20x. The shipped model replaces its fixed prior with a hierarchical one that shrinks each package toward its ecosystem's trailing rate. On 2024 to 2026 data, never used to fit, it has better Brier score than the original in all 12 cells across three ecosystems, and it is calibrated to within about 0.6x to 1.0x pooled. The sections below give the before and after numbers.
+
+## Status by model
+
+| Model | Data | Status | Verdict |
+|---|---|---|---|
+| CVE hazard, shipped (hierarchical) | OSV exports, holdout 2024 to 2026, fit on PyPI 2019 to 2023 | done | Better Brier than the original in all 12 cells. Pooled calibration 0.6x to 1.0x. Quiet packages calibrated on PyPI, still 1.5x to 2x high on npm and Composer. |
+| CVE hazard, original, PyPI | OSV PyPI export, 300 packages, 2019 to 2026 | done | Not calibrated. Worse than the 365-day-only term. Skill only in the top-100 tier. |
+| CVE hazard, npm | OSV npm export, 250 packages, 2020 to 2026 | done | Loses to the constant baseline. Badly over-confident for packages with no recent CVE history. |
+| CVE hazard, Composer | OSV Packagist export, 175 packages, 2019 to 2026 | done | Loses to the 365-day-only term. Quiet packages over-predicted 10 to 20x. Sample is thin. |
+| Basket (ETF) pricing | 9,200 random baskets, 2 to 10 legs | done | Worse than the constant base rate. Per-leg probabilities too high for packages with recent bursts. |
+| MAL advisories | OSV `MAL-*` advisories, npm and PyPI | partial | Roughly matches the constant baseline. Too few in-universe events to say more. |
+| EPSS threshold crossing | FIRST daily EPSS snapshots | not finished | The run was stopped before results. No numbers yet. |
+
+## Improvement: hierarchical prior (shipped model)
+
+The original model priced a package's rate from its own CVE count, with a fixed prior. A package with no history got the same tiny fixed rate on every ecosystem. The fixed prior was the main source of error. On PyPI, the quiet-package rate was about 0.27% per 30 days in the fit period and about 0.51% per 30 days on holdout. No single fixed constant tracks that drift.
+
+The shipped model shrinks each package toward its ecosystem's trailing rate, which is the Gamma-Poisson posterior mean:
+
+    rate = (m · λ_eco + k^d) / (m + 365)        times q if the package has no CVE in the window
+
+- **λ_eco**: qualifying CVEs per package per day across the ecosystem over the last 365 days, computed from data before each as-of date. The prior moves with the ecosystem.
+- **m = 730 days**: how much a package's own history counts against the ecosystem rate.
+- **k^d, d = 0.5**: CVE counts damped to temper disclosure bursts.
+- **q = 0.690**: a zero-history factor. A package with no CVE in the window is less risky than the ecosystem average. Fit on PyPI only.
+
+The constants were fit on PyPI as-of dates through 2023-09 (label windows end by 2023-12-31, so nothing in the fit reaches into the holdout). Npm and Composer were not used to fit anything. The holdout is 2024-01 through 2026-07, scored once.
+
+The production formula and this harness agree to the last digit on 20,000 random inputs. Calibration and fairness are measured on the same code the app runs.
+
+### Holdout results, before and after
+
+Brier is lower-is-better. Bias is mean predicted probability over observed base rate; 1.0 is calibrated. The CI is a package-clustered bootstrap on the Brier difference, shipped minus original. Negative means the shipped model is better.
+
+| ecosystem | cell | bias original | bias shipped | Brier original | Brier shipped | difference [95% CI] |
+|---|---|---|---|---|---|---|
+| PyPI | 30d, CVSS ≥ 5 | 2.45 | 0.72 | 0.010477 | 0.010416 | −0.000060 [−0.000309, +0.000269] |
+| PyPI | 30d, CVSS ≥ 7 | 3.59 | 0.64 | 0.006895 | 0.006643 | −0.000252 [−0.000429, −0.000010] |
+| PyPI | 90d, CVSS ≥ 5 | 2.63 | 0.79 | 0.027159 | 0.025799 | −0.001359 [−0.002605, +0.000197] |
+| PyPI | 90d, CVSS ≥ 7 | 3.79 | 0.68 | 0.019662 | 0.017244 | −0.002419 [−0.003420, −0.001155] |
+| npm | 30d, CVSS ≥ 5 | 5.74 | 0.76 | 0.003855 | 0.003778 | −0.000077 [−0.000473, +0.000390] |
+| npm | 30d, CVSS ≥ 7 | 12.86 | 0.61 | 0.001994 | 0.001638 | −0.000355 [−0.000474, −0.000185] |
+| npm | 90d, CVSS ≥ 5 | 7.13 | 0.96 | 0.010232 | 0.007796 | −0.002436 [−0.004039, −0.000722] |
+| npm | 90d, CVSS ≥ 7 | 15.49 | 0.73 | 0.007098 | 0.003616 | −0.003482 [−0.004096, −0.002627] |
+| Composer | 30d, CVSS ≥ 5 | 7.20 | 0.68 | 0.003042 | 0.002968 | −0.000074 [−0.000468, +0.000681] |
+| Composer | 30d, CVSS ≥ 7 | 9.77 | 0.58 | 0.002429 | 0.002184 | −0.000246 [−0.000471, +0.000173] |
+| Composer | 90d, CVSS ≥ 5 | 8.77 | 0.84 | 0.009660 | 0.006637 | −0.003024 [−0.003987, −0.001419] |
+| Composer | 90d, CVSS ≥ 7 | 11.98 | 0.72 | 0.008189 | 0.004939 | −0.003249 [−0.004041, −0.001818] |
+
+Seven of the twelve Brier CIs exclude zero. All twelve point estimates are negative. The other five CIs cross zero, so for those cells the improvement is not established on its own.
+
+![Holdout calibration: predicted over observed, original vs shipped model, log scale](/backtest/hier-bias.svg)
+
+![Holdout Brier difference, shipped minus original, with package-clustered 95% CI](/backtest/hier-brier.svg)
+
+### Fairness: quiet packages (no CVE in the window)
+
+Fairness is what a player would get at the model's price. EV per bit is realized win rate over price, minus one. Zero is fair. Quiet packages are the ones the old model mispriced most, so they are the test that matters for a play-money game.
+
+| ecosystem | window | quiet price, original | quiet price, shipped | observed | EV of NO, original | EV of NO, shipped | EV of YES, shipped |
+|---|---|---|---|---|---|---|---|
+| PyPI | 30 days | 2.18% | 0.52% | 0.51% | +1.70% | +0.01% | −2% |
+| PyPI | 90 days | 6.41% | 1.57% | 1.49% | +5.26% | +0.08% | −5% |
+| npm | 30 days | 2.18% | 0.23% | 0.11% | +2.11% | +0.11% | −50% |
+| npm | 90 days | 6.41% | 0.68% | 0.36% | +6.47% | +0.33% | −47% |
+| Composer | 30 days | 2.18% | 0.16% | 0.11% | +2.12% | +0.05% | −31% |
+| Composer | 90 days | 6.41% | 0.47% | 0.36% | +6.46% | +0.11% | −23% |
+
+The original model let a player buy NO on quiet packages for about +2% to +6.5% per bit, a farmable edge. The shipped model brings NO to between +0.01% and +0.33%. On PyPI, quiet prices now match observed rates to within a few percent.
+
+**What is still off.** On npm and Composer, quiet YES is still priced 1.5x to 2x above the observed rate, so YES buyers lose 23% to 50% per bit there. The zero-history factor was fit on PyPI, and a single factor does not transfer fully. Fitting one factor per ecosystem on each ecosystem's own fit period is the obvious next step. The shipped model under-predicts pooled rates slightly, at 0.58x to 0.96x; the zero-history factor pulls the pooled level down as well as the quiet level.
+
+### What this does and does not show
+
+- It shows the original model was miscalibrated on held-out 2024 to 2026 data, and the shipped model is better in every cell, across three ecosystems.
+- It does not show the shipped model is calibrated. It under-predicts pooled rates a little, and quiet YES is still over-priced on two of three ecosystems.
+- The selection rule asked for calibration within ±10% on the fit period, and no parameter set met it. The fallback picked the least-biased set. That is disclosed, not hidden.
+- The eco rate in the backtest is computed over the sampled packages. Production computes it over every package in the table, so the level will differ somewhat.
+- The holdout is one period (2024 to 2026). Fitting one factor per ecosystem, and time-block bootstrap intervals, are still to do.
+
+## CVE hazard model (original)
+
+The original model priced P(at least one new CVE above a CVSS threshold within N days) from a blend of 90-day and 365-day Poisson rates, with a prior and burst damping. The sections below are the baseline the improvement above is measured against. Each cell is one window and CVSS threshold, scored across many as-of dates.
+
+### PyPI
+
+![PyPI calibration: predicted vs observed rate per bin, log-scaled, for the 30-day and 90-day CVSS cells](/backtest/pypi-calibration.svg)
+
+Each dot is a bin of predictions. A calibrated model sits on the gray line. At 30 days and CVSS 5 or above, the model's mean prediction is about 2.5% against an observed 0.7%, and the lowest bin (about 26,500 predictions) is over-predicted about 6x. At 90 days the gap widens: mean prediction 7.3% against 2.0% observed.
+
+![PyPI Brier skill against the constant baseline, by popularity tier](/backtest/pypi-skill.svg)
+
+Brier skill is positive only for the top 100 packages at 30 and 90 days with CVSS 5 or above. Packages ranked 1,001 to 10,000 are predicted far worse than the constant base rate, because they have few events and the model still prices a prior.
+
+### npm
+
+![npm calibration per cell](/backtest/npm-calibration.svg)
+
+![npm Brier skill by tier](/backtest/npm-skill.svg)
+
+About 97% of npm rows are packages with no CVE history. Those are predicted at roughly 2.2% over 30 days, about 8x the observed rate. The model loses to the constant baseline on Brier and log loss for any-CVE, CVSS 7 and 90-day windows. Its ranking AUC is about 0.63 to 0.67, against about 0.5 for the constant baseline, so it does rank packages, but its probabilities are wrong in level.
+
+### Composer
+
+![Composer calibration per cell](/backtest/composer-calibration.svg)
+
+![Composer Brier skill by tier](/backtest/composer-skill.svg)
+
+Only 14 of the 175 sampled packages have any CVE, and 10 to 13 packages carry all the events in each cell. Treat these numbers as directional. The direction is consistent across all four cells: quiet packages are over-predicted, and the 365-day term beats the 90-day blend. Constants were tuned on npm and PyPI, so this is a transfer test, not an in-sample result.
+
+## Basket (ETF) pricing
+
+Baskets price "at least K of N legs fire" with a Poisson-binomial over per-leg hazards. The test drew 9,200 random baskets of 2 to 10 legs over 40 non-overlapping 30-day origins, giving 48,173 basket-K labels.
+
+![Basket calibration, all K-of-N cells pooled](/backtest/basket-calibration.svg)
+
+| Metric | Model | Scaled | Correlated | Constant base rate |
+|---|---|---|---|---|
+| Brier | 0.0267 | 0.0234 | 0.0232 | 0.0236 |
+| Log loss | 0.172 | 0.207 | 0.110 | 0.128 |
+| ECE | 0.029 | 0.018 | 0.012 | 0.015 |
+
+The main error is the per-leg level: legs for packages with recent advisory bursts are predicted about 30x too high. Once the level is corrected, the independence assumption costs little on Brier. A common-shock correlated variant improves log loss and calibration error, which says correlation mostly helps the tail shape, not the average. Events here are OSV advisories, not CVEs with CVSS scores, and the universe is packages that have at least one advisory, so the sample is survivorship-biased.
+
+## Malicious-package (MAL) advisories
+
+The MAL model prices a gamma-Poisson hazard per package from OSV `MAL-*` advisories. Its current run, `mal_hazard_gamma_poisson_v2`, covers 2022 to 2026.
+
+- **npm, 30 days:** package model Brier 0.000135, constant baseline 0.000135. Skill is -0.00002, with a bootstrap interval just below zero. Holdout had 308 positive labels.
+- **npm, 90 days:** package model Brier 0.000404, constant 0.000404. Skill -0.00006.
+- **PyPI:** only 8 in-universe positives at 30 days. Any skill number is noise.
+
+Most MAL events land inside a window where the package was not yet listed, so neither model can price them. The reported base rates cover only packages already in OSV before the anchor date. The current result is roughly "no better than a constant", and the sample is too small to show more.
+
+## EPSS threshold crossing
+
+Not finished. The backtest was stopped before it produced results, so this page has no EPSS numbers.
+
+## What these results do and do not show
+
+- They show the current pricing constants are miscalibrated in the cells tested, mostly through the zero-history prior and the burst term.
+- They do not show the models are useless. Ranking is real in most cells, and skill is positive for the top-100 PyPI tier.
+- They do not show a market price. The constant and 365-day baselines are backtest yardsticks, not what a trader would pay.
+- They are sampled, not exhaustive. Sample sizes, survivorship bias and look-ahead from single data snapshots are listed per run in the backtest folders.
+
+Next steps: fit one zero-history factor per ecosystem on that ecosystem's own fit period; add time-block bootstrap intervals; check calibration with an unbinned method alongside the 10-bin ECE; run the EPSS backtest, which was stopped before producing results; and re-run Composer with a larger sample. Only then call any cell calibrated.
+
+## Reproduce
+
+From `backend/`:
+
+```bash
+.venv/bin/python scripts/backtest/holdout/eval_hier.py      # shipped model: fit, holdout, fairness -> results_hier.json
+.venv/bin/python scripts/backtest/report/render_charts.py   # re-renders the SVGs on this page
+.venv/bin/python -m pytest tests/test_contract_pricing.py   # production formula tests
+```
+
+The original-model runs are kept for the baseline. `backtest_pypi.py` pins the original constants. The npm and Composer scripts still import the removed constants and will not run until they are pinned the same way. Each slice has its own `RESULTS.md` and `metrics.json` under `backend/scripts/backtest/`.

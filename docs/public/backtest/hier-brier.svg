@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="Holdout Brier difference with 95% CI"><style>
+svg { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.surface { fill: #fcfcfb; }
+.ink { fill: #0b0b0b; }
+.ink2 { fill: #52514e; }
+.muted { fill: #898781; }
+.title { fill: #0b0b0b; font-size: 14px; font-weight: 600; }
+.label { fill: #52514e; font-size: 12px; }
+.tick { fill: #898781; font-size: 11px; }
+.grid { stroke: #e1e0d9; stroke-width: 1; }
+.axis { stroke: #c3c2b7; stroke-width: 1; }
+.ref { stroke: #898781; stroke-width: 1; }
+.series { fill: #2a78d6; stroke: #fcfcfb; stroke-width: 2; }
+.baseline { fill: #eb6834; stroke: #fcfcfb; stroke-width: 2; }
+.ci { stroke: #898781; stroke-width: 2; }
+.better { fill: #2a78d6; }
+.worse { fill: #e34948; }
+@media (prefers-color-scheme: dark) {
+  .surface { fill: #1a1a19; }
+  .ink { fill: #f0efec; }
+  .ink2 { fill: #c3c2b7; }
+  .muted { fill: #898781; }
+  .title { fill: #f0efec; }
+  .label { fill: #c3c2b7; }
+  .grid { stroke: #2c2c2a; }
+  .axis { stroke: #383835; }
+  .series { fill: #3987e5; stroke: #1a1a19; }
+  .baseline { fill: #d95926; stroke: #1a1a19; }
+  .ci { stroke: #898781; }
+  .better { fill: #3987e5; }
+  .worse { fill: #e66767; }
+}
+</style><rect class="surface" x="0" y="0" width="640" height="400"/><text class="title" x="16" y="24">Brier score: hierarchical minus current</text><text class="tick" x="16" y="40">Below zero = better. Bars are package-clustered 95% CIs.</text><line class="grid" x1="238.2" y1="46" x2="238.2" y2="340"/><text class="tick" x="238.2" y="356" text-anchor="middle">-0.004</text><line class="grid" x1="390.9" y1="46" x2="390.9" y2="340"/><text class="tick" x="390.9" y="356" text-anchor="middle">-0.002</text><line class="grid" x1="543.6" y1="46" x2="543.6" y2="340"/><text class="tick" x="543.6" y="356" text-anchor="middle">+0.000</text><line class="grid" x1="620.0" y1="46" x2="620.0" y2="340"/><text class="tick" x="620.0" y="356" text-anchor="middle">+0.001</text><line class="ref" x1="543.6" y1="46" x2="543.6" y2="340"/><text class="label" x="190" y="68.0" text-anchor="end">pypi 30d CVSS&gt;=5</text><line class="ci" x1="520.1" y1="64.0" x2="564.2" y2="64.0"/><circle class="better" cx="539.0" cy="64.0" r="5"><title>pypi 30d CVSS&gt;=5: -0.00006 [-0.00031, +0.00027]</title></circle><text class="label" x="190" y="92.0" text-anchor="end">pypi 30d CVSS&gt;=7</text><line class="ci" x1="510.8" y1="88.0" x2="542.9" y2="88.0"/><circle class="better" cx="524.4" cy="88.0" r="5"><title>pypi 30d CVSS&gt;=7: -0.00025 [-0.00043, -0.00001]</title></circle><text class="label" x="190" y="116.0" text-anchor="end">pypi 90d CVSS&gt;=5</text><line class="ci" x1="344.7" y1="112.0" x2="558.6" y2="112.0"/><circle class="better" cx="439.8" cy="112.0" r="5"><title>pypi 90d CVSS&gt;=5: -0.00136 [-0.00260, +0.00020]</title></circle><text class="label" x="190" y="140.0" text-anchor="end">pypi 90d CVSS&gt;=7</text><line class="ci" x1="282.5" y1="136.0" x2="455.5" y2="136.0"/><circle class="better" cx="358.9" cy="136.0" r="5"><title>pypi 90d CVSS&gt;=7: -0.00242 [-0.00342, -0.00115]</title></circle><text class="label" x="190" y="164.0" text-anchor="end">npm 30d CVSS&gt;=5</text><line class="ci" x1="507.5" y1="160.0" x2="573.4" y2="160.0"/><circle class="better" cx="537.8" cy="160.0" r="5"><title>npm 30d CVSS&gt;=5: -0.00008 [-0.00047, +0.00039]</title></circle><text class="label" x="190" y="188.0" text-anchor="end">npm 30d CVSS&gt;=7</text><line class="ci" x1="507.4" y1="184.0" x2="529.5" y2="184.0"/><circle class="better" cx="516.5" cy="184.0" r="5"><title>npm 30d CVSS&gt;=7: -0.00036 [-0.00047, -0.00018]</title></circle><text class="label" x="190" y="212.0" text-anchor="end">npm 90d CVSS&gt;=5</text><line class="ci" x1="235.2" y1="208.0" x2="488.5" y2="208.0"/><circle class="better" cx="357.6" cy="208.0" r="5"><title>npm 90d CVSS&gt;=5: -0.00244 [-0.00404, -0.00072]</title></circle><text class="label" x="190" y="236.0" text-anchor="end">npm 90d CVSS&gt;=7</text><line class="ci" x1="230.9" y1="232.0" x2="343.0" y2="232.0"/><circle class="better" cx="277.7" cy="232.0" r="5"><title>npm 90d CVSS&gt;=7: -0.00348 [-0.00410, -0.00263]</title></circle><text class="label" x="190" y="260.0" text-anchor="end">composer 30d CVSS&gt;=5</text><line class="ci" x1="507.9" y1="256.0" x2="595.7" y2="256.0"/><circle class="better" cx="538.0" cy="256.0" r="5"><title>composer 30d CVSS&gt;=5: -0.00007 [-0.00047, +0.00068]</title></circle><text class="label" x="190" y="284.0" text-anchor="end">composer 30d CVSS&gt;=7</text><line class="ci" x1="507.7" y1="280.0" x2="556.9" y2="280.0"/><circle class="better" cx="524.9" cy="280.0" r="5"><title>composer 30d CVSS&gt;=7: -0.00025 [-0.00047, +0.00017]</title></circle><text class="label" x="190" y="308.0" text-anchor="end">composer 90d CVSS&gt;=5</text><line class="ci" x1="239.2" y1="304.0" x2="435.3" y2="304.0"/><circle class="better" cx="312.7" cy="304.0" r="5"><title>composer 90d CVSS&gt;=5: -0.00302 [-0.00399, -0.00142]</title></circle><text class="label" x="190" y="332.0" text-anchor="end">composer 90d CVSS&gt;=7</text><line class="ci" x1="235.0" y1="328.0" x2="404.8" y2="328.0"/><circle class="better" cx="295.5" cy="328.0" r="5"><title>composer 90d CVSS&gt;=7: -0.00325 [-0.00404, -0.00182]</title></circle><circle class="better" cx="20" cy="374" r="5"/><text class="label" x="32" y="378">new model better</text><circle class="worse" cx="170" cy="374" r="5"/><text class="label" x="182" y="378">new model worse</text></svg>

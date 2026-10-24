@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" width="640" height="410" role="img" aria-label="Holdout calibration: predicted / observed, before and after"><style>
+svg { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.surface { fill: #fcfcfb; }
+.ink { fill: #0b0b0b; }
+.ink2 { fill: #52514e; }
+.muted { fill: #898781; }
+.title { fill: #0b0b0b; font-size: 14px; font-weight: 600; }
+.label { fill: #52514e; font-size: 12px; }
+.tick { fill: #898781; font-size: 11px; }
+.grid { stroke: #e1e0d9; stroke-width: 1; }
+.axis { stroke: #c3c2b7; stroke-width: 1; }
+.ref { stroke: #898781; stroke-width: 1; }
+.series { fill: #2a78d6; stroke: #fcfcfb; stroke-width: 2; }
+.baseline { fill: #eb6834; stroke: #fcfcfb; stroke-width: 2; }
+.ci { stroke: #898781; stroke-width: 2; }
+.better { fill: #2a78d6; }
+.worse { fill: #e34948; }
+@media (prefers-color-scheme: dark) {
+  .surface { fill: #1a1a19; }
+  .ink { fill: #f0efec; }
+  .ink2 { fill: #c3c2b7; }
+  .muted { fill: #898781; }
+  .title { fill: #f0efec; }
+  .label { fill: #c3c2b7; }
+  .grid { stroke: #2c2c2a; }
+  .axis { stroke: #383835; }
+  .series { fill: #3987e5; stroke: #1a1a19; }
+  .baseline { fill: #d95926; stroke: #1a1a19; }
+  .ci { stroke: #898781; }
+  .better { fill: #3987e5; }
+  .worse { fill: #e66767; }
+}
+</style><rect class="surface" x="0" y="0" width="640" height="410"/><text class="title" x="16" y="24">Holdout calibration, predicted ÷ observed</text><text class="tick" x="16" y="40">1.0 means calibrated. Holdout is 2024 onward, never used to fit.</text><line class="grid" x1="200.0" y1="46" x2="200.0" y2="340"/><text class="tick" x="200.0" y="356" text-anchor="middle">0.1×</text><line class="grid" x1="280.9" y1="46" x2="280.9" y2="340"/><text class="tick" x="280.9" y="356" text-anchor="middle">0.3×</text><line class="grid" x1="369.6" y1="46" x2="369.6" y2="340"/><text class="tick" x="369.6" y="356" text-anchor="middle">1×</text><line class="grid" x1="450.4" y1="46" x2="450.4" y2="340"/><text class="tick" x="450.4" y="356" text-anchor="middle">3×</text><line class="grid" x1="539.1" y1="46" x2="539.1" y2="340"/><text class="tick" x="539.1" y="356" text-anchor="middle">10×</text><line class="grid" x1="620.0" y1="46" x2="620.0" y2="340"/><text class="tick" x="620.0" y="356" text-anchor="middle">30×</text><line class="ref" x1="369.6" y1="46" x2="369.6" y2="340"/><text class="label" x="190" y="68.0" text-anchor="end">pypi 30d CVSS&gt;=5</text><circle class="baseline" cx="435.5" cy="60.0" r="4"><title>pypi 30d CVSS&gt;=5: 2.45×</title></circle><circle class="series" cx="345.4" cy="68.0" r="4"><title>pypi 30d CVSS&gt;=5: 0.72×</title></circle><text class="label" x="190" y="92.0" text-anchor="end">pypi 30d CVSS&gt;=7</text><circle class="baseline" cx="463.6" cy="84.0" r="4"><title>pypi 30d CVSS&gt;=7: 3.59×</title></circle><circle class="series" cx="336.2" cy="92.0" r="4"><title>pypi 30d CVSS&gt;=7: 0.64×</title></circle><text class="label" x="190" y="116.0" text-anchor="end">pypi 90d CVSS&gt;=5</text><circle class="baseline" cx="440.8" cy="108.0" r="4"><title>pypi 90d CVSS&gt;=5: 2.63×</title></circle><circle class="series" cx="352.4" cy="116.0" r="4"><title>pypi 90d CVSS&gt;=5: 0.79×</title></circle><text class="label" x="190" y="140.0" text-anchor="end">pypi 90d CVSS&gt;=7</text><circle class="baseline" cx="467.7" cy="132.0" r="4"><title>pypi 90d CVSS&gt;=7: 3.79×</title></circle><circle class="series" cx="341.5" cy="140.0" r="4"><title>pypi 90d CVSS&gt;=7: 0.68×</title></circle><text class="label" x="190" y="164.0" text-anchor="end">npm 30d CVSS&gt;=5</text><circle class="baseline" cx="498.2" cy="156.0" r="4"><title>npm 30d CVSS&gt;=5: 5.74×</title></circle><circle class="series" cx="349.4" cy="164.0" r="4"><title>npm 30d CVSS&gt;=5: 0.76×</title></circle><text class="label" x="190" y="188.0" text-anchor="end">npm 30d CVSS&gt;=7</text><circle class="baseline" cx="557.6" cy="180.0" r="4"><title>npm 30d CVSS&gt;=7: 12.86×</title></circle><circle class="series" cx="333.4" cy="188.0" r="4"><title>npm 30d CVSS&gt;=7: 0.61×</title></circle><text class="label" x="190" y="212.0" text-anchor="end">npm 90d CVSS&gt;=5</text><circle class="baseline" cx="514.2" cy="204.0" r="4"><title>npm 90d CVSS&gt;=5: 7.13×</title></circle><circle class="series" cx="366.3" cy="212.0" r="4"><title>npm 90d CVSS&gt;=5: 0.96×</title></circle><text class="label" x="190" y="236.0" text-anchor="end">npm 90d CVSS&gt;=7</text><circle class="baseline" cx="571.3" cy="228.0" r="4"><title>npm 90d CVSS&gt;=7: 15.49×</title></circle><circle class="series" cx="346.6" cy="236.0" r="4"><title>npm 90d CVSS&gt;=7: 0.73×</title></circle><text class="label" x="190" y="260.0" text-anchor="end">composer 30d CVSS&gt;=5</text><circle class="baseline" cx="514.9" cy="252.0" r="4"><title>composer 30d CVSS&gt;=5: 7.20×</title></circle><circle class="series" cx="341.6" cy="260.0" r="4"><title>composer 30d CVSS&gt;=5: 0.68×</title></circle><text class="label" x="190" y="284.0" text-anchor="end">composer 30d CVSS&gt;=7</text><circle class="baseline" cx="537.4" cy="276.0" r="4"><title>composer 30d CVSS&gt;=7: 9.77×</title></circle><circle class="series" cx="329.5" cy="284.0" r="4"><title>composer 30d CVSS&gt;=7: 0.58×</title></circle><text class="label" x="190" y="308.0" text-anchor="end">composer 90d CVSS&gt;=5</text><circle class="baseline" cx="529.5" cy="300.0" r="4"><title>composer 90d CVSS&gt;=5: 8.77×</title></circle><circle class="series" cx="356.9" cy="308.0" r="4"><title>composer 90d CVSS&gt;=5: 0.84×</title></circle><text class="label" x="190" y="332.0" text-anchor="end">composer 90d CVSS&gt;=7</text><circle class="baseline" cx="552.4" cy="324.0" r="4"><title>composer 90d CVSS&gt;=7: 11.98×</title></circle><circle class="series" cx="345.3" cy="332.0" r="4"><title>composer 90d CVSS&gt;=7: 0.72×</title></circle><circle class="baseline" cx="20" cy="380" r="4"/><text class="label" x="30" y="384">current production model</text><circle class="series" cx="240" cy="380" r="4"/><text class="label" x="250" y="384">shipped model (PyPI fit, no refit)</text></svg>
