@@ -10,6 +10,11 @@ from main import app
 
 FAKE_USER = {"sub": "auth0|testuser123"}
 
+# get_browse_user builds the Auth0 client from these; anonymous requests need
+# them set to fall through to guest auth instead of raising KeyError (500).
+os.environ.setdefault("AUTH0_DOMAIN", "test.auth0.invalid")
+os.environ.setdefault("AUTH0_AUDIENCE", "https://api.test.invalid")
+
 _TEST_DB_URL = os.environ.get(
     "DATABASE_URL", "postgresql://polydelve:polydelve@localhost:5432/polydelve_dev"
 )
