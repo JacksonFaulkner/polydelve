@@ -9,6 +9,9 @@ import { PolydelveIntro, TOTAL_FRAMES } from "./compositions/PolydelveIntro";
 import { RedditClickbait, REDDIT_TOTAL_FRAMES } from "./compositions/RedditClickbait";
 import { SecurityHistory, SECURITY_HISTORY_FRAMES } from "./compositions/SecurityHistory";
 import { PolydelveOrigin, POLYDELVE_ORIGIN_FRAMES } from "./compositions/PolydelveOrigin";
+import { FluxShowThisCome, MinimaxHandleNoAngryBird, MinimaxShowRedOb, ClipSequence, CLIP_SEQUENCE_FRAMES } from "./compositions/ClipReview";
+import { PolydelveReel, POLYDELVE_REEL_FRAMES } from "./compositions/PolydelveReel";
+import { PypiSlipDemo } from "./compositions/PypiSlipDemo";
 
 export function RemotionRoot() {
   return (
@@ -66,6 +69,28 @@ export function RemotionRoot() {
         <Composition id="LinkedInMarket" component={MarketScene} durationInFrames={138} fps={30} width={1080} height={1350} />
         <Composition id="LinkedInAxios" component={AxiosScene} durationInFrames={84} fps={30} width={1080} height={1350} />
         <Composition id="LinkedInEnd" component={EndCard} durationInFrames={78} fps={30} width={1080} height={1350} />
+      </Folder>
+      <Composition
+        id="PolydelveReel"
+        component={PolydelveReel}
+        durationInFrames={POLYDELVE_REEL_FRAMES}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="PypiSlipDemo"
+        component={PypiSlipDemo}
+        durationInFrames={378}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Folder name="ClipReview">
+        <Composition id="ClipSequence" component={ClipSequence} durationInFrames={CLIP_SEQUENCE_FRAMES} fps={24} width={2544} height={1456} />
+        <Composition id="FluxShowThisCome" component={FluxShowThisCome} durationInFrames={121} fps={24} width={1280} height={704} />
+        <Composition id="MinimaxHandleNoAngryBird" component={MinimaxHandleNoAngryBird} durationInFrames={124} fps={24} width={2544} height={1456} />
+        <Composition id="MinimaxShowRedOb" component={MinimaxShowRedOb} durationInFrames={124} fps={24} width={2544} height={1456} />
       </Folder>
     </>
   );

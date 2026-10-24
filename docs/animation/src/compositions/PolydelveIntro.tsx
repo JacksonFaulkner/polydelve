@@ -9,6 +9,7 @@ import {
   Sequence,
   OffthreadVideo,
 } from "remotion";
+import { Audio } from "@remotion/media";
 
 const BG = "#15191D";
 const YELLOW = "#FDE832";
@@ -389,6 +390,9 @@ export const TOTAL_FRAMES =
 export function PolydelveIntro() {
   return (
     <AbsoluteFill style={{ backgroundColor: BG }}>
+      <Sequence name="Intro voiceover" from={0} durationInFrames={TOTAL_FRAMES}>
+        <Audio src={staticFile("intro_voice_over.mp3")} />
+      </Sequence>
       {/* Title */}
       <Sequence from={0} durationInFrames={TITLE_DUR + FADE_DUR}>
         <TitleCard />
