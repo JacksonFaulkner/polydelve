@@ -9,6 +9,10 @@ Prediction markets for software supply-chain risk. Bet (with play money) on whet
 
 ![Polydelve home: spotlight markets with EPSS trend and CVE history, plus security news feed](https://assets.polydelve.com/screenshots/qs-1-home.png)
 
+<video src="https://assets.polydelve.com/demos/polydelve-clip.mp4" controls muted playsinline width="100%">
+  <a href="https://assets.polydelve.com/demos/polydelve-clip.mp4">Watch the Polydelve demo</a>
+</video>
+
 ## Interesting bits
 
 - **Hazard-based pricing.** Each package's CVE rate is a blend of 90-day and 365-day Poisson rates with a prior and burst damping, so one noisy week doesn't dominate. Contract odds come from `P(≥1 event in N days) = 1 − e^(−λN)` and are re-marked daily as the window shrinks (`backend/features/contract_pricing.py`).
