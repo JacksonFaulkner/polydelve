@@ -484,7 +484,7 @@ export function PredictPage({ onBuy }: { onBuy?: () => void }) {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="chip shrink-0 px-2.5 py-1 text-xs"
+            className="chip hidden lg:inline-block shrink-0 px-2.5 py-1 text-xs"
             title="Add all tracked packages from a package.json / requirements.txt / pyproject.toml"
           >
             {parsing ? "parsing…" : "import manifest"}
