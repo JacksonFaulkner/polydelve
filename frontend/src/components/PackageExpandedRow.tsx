@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import EpssChart from "./EpssChart"
+import { AdvisoryLink } from "./AdvisoryLink"
 import type { PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
-import { buildEpssChartData, nvdUrl } from "@/lib/epss"
+import { buildEpssChartData } from "@/lib/epss"
 import { SEV_COLOR, SEV_FALLBACK, scoreColor } from "@/lib/severity"
 
 function CvssScoreBadge({ score }: { score: number }) {
@@ -197,13 +198,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                               {cves.map((c) => (
                                 <tr key={c.osv_id} className="border-b border-line-1/50 hover:bg-surface-2/30">
                                   <td className="px-3 py-1.5 font-mono">
-                                    {c.cve_id ? (
-                                      <a
-                                        href={nvdUrl(c.cve_id)}
-                                        target="_blank" rel="noopener noreferrer"
-                                        className="text-ink-2 hover:text-ink-1 underline decoration-line-3 transition-colors"
-                                      >{c.cve_id}</a>
-                                    ) : <span className="text-ink-2">{c.osv_id}</span>}
+                                    <AdvisoryLink id={c.cve_id ?? c.osv_id} />
                                     {c.published_date && (
                                       <span className="block text-[11px] text-ink-4 font-sans">{c.published_date.slice(0, 10)}</span>
                                     )}
@@ -269,11 +264,7 @@ export function PackageExpandedRow({ name, ecosystem, colSpan, tourTag }: Props)
                                   }`}
                                 >
                                   <td className="px-3 py-1.5 font-mono">
-                                    {c.cve_id ? (
-                                      <a href={nvdUrl(c.cve_id)} target="_blank" rel="noopener noreferrer"
-                                        className="text-ink-2 hover:text-ink-1 underline decoration-line-3 hover:decoration-ink-3 transition-colors"
-                                      >{c.cve_id}</a>
-                                    ) : <span className="text-ink-2">{c.osv_id}</span>}
+                                    <AdvisoryLink id={c.cve_id ?? c.osv_id} />
                                   </td>
                                   <td className="px-3 py-1.5 text-ink-3 tabular-nums">{c.published_date?.slice(0, 10) ?? ""}</td>
                                   <td className="px-3 py-1.5">

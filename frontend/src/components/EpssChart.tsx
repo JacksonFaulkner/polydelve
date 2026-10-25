@@ -3,6 +3,11 @@ import {
   ComposedChart, Line, Scatter, XAxis, YAxis,
   Tooltip as ReTooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts"
+import { AdvisoryLink } from "./AdvisoryLink"
+
+// Popover footprint, used to keep it inside the chart.
+const POPOVER_W = 260
+const POPOVER_MAX_H = 260
 
 const SEV_COLOR: Record<string, string> = {
   critical: "#f87171",
@@ -113,8 +118,10 @@ export default function EpssChart({
   }
 
   const focus = pinned ?? hover
-  const tooltipLeft = focus ? Math.min(focus.x + 14, (containerRef.current?.clientWidth ?? 9999) - 230) : 0
-  const tooltipTop = focus ? Math.max(8, Math.min(focus.y - 12, (containerRef.current?.clientHeight ?? 9999) - 140)) : 0
+  const containerW = containerRef.current?.clientWidth ?? 9999
+  const containerH = containerRef.current?.clientHeight ?? 9999
+  const tooltipLeft = focus ? Math.max(8, Math.min(focus.x + 14, containerW - POPOVER_W - 8)) : 0
+  const tooltipTop = focus ? Math.max(8, Math.min(focus.y - 12, containerH - POPOVER_MAX_H - 8)) : 0
 
   return (
     <div ref={containerRef} className="relative flex-1" onMouseLeave={() => setHover(null)}>
@@ -241,42 +248,59 @@ export default function EpssChart({
 
     {focus && (
       <div
-        className={`absolute z-20 w-[220px] rounded border bg-surface-1/95 px-3 py-2 text-xs shadow-xl backdrop-blur ${pinned ? "border-brand/60" : "border-line-2 pointer-events-none"}`}
-        style={{ left: tooltipLeft, top: tooltipTop }}
+        className={`absolute z-20 rounded-md border bg-surface-1/95 text-xs shadow-xl backdrop-blur ${
+          pinned ? "border-brand/60 pointer-events-auto" : "border-line-2 pointer-events-none"
+        }`}
+        style={{ left: tooltipLeft, top: tooltipTop, width: POPOVER_W, maxWidth: "calc(100% - 16px)" }}
       >
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <span className="text-ink-2 font-medium">{fmtDate(focus.date)}</span>
+        <div className="flex items-center justify-between gap-2 border-b border-line-1 px-3 py-2">
+          <span className="font-medium text-ink-1">{fmtDate(focus.date)}</span>
           {pinned ? (
-            <button onClick={() => setPinned(null)} className="text-[11px] text-brand hover:underline">unpin</button>
+            <button
+              onClick={() => setPinned(null)}
+              aria-label="Close"
+              className="-my-1 -mr-1 flex h-7 w-7 items-center justify-center rounded text-base leading-none text-ink-3 hover:bg-surface-2 hover:text-ink-1"
+            >
+              ×
+            </button>
           ) : (
             <span className="text-[11px] text-ink-4">hover</span>
           )}
         </div>
-        {focus.epss != null && (
-          <div className="flex items-baseline justify-between">
-            <span className="text-emerald-400 font-semibold tabular-nums">EPSS {(focus.epss * 100).toFixed(2)}%</span>
-            {focus.prevEpss != null && focus.prevEpss !== focus.epss && (
-              <span className={`tabular-nums text-[11px] ${focus.epss > focus.prevEpss ? "text-rose-400" : "text-emerald-500"}`}>
-                {focus.epss > focus.prevEpss ? "▲" : "▼"} {Math.abs((focus.epss - focus.prevEpss) * 100).toFixed(2)} pts
-              </span>
-            )}
-          </div>
-        )}
-        {focus.cves.length > 0 && (
-          <div className="mt-1.5 pt-1.5 border-t border-line-1 space-y-1">
-            {focus.cves.map((c) => (
-              <div key={c.cve_id ?? c.x} className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] text-ink-1 truncate">{c.cve_id ?? "CVE"}</span>
-                <span className="shrink-0 tabular-nums font-semibold" style={{ color: dotColor(c.cvss, c.severity) }}>
-                  {c.cvss.toFixed(1)}{c.severity ? ` · ${c.severity}` : ""}
+        <div className="px-3 py-2">
+          {focus.epss != null && (
+            <div className="flex items-baseline justify-between">
+              <span className="text-emerald-400 font-semibold tabular-nums">EPSS {(focus.epss * 100).toFixed(2)}%</span>
+              {focus.prevEpss != null && focus.prevEpss !== focus.epss && (
+                <span className={`tabular-nums text-[11px] ${focus.epss > focus.prevEpss ? "text-rose-400" : "text-emerald-500"}`}>
+                  {focus.epss > focus.prevEpss ? "▲" : "▼"} {Math.abs((focus.epss - focus.prevEpss) * 100).toFixed(2)} pts
                 </span>
-              </div>
-            ))}
-          </div>
-        )}
-        {focus.cves.length === 0 && focus.epss == null && (
-          <p className="text-ink-4">No data</p>
-        )}
+              )}
+            </div>
+          )}
+          {focus.cves.length > 0 && (
+            <ul className="mt-2 max-h-44 space-y-0.5 overflow-y-auto border-t border-line-1 pt-2">
+              {focus.cves.map((c) => (
+                <li
+                  key={c.cve_id ?? c.x}
+                  className="flex items-center justify-between gap-3 rounded px-1.5 py-1.5 hover:bg-surface-2"
+                >
+                  {c.cve_id ? (
+                    <AdvisoryLink id={c.cve_id} className="font-mono text-[11px] text-ink-1 hover:text-brand" />
+                  ) : (
+                    <span className="font-mono text-[11px] text-ink-3">CVE</span>
+                  )}
+                  <span className="shrink-0 tabular-nums font-semibold" style={{ color: dotColor(c.cvss, c.severity) }}>
+                    {c.cvss.toFixed(1)}{c.severity ? ` · ${c.severity}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {focus.cves.length === 0 && focus.epss == null && (
+            <p className="text-ink-4">No data</p>
+          )}
+        </div>
       </div>
     )}
     </div>

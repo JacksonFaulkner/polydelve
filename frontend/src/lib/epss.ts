@@ -18,3 +18,8 @@ export function buildEpssChartData(detail: PackageDetail) {
 }
 
 export const nvdUrl = (cveId: string) => `https://nvd.nist.gov/vuln/detail/${cveId}`
+export const osvUrl = (advisoryId: string) => `https://osv.dev/vulnerability/${advisoryId}`
+
+/** CVEs link to NVD; other advisory IDs (PYSEC-, GHSA-, OSV-) link to OSV. */
+export const advisoryUrl = (advisoryId: string) =>
+  advisoryId.startsWith("CVE-") ? nvdUrl(advisoryId) : osvUrl(advisoryId)

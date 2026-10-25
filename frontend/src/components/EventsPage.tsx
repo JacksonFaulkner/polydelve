@@ -5,6 +5,7 @@ import { Search } from "lucide-react"
 import { useApi } from "@/lib/api"
 import { usePagedFetch } from "@/lib/pagination"
 import { ECOSYSTEM_OPTIONS, EVENT_TYPE_OPTIONS, SEVERITY_OPTIONS, eventFilterParsers } from "@/lib/filters"
+import { AdvisoryLink } from "./AdvisoryLink"
 import { DataTable } from "./DataTable"
 import { ErrorState } from "@/components/ui/ErrorState"
 import { FilterClear, FilterMulti, FilterSelect } from "./FilterBar"
@@ -33,8 +34,10 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function whatHappened(e: EventRow): string {
-  if (e.type === "cvss") return e.cve_id ? `${e.cve_id} published (CVSS ${e.score?.toFixed(1) ?? "?"}, ${e.severity ?? "unknown"})` : `New CVE published (${e.severity ?? "unknown"})`
+function whatHappened(e: EventRow): React.ReactNode {
+  if (e.type === "cvss") return e.cve_id
+    ? <><AdvisoryLink id={e.cve_id} /> published (CVSS {e.score?.toFixed(1) ?? "?"}, {e.severity ?? "unknown"})</>
+    : `New CVE published (${e.severity ?? "unknown"})`
   if (e.type === "epss") return `EPSS crossed ${((e.score ?? 0) * 100).toFixed(0)}%`
   return "Malicious-package advisory published"
 }
