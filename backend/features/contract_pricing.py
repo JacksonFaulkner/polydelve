@@ -3,13 +3,16 @@ Contract pricing: one hazard model, both directions derived from it.
 
 Model
   New qualifying CVEs (cvss >= threshold) arrive as a Poisson process with a
-  per-package daily rate λ, estimated from cve_history with a small prior so a
-  package with no history still has a non-zero rate:
+  per-package daily rate λ. It is a Gamma-Poisson posterior mean that shrinks the
+  package's own count toward its ecosystem's rate, so a package with no history
+  still gets the ecosystem's base rate, and that base rate tracks trends:
 
-      λ = w * (k90^d + α) / (90 + β)  +  (1-w) * (k365^d + α) / (365 + β)
+      λ = (m · λ_eco + k365^d) / (m + 365)     (times a zero-history factor if k365 = 0)
 
-  k90/k365 = qualifying CVEs in the last 90/365 days; d < 1 damps disclosure
-  bursts. Constants tuned by scripts/backtest_pricing.py.
+  k365 = qualifying CVEs in the last 365 days; d < 1 damps disclosure bursts;
+  λ_eco = qualifying CVEs per package-day across the ecosystem over the last
+  365 days (ecosystem_rate); m = prior strength in pseudo-days. Values come
+  from the holdout study in scripts/backtest/holdout/eval_hier.py.
 
 Probabilities (all duration-aware)
   P_cve(D)  = 1 - exp(-λ D)             new CVE >= threshold within D days
@@ -56,6 +59,8 @@ class PackageStats:
     exploit_in_news: bool
     # (days_ago, cvss_score) for every CVE published in the last 365 days
     recent_cves: list[tuple[int, float | None]]
+    # ecosystem CVE rate per package-day at the contract's threshold (see ecosystem_rate)
+    eco_rate: float = 0.0
 
 
 def _clamp(v: float, lo: float, hi: float) -> float:
@@ -75,15 +80,18 @@ def _sigmoid(x: float) -> float:
 
 # ── tuning ────────────────────────────────────────────────────────────────────
 
-# CVE hazard prior: α pseudo-events over β pseudo-days. A package with zero
-# history prices at λ ≈ 0.25/150 ≈ 0.17%/day → ~5% over 30d.
-# Burst damping: CVE disclosures cluster (one audit → five CVEs) and then go
-# quiet, so raw counts over-predict busy packages; k^HAZARD_BURST_DAMP tempers
-# that. Values from scripts/backtest_pricing.py grid search (2024-04 → 2026-08).
-HAZARD_PRIOR_EVENTS = 0.25
-HAZARD_PRIOR_DAYS = 150.0
-HAZARD_BURST_DAMP = 0.7
-HAZARD_W90 = 0.45
+# CVE hazard prior strength m, in pseudo-days: how much a package's own history
+# is trusted against its ecosystem's rate. Burst damping: CVE disclosures cluster
+# (one audit → five CVEs), so raw counts over-predict busy packages; k^d tempers
+# that. Chosen on a purged time split (fit ≤ 2023-09, holdout ≥ 2024-01) by
+# minimum fit log loss, with fallback to least calibration bias since no set met
+# the ±10% band. Holdout numbers: scripts/backtest/holdout/results_hier.json.
+HAZARD_PRIOR_DAYS = 730.0
+HAZARD_BURST_DAMP = 0.5
+# Zero-history factor: a package with no CVE in the window is less risky than the
+# ecosystem average, so its rate is scaled down. Fit on PyPI as observed/expected
+# for quiet rows; it lowers npm and Composer quiet prices but does not fully fix them.
+HAZARD_QUIET_FACTOR = 0.6903605711054143
 # CVSS scores missing from OSV are treated as this for threshold comparison.
 UNSCORED_CVSS = 5.0
 
@@ -136,20 +144,20 @@ def compute_grade(
 
 # ── hazards + probabilities ───────────────────────────────────────────────────
 
-def cve_hazard(recent_cves: Sequence[tuple[int, float | None]], cvss_threshold: float) -> float:
-    """Daily rate of new CVEs with cvss >= threshold, from the last 365 days."""
-    k90 = k365 = 0
+def cve_hazard(
+    recent_cves: Sequence[tuple[int, float | None]],
+    cvss_threshold: float,
+    eco_rate: float,
+) -> float:
+    """Posterior mean daily rate of new CVEs >= threshold: the package's own count,
+    shrunk toward its ecosystem's rate (eco_rate, per package-day)."""
+    k365 = 0
     for days_ago, cvss in recent_cves:
         score = UNSCORED_CVSS if cvss is None else cvss
-        if score < cvss_threshold:
-            continue
-        if days_ago <= 365:
+        if score >= cvss_threshold and days_ago <= 365:
             k365 += 1
-        if days_ago <= 90:
-            k90 += 1
-    rate90 = (k90 ** HAZARD_BURST_DAMP + HAZARD_PRIOR_EVENTS) / (90.0 + HAZARD_PRIOR_DAYS)
-    rate365 = (k365 ** HAZARD_BURST_DAMP + HAZARD_PRIOR_EVENTS) / (365.0 + HAZARD_PRIOR_DAYS)
-    return HAZARD_W90 * rate90 + (1.0 - HAZARD_W90) * rate365
+    rate = (HAZARD_PRIOR_DAYS * eco_rate + k365 ** HAZARD_BURST_DAMP) / (HAZARD_PRIOR_DAYS + 365.0)
+    return rate * HAZARD_QUIET_FACTOR if k365 == 0 else rate
 
 
 def hazard_to_probability(rate: float, duration_days: float) -> float:
@@ -161,9 +169,11 @@ def compute_cvss_probability(
     recent_cves: Sequence[tuple[int, float | None]],
     cvss_threshold: float,
     duration_days: float,
+    eco_rate: float,
 ) -> float:
     """P(new CVE >= threshold published within duration_days)."""
-    return round(hazard_to_probability(cve_hazard(recent_cves, cvss_threshold), duration_days), 4)
+    rate = cve_hazard(recent_cves, cvss_threshold, eco_rate)
+    return round(hazard_to_probability(rate, duration_days), 4)
 
 
 def compute_epss_probability(
@@ -239,7 +249,7 @@ def build_legs(
     if direction == "no":
         # NO bets are CVSS-only: "no new qualifying CVE before expiry".
         # P(win over remaining R days | survived so far) = exp(-λR).
-        rate = cve_hazard(stats.recent_cves, thr)
+        rate = cve_hazard(stats.recent_cves, thr, stats.eco_rate)
 
         def prob(rem: float) -> float:
             return 1.0 - hazard_to_probability(rate, rem)
@@ -253,7 +263,7 @@ def build_legs(
     if epss_threshold is not None and epss_threshold > 0:
         e = stats.epss_score
         legs.append(Leg("epss", lambda rem: compute_epss_probability(e, epss_threshold, rem), 0))
-    rate = cve_hazard(stats.recent_cves, thr)
+    rate = cve_hazard(stats.recent_cves, thr, stats.eco_rate)
     legs.append(Leg("cvss", lambda rem: hazard_to_probability(rate, rem), 0))
     mal_flag, exploit = stats.has_mal_advisory, stats.exploit_in_news
     legs.append(Leg("mal", lambda rem: compute_mal_probability(mal_flag, exploit, rem), 0))
@@ -330,7 +340,37 @@ def price_from_stats(
 
 # ── DB-backed entry points ────────────────────────────────────────────────────
 
-def load_package_stats(conn: Any, package_name: str, ecosystem: str) -> PackageStats:
+_ECO_RATE_CACHE: dict[tuple[str, float, date], float] = {}
+
+
+def ecosystem_rate(conn: Any, ecosystem: str, cvss_threshold: float) -> float:
+    """Qualifying CVEs per package-day across the ecosystem over the last 365 days.
+    This is the prior mean every package shrinks toward, so it tracks trends.
+    Cached per (ecosystem, threshold, day): it changes at most daily."""
+    key = (ecosystem, cvss_threshold, date.today())
+    if key not in _ECO_RATE_CACHE:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT COUNT(*) FROM cve_history
+            WHERE ecosystem = %s AND published_date >= now() - INTERVAL '365 days'
+              AND COALESCE(cvss_score, %s) >= %s
+            """,
+            [ecosystem, UNSCORED_CVSS, cvss_threshold],
+        )
+        hits = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM packages WHERE ecosystem = %s", [ecosystem])
+        n_pkgs = cur.fetchone()[0]
+        _ECO_RATE_CACHE[key] = hits / (n_pkgs * 365.0) if n_pkgs else 0.0
+    return _ECO_RATE_CACHE[key]
+
+
+def load_package_stats(
+    conn: Any,
+    package_name: str,
+    ecosystem: str,
+    cvss_threshold: float = 7.0,
+) -> PackageStats:
     cur = conn.cursor()
     cur.execute(
         """
@@ -377,6 +417,7 @@ def load_package_stats(conn: Any, package_name: str, ecosystem: str) -> PackageS
         max_cvss=max_cvss,
         exploit_in_news=exploit_in_news,
         recent_cves=recent,
+        eco_rate=ecosystem_rate(conn, ecosystem, cvss_threshold),
     )
 
 
@@ -390,7 +431,7 @@ def price_contract(
     duration_days: int = 30,
     direction: str = "yes",
 ) -> ContractTerms:
-    stats = load_package_stats(conn, package_name, ecosystem)
+    stats = load_package_stats(conn, package_name, ecosystem, cvss_threshold or 7.0)
     terms, _ = price_from_stats(stats, cvss_threshold, epss_threshold, purchase_price, duration_days, direction)
     return terms
 
@@ -405,7 +446,7 @@ def price_contract_with_legs(
     duration_days: int = 30,
     direction: str = "yes",
 ) -> tuple[ContractTerms, list[Leg]]:
-    stats = load_package_stats(conn, package_name, ecosystem)
+    stats = load_package_stats(conn, package_name, ecosystem, cvss_threshold or 7.0)
     return price_from_stats(stats, cvss_threshold, epss_threshold, purchase_price, duration_days, direction)
 
 
@@ -427,6 +468,6 @@ def current_value(
     today = today or date.today()
     total_days = max((expires_at - created_at).days, 1)
     remaining = _clamp((expires_at - today).days, 0, total_days)
-    stats = load_package_stats(conn, package_name, ecosystem)
+    stats = load_package_stats(conn, package_name, ecosystem, cvss_threshold or 7.0)
     _, legs = price_from_stats(stats, cvss_threshold, epss_threshold, purchase_price, total_days, direction)
     return contract_value(legs, max_payout, remaining)

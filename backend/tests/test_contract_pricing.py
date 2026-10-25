@@ -1,6 +1,10 @@
 
 
+import pytest
+
 from features.contract_pricing import (
+    HAZARD_PRIOR_DAYS,
+    HAZARD_QUIET_FACTOR,
     MAX_MULTIPLIER,
     P_MIN,
     PackageStats,
@@ -21,6 +25,7 @@ def _stats(recent: tuple | list = (), epss=0.05, num_cves=5, mal=False, max_cvss
     return PackageStats(
         epss_score=epss, num_cves=num_cves, has_mal_advisory=mal,
         max_cvss=max_cvss, exploit_in_news=exploit, recent_cves=list(recent),
+        eco_rate=ECO,
     )
 
 
@@ -44,30 +49,91 @@ def test_grade_monotone_in_cves_and_epss():
 
 # ── cve_hazard ────────────────────────────────────────────────────────────────
 
+# Ecosystem rate used across these tests: 0.005% of packages get a qualifying CVE
+# per day, i.e. about 0.018 per package per year.
+ECO = 0.00005
+
+
+class _FakeCursor:
+    def __init__(self, results):
+        self._results = list(results)
+        self._last = None
+
+    def execute(self, sql, params):
+        self._last = self._results.pop(0)
+
+    def fetchone(self):
+        return (self._last,)
+
+
+class _FakeConn:
+    def __init__(self, hits, pkgs):
+        self._cur = _FakeCursor([hits, pkgs])
+
+    def cursor(self):
+        return self._cur
+
+
+def test_ecosystem_rate_is_hits_over_package_days():
+    from features import contract_pricing as cp
+
+    cp._ECO_RATE_CACHE.clear()
+    assert cp.ecosystem_rate(_FakeConn(hits=365, pkgs=1000), "npm", 7.0) == pytest.approx(365 / (1000 * 365.0))
+
+
+def test_ecosystem_rate_zero_without_packages():
+    from features import contract_pricing as cp
+
+    cp._ECO_RATE_CACHE.clear()
+    assert cp.ecosystem_rate(_FakeConn(hits=5, pkgs=0), "npm", 7.0) == 0.0
+
+
 def test_hazard_nonzero_with_no_history():
-    assert cve_hazard([], 7.0) > 0
+    assert cve_hazard([], 7.0, ECO) > 0
+
+
+def test_hazard_zero_history_is_the_shrunk_ecosystem_rate():
+    # λ = m·λ_eco / (m + 365) · q: no history shrinks toward the ecosystem rate,
+    # then the zero-history factor q scales it down.
+    expected = HAZARD_PRIOR_DAYS * ECO / (HAZARD_PRIOR_DAYS + 365.0) * HAZARD_QUIET_FACTOR
+    assert cve_hazard([], 7.0, ECO) == pytest.approx(expected)
+
+
+def test_hazard_quiet_factor_only_applies_without_history():
+    with_one = cve_hazard([(10, 9.0)], 7.0, ECO)
+    expected = (HAZARD_PRIOR_DAYS * ECO + 1.0) / (HAZARD_PRIOR_DAYS + 365.0)
+    assert with_one == pytest.approx(expected)
 
 
 def test_hazard_rises_with_qualifying_cves():
-    quiet = cve_hazard([], 7.0)
-    busy = cve_hazard([(10, 9.0), (40, 8.0), (80, 7.5)], 7.0)
+    quiet = cve_hazard([], 7.0, ECO)
+    busy = cve_hazard([(10, 9.0), (40, 8.0), (80, 7.5)], 7.0, ECO)
     assert busy > quiet
 
 
 def test_hazard_ignores_cves_below_threshold():
-    low = cve_hazard([(10, 3.0), (20, 4.0)], 7.0)
-    assert low == cve_hazard([], 7.0)
+    low = cve_hazard([(10, 3.0), (20, 4.0)], 7.0, ECO)
+    assert low == cve_hazard([], 7.0, ECO)
 
 
-def test_hazard_recent_cves_weigh_more_than_old():
-    recent = cve_hazard([(10, 9.0)], 7.0)
-    old = cve_hazard([(300, 9.0)], 7.0)
-    assert recent > old
+def test_hazard_counts_full_365_day_window_equally():
+    recent = cve_hazard([(10, 9.0)], 7.0, ECO)
+    old = cve_hazard([(300, 9.0)], 7.0, ECO)
+    assert recent == old
+
+
+def test_hazard_ignores_cves_older_than_a_year():
+    assert cve_hazard([(400, 9.0)], 7.0, ECO) == cve_hazard([], 7.0, ECO)
+
+
+def test_hazard_tracks_ecosystem_rate():
+    # A higher ecosystem rate lifts a quiet package: the prior follows trends.
+    assert cve_hazard([], 7.0, 2 * ECO) > cve_hazard([], 7.0, ECO)
 
 
 def test_hazard_higher_threshold_never_higher_rate():
     hist = [(5, 9.8), (30, 7.2), (60, 5.5), (200, 8.0)]
-    rates = [cve_hazard(hist, t) for t in (3.0, 5.0, 7.0, 9.0)]
+    rates = [cve_hazard(hist, t, ECO) for t in (3.0, 5.0, 7.0, 9.0)]
     assert rates == sorted(rates, reverse=True)
 
 
@@ -75,15 +141,15 @@ def test_hazard_higher_threshold_never_higher_rate():
 
 def test_cvss_probability_increases_with_duration():
     hist = [(10, 9.0), (50, 8.0)]
-    p7 = compute_cvss_probability(hist, 7.0, 7)
-    p14 = compute_cvss_probability(hist, 7.0, 14)
-    p30 = compute_cvss_probability(hist, 7.0, 30)
+    p7 = compute_cvss_probability(hist, 7.0, 7, ECO)
+    p14 = compute_cvss_probability(hist, 7.0, 14, ECO)
+    p30 = compute_cvss_probability(hist, 7.0, 30, ECO)
     assert p7 < p14 < p30
 
 
 def test_cvss_probability_bounded():
     for hist in ([], [(1, 10.0)] * 200):
-        p = compute_cvss_probability(hist, 5.0, 30)
+        p = compute_cvss_probability(hist, 5.0, 30, ECO)
         assert 0.0 < p <= 1.0
 
 
