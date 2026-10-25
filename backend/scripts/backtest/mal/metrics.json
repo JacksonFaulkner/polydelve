@@ -1,0 +1,1097 @@
+{
+  "model": "mal_hazard_gamma_poisson_v2",
+  "metrics": {
+    "npm_d30_const_brier": 0.00013469632127881002,
+    "npm_d30_const_logloss": 0.0017808514898555857,
+    "npm_d30_const_auc": 0.9605559017182271,
+    "npm_d30_const_mean_pred": 0.00020533338881243806,
+    "npm_d30_pkg_bayes_brier": 0.00013469901733625963,
+    "npm_d30_pkg_bayes_logloss": 0.0017872630709623524,
+    "npm_d30_pkg_bayes_auc": 0.9656279685146212,
+    "npm_d30_pkg_bayes_mean_pred": 0.00021171075496794452,
+    "npm_d30_holdout_positive_labels": 308,
+    "npm_d30_holdout_pkg_windows": 2287516,
+    "npm_d30_holdout_base_rate": 0.00013464386697185942,
+    "npm_d30_holdout_out_of_universe_events": 206800,
+    "npm_d30_brier_skill_pkg_vs_const": -2.001582095201293e-05,
+    "npm_d30_brier_skill_ci95_lo": -0.0007954818790945062,
+    "npm_d30_brier_skill_ci95_hi": -5.002817042631946e-06,
+    "npm_d90_const_brier": 0.00040440732605359294,
+    "npm_d90_const_logloss": 0.004890708971872194,
+    "npm_d90_const_auc": 0.9469396909730603,
+    "npm_d90_const_mean_pred": 0.0006158248369476198,
+    "npm_d90_pkg_bayes_brier": 0.0004044316017438096,
+    "npm_d90_pkg_bayes_logloss": 0.0049099833888697495,
+    "npm_d90_pkg_bayes_auc": 0.9690043500095206,
+    "npm_d90_pkg_bayes_mean_pred": 0.0006349488393562598,
+    "npm_d90_holdout_positive_labels": 924,
+    "npm_d90_holdout_pkg_windows": 2287516,
+    "npm_d90_holdout_base_rate": 0.0004039316009155783,
+    "npm_d90_holdout_out_of_universe_events": 627437,
+    "npm_d90_brier_skill_pkg_vs_const": -6.0027820102837026e-05,
+    "npm_d90_brier_skill_ci95_lo": -0.0012344229942340412,
+    "npm_d90_brier_skill_ci95_hi": -1.8888497143487726e-05,
+    "PyPI_d30_const_brier": 2.5050330052242036e-05,
+    "PyPI_d30_const_logloss": 0.0004474280324525062,
+    "PyPI_d30_const_auc": 0.7034378464111027,
+    "PyPI_d30_const_mean_pred": 1.4519755193954902e-05,
+    "PyPI_d30_pkg_bayes_brier": 2.5050541248983182e-05,
+    "PyPI_d30_pkg_bayes_logloss": 0.00045333010456300295,
+    "PyPI_d30_pkg_bayes_auc": 0.8884932017310379,
+    "PyPI_d30_pkg_bayes_mean_pred": 2.041932435088717e-05,
+    "PyPI_d30_holdout_positive_labels": 8,
+    "PyPI_d30_holdout_pkg_windows": 319354,
+    "PyPI_d30_holdout_base_rate": 2.5050570839883015e-05,
+    "PyPI_d30_holdout_out_of_universe_events": 5079,
+    "PyPI_d30_brier_skill_pkg_vs_const": -8.430896547340083e-06,
+    "PyPI_d30_brier_skill_ci95_lo": -3.211075932130214e-05,
+    "PyPI_d30_brier_skill_ci95_hi": -3.999853984693047e-06,
+    "PyPI_d90_const_brier": 6.888761654732724e-05,
+    "PyPI_d90_const_logloss": 0.0012295290236183556,
+    "PyPI_d90_const_auc": 0.7705273679260001,
+    "PyPI_d90_const_mean_pred": 4.355852051604965e-05,
+    "PyPI_d90_pkg_bayes_brier": 6.888951715507565e-05,
+    "PyPI_d90_pkg_bayes_logloss": 0.0012472348885887697,
+    "PyPI_d90_pkg_bayes_auc": 0.9000720111186647,
+    "PyPI_d90_pkg_bayes_mean_pred": 6.125659462496754e-05,
+    "PyPI_d90_holdout_positive_labels": 22,
+    "PyPI_d90_holdout_pkg_windows": 319354,
+    "PyPI_d90_holdout_base_rate": 6.888906980967829e-05,
+    "PyPI_d90_holdout_out_of_universe_events": 15528,
+    "PyPI_d90_brier_skill_pkg_vs_const": -2.758997688800946e-05,
+    "PyPI_d90_brier_skill_ci95_lo": -5.5839160401527366e-05,
+    "PyPI_d90_brier_skill_ci95_hi": -1.655916464748941e-05
+  },
+  "sample": {
+    "npm_tune_logloss_by_alpha": {
+      "12": 0.07583702983264062,
+      "60": 0.022049840632156155,
+      "300": 0.0053338102531714626,
+      "1500": 0.0015478600673520114,
+      "6000": 0.0008184741470638443,
+      "30000": 0.000622889957516896,
+      "150000": 0.0005837180623523263
+    },
+    "npm_chosen_alpha": 150000.0,
+    "npm_calibration_d30_const_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 376400,
+        "mean_pred": 8.954039252135763e-06,
+        "obs_rate": 0.0007784272051009564
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 1911116,
+        "mean_pred": 0.0002440108878101054,
+        "obs_rate": 7.848817130932921e-06
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "npm_calibration_d30_pkg_bayes_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 376400,
+        "mean_pred": 1.4688509335797587e-05,
+        "obs_rate": 0.0007784272051009564
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 1911116,
+        "mean_pred": 0.00025051487426577167,
+        "obs_rate": 7.848817130932921e-06
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "npm_d30_tune_pos_labels": 3,
+    "npm_d30_tune_out_of_universe_events": 9712,
+    "npm_calibration_d90_const_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 376400,
+        "mean_pred": 2.6861869625701056e-05,
+        "obs_rate": 0.0023512221041445272
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 1501932,
+        "mean_pred": 0.0005947613962090211,
+        "obs_rate": 1.1984563881720345e-05
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 409184,
+        "mean_pred": 0.0012349143335696083,
+        "obs_rate": 5.1321654805662e-05
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "npm_calibration_d90_pkg_bayes_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 376400,
+        "mean_pred": 4.4064858730037196e-05,
+        "obs_rate": 0.0023512221041445272
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 1501932,
+        "mean_pred": 0.0006143691983160485,
+        "obs_rate": 1.1984563881720345e-05
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 409184,
+        "mean_pred": 0.0012540296239704387,
+        "obs_rate": 5.1321654805662e-05
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "npm_d90_tune_pos_labels": 7,
+    "npm_d90_tune_out_of_universe_events": 31136,
+    "npm_strata_holdout": {
+      "d30_no_prior_mal": {
+        "pkg_windows": 84759,
+        "positives": 307,
+        "obs_rate": 0.003622034238251985,
+        "mean_const_pred": 0.00011046650566089367
+      },
+      "d30_prior_mal": {
+        "pkg_windows": 2202757,
+        "positives": 1,
+        "obs_rate": 4.5397653940039685e-07,
+        "mean_const_pred": 0.00020898373342559656
+      },
+      "d90_no_prior_mal": {
+        "pkg_windows": 84759,
+        "positives": 923,
+        "obs_rate": 0.010889699029011669,
+        "mean_const_pred": 0.0003312958108058804
+      },
+      "d90_prior_mal": {
+        "pkg_windows": 2202757,
+        "positives": 1,
+        "obs_rate": 4.5397653940039685e-07,
+        "mean_const_pred": 0.0006267731148245693
+      }
+    },
+    "npm_packages_in_osv": 226057,
+    "npm_mal_rows_nonwithdrawn": 222402,
+    "npm_mal_rows_withdrawn": 331,
+    "npm_hazard_monthly_const": [
+      {
+        "month": "2022-01",
+        "h": 0.0
+      },
+      {
+        "month": "2022-02",
+        "h": 0.0
+      },
+      {
+        "month": "2022-03",
+        "h": 0.0
+      },
+      {
+        "month": "2022-04",
+        "h": 0.0
+      },
+      {
+        "month": "2022-05",
+        "h": 0.0
+      },
+      {
+        "month": "2022-06",
+        "h": 0.0
+      },
+      {
+        "month": "2022-07",
+        "h": 4.1972717733473244e-05
+      },
+      {
+        "month": "2022-08",
+        "h": 3.6486363221745876e-05
+      },
+      {
+        "month": "2022-09",
+        "h": 3.183395409543819e-05
+      },
+      {
+        "month": "2022-10",
+        "h": 2.7798240371384493e-05
+      },
+      {
+        "month": "2022-11",
+        "h": 2.4612052522120084e-05
+      },
+      {
+        "month": "2022-12",
+        "h": 2.2052175447107856e-05
+      },
+      {
+        "month": "2023-01",
+        "h": 1.9959880639913775e-05
+      },
+      {
+        "month": "2023-02",
+        "h": 1.8215268037669175e-05
+      },
+      {
+        "month": "2023-03",
+        "h": 1.6716118517280287e-05
+      },
+      {
+        "month": "2023-04",
+        "h": 1.5425314483599036e-05
+      },
+      {
+        "month": "2023-05",
+        "h": 1.4306663328445223e-05
+      },
+      {
+        "month": "2023-06",
+        "h": 1.3325604482733347e-05
+      },
+      {
+        "month": "2023-07",
+        "h": 1.8666816001194675e-05
+      },
+      {
+        "month": "2023-08",
+        "h": 1.748914215757717e-05
+      },
+      {
+        "month": "2023-09",
+        "h": 1.642773439639028e-05
+      },
+      {
+        "month": "2023-10",
+        "h": 1.546399723709916e-05
+      },
+      {
+        "month": "2023-11",
+        "h": 1.4589807560438279e-05
+      },
+      {
+        "month": "2023-12",
+        "h": 1.3800654151006758e-05
+      },
+      {
+        "month": "2024-01",
+        "h": 1.3080330670759356e-05
+      },
+      {
+        "month": "2024-02",
+        "h": 1.2424160851469156e-05
+      },
+      {
+        "month": "2024-03",
+        "h": 1.1785503830288745e-05
+      },
+      {
+        "month": "2024-04",
+        "h": 1.1204649182434099e-05
+      },
+      {
+        "month": "2024-05",
+        "h": 1.067300405929921e-05
+      },
+      {
+        "month": "2024-06",
+        "h": 1.018423277082421e-05
+      },
+      {
+        "month": "2024-07",
+        "h": 9.735139309843523e-06
+      },
+      {
+        "month": "2024-08",
+        "h": 9.248269802857715e-06
+      },
+      {
+        "month": "2024-09",
+        "h": 8.786779996602445e-06
+      },
+      {
+        "month": "2024-10",
+        "h": 8.36386142754387e-06
+      },
+      {
+        "month": "2024-11",
+        "h": 7.959121949666512e-06
+      },
+      {
+        "month": "2024-12",
+        "h": 7.5732905189975995e-06
+      },
+      {
+        "month": "2025-01",
+        "h": 9.614067303278156e-06
+      },
+      {
+        "month": "2025-02",
+        "h": 9.157970410597604e-06
+      },
+      {
+        "month": "2025-03",
+        "h": 8.728631219695284e-06
+      },
+      {
+        "month": "2025-04",
+        "h": 8.323812972246327e-06
+      },
+      {
+        "month": "2025-05",
+        "h": 7.935563226600009e-06
+      },
+      {
+        "month": "2025-06",
+        "h": 7.574753347094135e-06
+      },
+      {
+        "month": "2025-07",
+        "h": 7.232449106159696e-06
+      },
+      {
+        "month": "2025-08",
+        "h": 6.909906906279205e-06
+      },
+      {
+        "month": "2025-09",
+        "h": 0.0004886488199791334
+      },
+      {
+        "month": "2025-10",
+        "h": 0.00044789645952079575
+      },
+      {
+        "month": "2025-11",
+        "h": 0.0004067971864328377
+      },
+      {
+        "month": "2025-12",
+        "h": 0.0003794079742848471
+      },
+      {
+        "month": "2026-01",
+        "h": 0.00030051155934955506
+      },
+      {
+        "month": "2026-02",
+        "h": 0.00024855653846310563
+      },
+      {
+        "month": "2026-03",
+        "h": 0.00021183350580979436
+      },
+      {
+        "month": "2026-04",
+        "h": 0.0001851280468991052
+      },
+      {
+        "month": "2026-05",
+        "h": 0.00016388833099015868
+      },
+      {
+        "month": "2026-06",
+        "h": 0.00014745104217147835
+      },
+      {
+        "month": "2026-07",
+        "h": 0.0001339886596870756
+      }
+    ],
+    "PyPI_tune_logloss_by_alpha": {
+      "12": 0.09248876082714133,
+      "60": 0.024058329676521953,
+      "300": 0.005147819216177275,
+      "1500": 0.0010444867964787192,
+      "6000": 0.00026183668293306166,
+      "30000": 5.2405638539895584e-05,
+      "150000": 1.0482661670262181e-05
+    },
+    "PyPI_chosen_alpha": 150000.0,
+    "PyPI_calibration_d30_const_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 319354,
+        "mean_pred": 1.4519755193954902e-05,
+        "obs_rate": 2.5050570839883015e-05
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "PyPI_calibration_d30_pkg_bayes_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 319354,
+        "mean_pred": 2.041932435088717e-05,
+        "obs_rate": 2.5050570839883015e-05
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "PyPI_d30_tune_pos_labels": 0,
+    "PyPI_d30_tune_out_of_universe_events": 6487,
+    "PyPI_calibration_d90_const_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 319354,
+        "mean_pred": 4.355852051604965e-05,
+        "obs_rate": 6.888906980967829e-05
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "PyPI_calibration_d90_pkg_bayes_holdout": [
+      {
+        "bin_lo": 0.0,
+        "bin_hi": 0.0001,
+        "n": 319354,
+        "mean_pred": 6.125659462496754e-05,
+        "obs_rate": 6.888906980967829e-05
+      },
+      {
+        "bin_lo": 0.0001,
+        "bin_hi": 0.001,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.001,
+        "bin_hi": 0.003,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.003,
+        "bin_hi": 0.01,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.01,
+        "bin_hi": 0.03,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.03,
+        "bin_hi": 0.1,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.1,
+        "bin_hi": 0.3,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      },
+      {
+        "bin_lo": 0.3,
+        "bin_hi": 1.0,
+        "n": 0,
+        "mean_pred": null,
+        "obs_rate": null
+      }
+    ],
+    "PyPI_d90_tune_pos_labels": 0,
+    "PyPI_d90_tune_out_of_universe_events": 19462,
+    "PyPI_strata_holdout": {
+      "d30_no_prior_mal": {
+        "pkg_windows": 36576,
+        "positives": 8,
+        "obs_rate": 0.00021872265966754156,
+        "mean_const_pred": 1.4190207100584796e-05
+      },
+      "d30_prior_mal": {
+        "pkg_windows": 282778,
+        "positives": 0,
+        "obs_rate": 0.0,
+        "mean_const_pred": 1.4562380684853384e-05
+      },
+      "d90_no_prior_mal": {
+        "pkg_windows": 36576,
+        "positives": 22,
+        "obs_rate": 0.0006014873140857392,
+        "mean_const_pred": 4.2569891843080626e-05
+      },
+      "d90_prior_mal": {
+        "pkg_windows": 282778,
+        "positives": 0,
+        "obs_rate": 0.0,
+        "mean_const_pred": 4.3686394969968476e-05
+      }
+    },
+    "PyPI_packages_in_osv": 13611,
+    "PyPI_mal_rows_nonwithdrawn": 11897,
+    "PyPI_mal_rows_withdrawn": 25,
+    "PyPI_hazard_monthly_const": [
+      {
+        "month": "2022-01",
+        "h": 0.0
+      },
+      {
+        "month": "2022-02",
+        "h": 0.0
+      },
+      {
+        "month": "2022-03",
+        "h": 0.0
+      },
+      {
+        "month": "2022-04",
+        "h": 0.0
+      },
+      {
+        "month": "2022-05",
+        "h": 0.0
+      },
+      {
+        "month": "2022-06",
+        "h": 0.0
+      },
+      {
+        "month": "2022-07",
+        "h": 0.0
+      },
+      {
+        "month": "2022-08",
+        "h": 0.0
+      },
+      {
+        "month": "2022-09",
+        "h": 0.0
+      },
+      {
+        "month": "2022-10",
+        "h": 0.0
+      },
+      {
+        "month": "2022-11",
+        "h": 0.0
+      },
+      {
+        "month": "2022-12",
+        "h": 0.0
+      },
+      {
+        "month": "2023-01",
+        "h": 0.0
+      },
+      {
+        "month": "2023-02",
+        "h": 0.0
+      },
+      {
+        "month": "2023-03",
+        "h": 0.0
+      },
+      {
+        "month": "2023-04",
+        "h": 0.0
+      },
+      {
+        "month": "2023-05",
+        "h": 0.0
+      },
+      {
+        "month": "2023-06",
+        "h": 0.0
+      },
+      {
+        "month": "2023-07",
+        "h": 0.0
+      },
+      {
+        "month": "2023-08",
+        "h": 0.0
+      },
+      {
+        "month": "2023-09",
+        "h": 0.0
+      },
+      {
+        "month": "2023-10",
+        "h": 0.0
+      },
+      {
+        "month": "2023-11",
+        "h": 0.0
+      },
+      {
+        "month": "2023-12",
+        "h": 0.0
+      },
+      {
+        "month": "2024-01",
+        "h": 0.0
+      },
+      {
+        "month": "2024-02",
+        "h": 0.0
+      },
+      {
+        "month": "2024-03",
+        "h": 0.0
+      },
+      {
+        "month": "2024-04",
+        "h": 0.0
+      },
+      {
+        "month": "2024-05",
+        "h": 0.0
+      },
+      {
+        "month": "2024-06",
+        "h": 0.0
+      },
+      {
+        "month": "2024-07",
+        "h": 2.041788606819574e-05
+      },
+      {
+        "month": "2024-08",
+        "h": 1.9206268926177505e-05
+      },
+      {
+        "month": "2024-09",
+        "h": 1.8104790527573596e-05
+      },
+      {
+        "month": "2024-10",
+        "h": 1.7109030146111117e-05
+      },
+      {
+        "month": "2024-11",
+        "h": 1.6206667422977813e-05
+      },
+      {
+        "month": "2024-12",
+        "h": 1.5384615384615384e-05
+      },
+      {
+        "month": "2025-01",
+        "h": 1.9499924437792802e-05
+      },
+      {
+        "month": "2025-02",
+        "h": 1.8571826539140125e-05
+      },
+      {
+        "month": "2025-03",
+        "h": 1.7725389404648484e-05
+      },
+      {
+        "month": "2025-04",
+        "h": 1.6944413850363883e-05
+      },
+      {
+        "month": "2025-05",
+        "h": 1.6219284729543428e-05
+      },
+      {
+        "month": "2025-06",
+        "h": 1.5548895445339802e-05
+      },
+      {
+        "month": "2025-07",
+        "h": 1.4926375652096036e-05
+      },
+      {
+        "month": "2025-08",
+        "h": 1.4347408140719379e-05
+      },
+      {
+        "month": "2025-09",
+        "h": 1.7252147029697845e-05
+      },
+      {
+        "month": "2025-10",
+        "h": 1.660511703286485e-05
+      },
+      {
+        "month": "2025-11",
+        "h": 1.600092165308722e-05
+      },
+      {
+        "month": "2025-12",
+        "h": 1.5434575919592034e-05
+      },
+      {
+        "month": "2026-01",
+        "h": 1.4902818719132537e-05
+      },
+      {
+        "month": "2026-02",
+        "h": 1.44020001497808e-05
+      },
+      {
+        "month": "2026-03",
+        "h": 1.3928856970139316e-05
+      },
+      {
+        "month": "2026-04",
+        "h": 1.6175384300171997e-05
+      },
+      {
+        "month": "2026-05",
+        "h": 1.8268844312908764e-05
+      },
+      {
+        "month": "2026-06",
+        "h": 2.0220913479766448e-05
+      },
+      {
+        "month": "2026-07",
+        "h": 1.9588446734116218e-05
+      }
+    ],
+    "windows": {
+      "eval_start": "2022-01",
+      "holdout_start": "2024-01",
+      "eval_end_anchor": "2026-07",
+      "alpha_grid": [
+        12.0,
+        60.0,
+        300.0,
+        1500.0,
+        6000.0,
+        30000.0,
+        150000.0
+      ],
+      "bootstrap_reps": 2000
+    }
+  },
+  "date_range": [
+    "2022-01-01",
+    "2026-09-30"
+  ],
+  "sources": [
+    "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+    "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+    "https://github.com/ossf/malicious-packages",
+    "https://osv.dev/",
+    "https://github.blog/security/supply-chain-security/how-we-took-malware-advisories-beyond-npm/",
+    "https://www.reversinglabs.com/blog/operation-brainleeches-malicious-npm-packages-fuel-supply-chain-and-phishing-attacks"
+  ],
+  "caveats": [
+    "Very few in-universe events: holdout positives are a few dozen package-window hits (see *_holdout_positive_labels). Events cluster in campaigns, so the effective sample is smaller still. Significance is weak; treat CIs as rough.",
+    "Most MAL events are out-of-universe: the package's first advisory lands inside the window. Neither model can price those, so the reported base rates describe only packages already listed in OSV before the anchor.",
+    "Universe = packages named in any OSV advisory in the bulk zip. npm GHSA entries are a small share, so the universe is mostly MAL-listed packages; it is not the registry.",
+    "The OSV zip is a 2026-10 snapshot. Published dates are used, but withdrawals and re-listings after each anchor are not reconstructed.",
+    "Alpha is chosen on tune-period (pre-2024) log loss and then scored on holdout. Holdout is still one period; the choice is not re-validated across regimes.",
+    "The const model is an expanding-window monthly hazard per ecosystem, not a fixed constant; it is a baseline, not a market price.",
+    "Bootstrap resamples evaluation months (anchors) and ignores within-month correlation between packages, so intervals are optimistic if campaigns cluster across packages."
+  ]
+}
