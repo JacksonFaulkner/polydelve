@@ -64,3 +64,6 @@ backend/scripts/backtest/**/data/
 docs/**/*.mp3
 docs/**/*.m4a
 docs/animation/ElevenLabs_video_*.mp4
+
+# Binary media archive (not used by the app or docs)
+assets/archive/
