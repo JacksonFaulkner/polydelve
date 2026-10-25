@@ -25,7 +25,6 @@ vi.mock("@auth0/auth0-react", () => ({
 describe("Navbar — unauthenticated", () => {
   it("renders public tabs", () => {
     render(<Navbar activeSector="Predict" />)
-    expect(screen.getByText("News")).toBeInTheDocument()
     expect(screen.getByText("Leaderboard")).toBeInTheDocument()
   })
 
@@ -41,8 +40,8 @@ describe("Navbar — unauthenticated", () => {
   })
 
   it("active tab has correct aria role as link", () => {
-    render(<Navbar activeSector="News" />)
-    const newsLink = screen.getByRole("link", { name: /news/i })
-    expect(newsLink).toHaveAttribute("href", "/news")
+    render(<Navbar activeSector="Events" />)
+    const eventsLink = screen.getByRole("link", { name: /events/i })
+    expect(eventsLink).toHaveAttribute("href", "/events")
   })
 })

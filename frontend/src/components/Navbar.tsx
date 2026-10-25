@@ -1,16 +1,15 @@
 import { useRef, useState } from "react";
-import { Boxes, LayoutDashboard, ListTree, Menu, Newspaper, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
+import { Boxes, LayoutDashboard, ListTree, Menu, Package, Settings, TrendingUp, Trophy, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { BitIcon } from "./BitIcon";
 import type { User } from "@/types";
 
-export const SECTORS = ["PyPI", "npm", "News", "Predict", "Events", "Leaderboard", "Dashboard", "Settings"] as const;
+export const SECTORS = ["PyPI", "npm", "Predict", "Events", "Leaderboard", "Dashboard", "Settings"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const SECTOR_PATH: Record<Sector, string> = {
   PyPI: "/pypi",
   npm: "/npm",
-  News: "/news",
   Predict: "/predict",
   Events: "/events",
   Leaderboard: "/leaderboard",
@@ -28,7 +27,6 @@ export function pathToSector(pathname: string): Sector {
 const TAB_ICON: Partial<Record<Sector, React.ReactNode>> = {
   PyPI: <Package className="h-3.5 w-3.5" />,
   npm: <Boxes className="h-3.5 w-3.5" />,
-  News: <Newspaper className="h-3.5 w-3.5" />,
   Predict: <TrendingUp className="h-3.5 w-3.5" />,
   Events: <ListTree className="h-3.5 w-3.5" />,
   Leaderboard: <Trophy className="h-3.5 w-3.5" />,
@@ -85,7 +83,7 @@ export function Navbar({ user, activeSector }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // All content pages are browsable logged-out; betting is gated at the action.
-  const visibleTabs: Sector[] = ["Predict", "PyPI", "npm", "News", "Events", "Leaderboard"];
+  const visibleTabs: Sector[] = ["Predict", "PyPI", "npm", "Events", "Leaderboard"];
 
   const avatarSrc = user?.avatar_url ?? (auth0User as { picture?: string })?.picture;
 

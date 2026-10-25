@@ -46,32 +46,6 @@ export interface SpotlightMarket extends Market {
   events: MarketEvent[]
 }
 
-export interface AffectedPackage {
-  name: string
-  ecosystem: "PyPI" | "npm"
-}
-
-export interface NewsItem {
-  id: string
-  title: string
-  summary: string | null
-  url: string
-  source_name: string | null
-  published_at: string
-  sector_labels: string[]
-  company_labels: string[]
-  threat_actor: string | null
-  exploit_status: "poc_available" | "actively_exploited" | "patched" | "unpatched" | null
-  severity: "critical" | "high" | "medium" | "low" | null
-  affected_packages: AffectedPackage[]
-}
-
-export interface NewsResponse {
-  total: number
-  page: number
-  page_size: number
-  items: NewsItem[]
-}
 
 export interface BalancePoint {
   date: string
@@ -114,16 +88,6 @@ export interface PackageDetail {
   max_cvss_score: number | null
   cve_history: CveRecord[]
   epss_history: EpssPoint[]
-  recent_news: {
-    id: string
-    title: string
-    published_date: string | null
-    source_name: string | null
-    url: string
-    summary: string | null
-    exploit_status: string | null
-    severity: string | null
-  }[]
 }
 
 export interface Package {

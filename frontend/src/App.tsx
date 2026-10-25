@@ -11,7 +11,6 @@ import { useApi } from "@/lib/api";
 // Code-split each page so recharts/framer-motion only load where they're used.
 const PackagesTable = lazy(() => import("./components/PackagesTable").then((m) => ({ default: m.PackagesTable })));
 const LeaderboardTable = lazy(() => import("./components/LeaderboardTable").then((m) => ({ default: m.LeaderboardTable })));
-const NewsPage = lazy(() => import("./components/NewsPage").then((m) => ({ default: m.NewsPage })));
 const PredictPage = lazy(() => import("./components/PredictPage").then((m) => ({ default: m.PredictPage })));
 const EventsPage = lazy(() => import("./components/EventsPage").then((m) => ({ default: m.EventsPage })));
 const DashboardPage = lazy(() => import("./components/DashboardPage").then((m) => ({ default: m.DashboardPage })));
@@ -70,7 +69,7 @@ function AppInner() {
     );
   }
 
-  const isFullHeight = activeSector === "News" || activeSector === "Predict";
+  const isFullHeight = activeSector === "Predict";
 
   return (
     <div
@@ -87,8 +86,6 @@ function AppInner() {
         <Suspense fallback={<Spinner />}>
         {activeSector === "Settings" ? (
           <SettingsPage user={me} onUsernameChange={(u) => setMe(u)} />
-        ) : activeSector === "News" ? (
-          <NewsPage />
         ) : activeSector === "Dashboard" ? (
           <DashboardPage />
         ) : activeSector === "Predict" ? (

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import EpssChart from "./EpssChart"
+import { AdvisoryLink } from "./AdvisoryLink"
 import type { PackageDetail } from "@/types"
 import { useApi } from "@/lib/api"
-import { buildEpssChartData, nvdUrl } from "@/lib/epss"
+import { buildEpssChartData } from "@/lib/epss"
 import { SEV_COLOR, SEV_FALLBACK, scoreColor } from "@/lib/severity"
 
 interface Props {
@@ -125,13 +126,7 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                           }`}
                         >
                           <td className="px-3 py-1.5 font-mono">
-                            {c.cve_id ? (
-                              <a
-                                href={nvdUrl(c.cve_id)}
-                                target="_blank" rel="noopener noreferrer"
-                                className="text-ink-2 underline decoration-line-3 hover:text-ink-1 hover:decoration-ink-3 transition-colors"
-                              >{c.cve_id}</a>
-                            ) : <span className="text-ink-2">{c.osv_id}</span>}
+                            <AdvisoryLink id={c.cve_id ?? c.osv_id} />
                           </td>
                           <td className="px-3 py-1.5 tabular-nums text-ink-3">{c.published_date?.slice(0, 10) ?? ""}</td>
                           <td className="px-3 py-1.5">
@@ -151,24 +146,6 @@ export function PackageModal({ name, ecosystem, onClose }: Props) {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )}
-
-              {/* Recent news */}
-              {detail.recent_news.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-ink-3">Recent news</p>
-                  {detail.recent_news.slice(0, 3).map((n) => (
-                    <a
-                      key={n.id}
-                      href={n.url}
-                      target="_blank" rel="noopener noreferrer"
-                      className="block rounded border border-line-1 px-3 py-2 transition-colors hover:border-line-3"
-                    >
-                      <p className="text-sm text-ink-1 line-clamp-1">{n.title}</p>
-                      <p className="mt-0.5 text-xs text-ink-3">{n.source_name} · {n.published_date?.slice(0, 10)}</p>
-                    </a>
-                  ))}
                 </div>
               )}
             </div>

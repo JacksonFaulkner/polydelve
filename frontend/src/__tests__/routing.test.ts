@@ -13,7 +13,6 @@ describe("SECTOR_PATH", () => {
   })
 
   it("known paths resolve correctly", () => {
-    expect(pathToSector("/news")).toBe("News")
     expect(pathToSector("/pypi")).toBe("PyPI")
     expect(pathToSector("/npm")).toBe("npm")
     expect(pathToSector("/predict")).toBe("Predict")
